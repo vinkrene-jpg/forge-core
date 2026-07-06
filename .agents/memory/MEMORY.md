@@ -1,0 +1,1 @@
+- [Drizzle rows vs response Zod schemas](drizzle-zod-response-dates.md) — always wrap response `.parse()` data in `jsonSafe()`; raw Date objects 500 at runtime while typecheck stays green.

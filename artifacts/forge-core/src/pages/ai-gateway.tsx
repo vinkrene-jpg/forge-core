@@ -1,0 +1,1 @@
+export default function AiGateway() { return <div className="text-xl">AI Gateway</div>; }

@@ -1,0 +1,1 @@
+export default function Memory() { return <div className="text-xl">Memory Engine</div>; }

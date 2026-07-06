@@ -1,0 +1,1 @@
+export default function DailyLoop() { return <div className="text-xl">Daily Loop</div>; }

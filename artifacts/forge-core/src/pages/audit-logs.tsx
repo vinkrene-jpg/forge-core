@@ -1,0 +1,1 @@
+export default function AuditLogs() { return <div className="text-xl">Audit Logs</div>; }

@@ -1,15 +1,18 @@
-# [Project name]
+# Forge Core
 
-_Replace the heading above with the project's name, and this line with one sentence describing what this app does for users._
+A self-governing autonomous AI development platform: AI agent modules are built in sandboxes, tested, reviewed by a Guardian, gated by a Governor, and installed only when all governance checks pass — while 13 locked core components can never be modified autonomously.
 
 ## Run & Operate
 
 - `pnpm --filter @workspace/api-server run dev` — run the API server (port 5000)
+- `pnpm --filter @workspace/forge-core run dev` — run the dashboard (Vite)
 - `pnpm run typecheck` — full typecheck across all packages
 - `pnpm run build` — typecheck + build all packages
 - `pnpm --filter @workspace/api-spec run codegen` — regenerate API hooks and Zod schemas from the OpenAPI spec
 - `pnpm --filter @workspace/db run push` — push DB schema changes (dev only)
 - Required env: `DATABASE_URL` — Postgres connection string
+- Optional env: `OPENAI_API_KEY` / `ANTHROPIC_API_KEY` / `CUSTOM_AI_*` (AI Gateway), `AI_DEFAULT_PROVIDER`, `AI_FALLBACK_PROVIDER`, `AI_ROUTE_<TASKTYPE>`, `STORAGE_DIR`, `CORE_ADMIN_OVERRIDE`
+- Portability: `docker-compose.yml`, `.env.example`, `INSTALL.md`, `scripts/src/{install,backup,restore,migrate}.sh`
 
 ## Stack
 
@@ -18,28 +21,45 @@ _Replace the heading above with the project's name, and this line with one sente
 - DB: PostgreSQL + Drizzle ORM
 - Validation: Zod (`zod/v4`), `drizzle-zod`
 - API codegen: Orval (from OpenAPI spec)
+- Frontend: React + Vite, Wouter routing, shadcn/ui, TanStack Query (generated hooks)
 - Build: esbuild (CJS bundle)
 
 ## Where things live
 
-_Populate as you build — short repo map plus pointers to the source-of-truth file for DB schema, API contracts, theme files, etc._
+- `lib/api-spec/openapi.yaml` — source of truth for the API contract (codegen from here)
+- `lib/db/src/schema/` — Drizzle schema split by domain: core, ai, projects, modules, sandboxes, governance, memory
+- `artifacts/api-server/src/routes/` — one router per domain, registered in `routes/index.ts`
+- `artifacts/api-server/src/lib/` — corelock, aiGateway, guardian, governor, testRunner, storage, audit, seed, jsonSafe
+- `artifacts/forge-core/src/pages/` — one page per dashboard section (13 routes)
+- `storage/` — sandboxes, snapshots, backups (created at startup, configurable via `STORAGE_DIR`)
 
 ## Architecture decisions
 
-_Populate as you build — non-obvious choices a reader couldn't infer from the code (3-5 bullets)._
+- **Locked Core Registry**: 13 components seeded at startup; any modification attempt returns 403 and is audit-logged. `CORE_ADMIN_OVERRIDE=true` is the only bypass (owner maintenance only).
+- **Governance pipeline**: module → test run (failed/missing tests block install) → Guardian review (pass/warning/fail) → Governor decision (install_allowed / install_blocked / review_required / rollback_required). Low-risk + all-green auto-installs; anything else creates an approval requiring owner decision. Rejection requires a reason (400 without one). Snapshot is taken before every install for rollback.
+- **AI Gateway**: all AI calls go through one gateway; providers configured purely via env (openai/anthropic/custom), with per-taskType routing (`AI_ROUTE_<TASKTYPE>`) and fallback provider. Gateway errors surface as 400s, never crash.
+- **Contract-first**: OpenAPI spec drives codegen; server validates request bodies AND response payloads with generated Zod schemas.
+- **jsonSafe**: Drizzle returns `Date` objects but response Zod schemas expect ISO strings — every response `.parse()` wraps data in `jsonSafe()` (JSON round-trip). Skipping it causes 500 ZodErrors on any row with timestamps.
 
 ## Product
 
-_Describe the high-level user-facing capabilities of this app once they exist._
+- Dashboard (mission control summary), Projects/Goals/Backlog, Tasks (9 statuses) with decisions & risks, Modules (11 types, manifests, risk levels) with install/rollback, Sandboxes with file editing, Test Runs (7 types), Approvals, AI Gateway console, Memory Engine (9 categories), Self-Improvement backlog (convertible to tasks), Daily Loop runs & reports, Locked Core registry, Audit Logs.
+- UI language: English. Dark mission-control theme.
 
 ## User preferences
 
-_Populate as you build — explicit user instructions worth remembering across sessions._
+- Spec was provided in Dutch (15 sprints); UI must be in English.
+- Portability is a hard requirement: no platform lock-in for core functionality, everything configurable via `.env`.
 
 ## Gotchas
 
-_Populate as you build — sharp edges, "always run X before Y" rules._
+- Always wrap response `.parse()` args in `jsonSafe()` (see Architecture decisions).
+- `manifest` fields are JSON **strings** in the API, not objects.
+- Test runs require a `types` array; the Governor treats "no tests" the same as "failed tests" (blocked).
+- Workflow names are prefixed: `artifacts/api-server: API Server`, `artifacts/forge-core: web`.
+- Smoke-test through the proxy (`localhost:80/api/...`), never service ports directly.
 
 ## Pointers
 
 - See the `pnpm-workspace` skill for workspace structure, TypeScript setup, and package details
+- `INSTALL.md` — full install/backup/restore/migration documentation (Windows & Linux)

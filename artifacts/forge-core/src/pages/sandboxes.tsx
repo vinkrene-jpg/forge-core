@@ -1,0 +1,1 @@
+export default function Sandboxes() { return <div className="text-xl">Sandboxes</div>; }

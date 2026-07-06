@@ -1,0 +1,1 @@
+export default function Approvals() { return <div className="text-xl">Approvals</div>; }

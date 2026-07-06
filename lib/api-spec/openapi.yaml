@@ -3,13 +3,27 @@ info:
   # Do not change the title, if the title changes, the import paths will be broken
   title: Api
   version: 0.1.0
-  description: API specification
+  description: Forge Core API specification
 servers:
   - url: /api
     description: Base API path
 tags:
   - name: health
-    description: Health operations
+  - name: dashboard
+  - name: core
+  - name: audit
+  - name: ai
+  - name: projects
+  - name: tasks
+  - name: modules
+  - name: sandboxes
+  - name: tests
+  - name: approvals
+  - name: guardian
+  - name: governor
+  - name: memory
+  - name: improvements
+  - name: dailyloop
 paths:
   /healthz:
     get:
@@ -24,6 +38,1163 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/HealthStatus"
+  /dashboard/summary:
+    get:
+      operationId: getDashboardSummary
+      tags: [dashboard]
+      summary: Full dashboard overview
+      responses:
+        "200":
+          description: Summary
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DashboardSummary"
+  /core-components:
+    get:
+      operationId: listCoreComponents
+      tags: [core]
+      summary: List locked core registry
+      responses:
+        "200":
+          description: Core components
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/CoreComponent"
+  /core-components/{id}:
+    patch:
+      operationId: updateCoreComponent
+      tags: [core]
+      summary: Attempt to modify a core component (blocked when locked)
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: integer }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CoreComponentUpdate"
+      responses:
+        "200":
+          description: Updated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CoreComponent"
+        "403":
+          description: Blocked because component is locked
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+  /audit-logs:
+    get:
+      operationId: listAuditLogs
+      tags: [audit]
+      summary: List audit log entries
+      parameters:
+        - name: limit
+          in: query
+          required: false
+          schema: { type: integer }
+        - name: targetType
+          in: query
+          required: false
+          schema: { type: string }
+      responses:
+        "200":
+          description: Audit logs
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/AuditLog"
+  /ai/providers:
+    get:
+      operationId: listAiProviders
+      tags: [ai]
+      summary: List configured AI providers and task-type routing
+      responses:
+        "200":
+          description: Providers
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/AiProvider"
+  /ai/invoke:
+    post:
+      operationId: invokeAi
+      tags: [ai]
+      summary: Invoke AI through the central gateway
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/AiInvokeRequest"
+      responses:
+        "200":
+          description: AI response
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AiInvokeResult"
+        "400":
+          description: Invalid request
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+  /ai/calls:
+    get:
+      operationId: listAiCalls
+      tags: [ai]
+      summary: List logged AI gateway calls
+      parameters:
+        - name: limit
+          in: query
+          required: false
+          schema: { type: integer }
+      responses:
+        "200":
+          description: AI call logs
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/AiCall"
+  /projects:
+    get:
+      operationId: listProjects
+      tags: [projects]
+      summary: List projects
+      responses:
+        "200":
+          description: Projects
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Project"
+    post:
+      operationId: createProject
+      tags: [projects]
+      summary: Create project
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ProjectInput"
+      responses:
+        "201":
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Project"
+  /projects/{id}:
+    get:
+      operationId: getProject
+      tags: [projects]
+      summary: Get project
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: integer }
+      responses:
+        "200":
+          description: Project
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Project"
+        "404":
+          description: Not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+    patch:
+      operationId: updateProject
+      tags: [projects]
+      summary: Update project
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: integer }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ProjectUpdate"
+      responses:
+        "200":
+          description: Updated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Project"
+    delete:
+      operationId: deleteProject
+      tags: [projects]
+      summary: Delete project
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: integer }
+      responses:
+        "204":
+          description: Deleted
+  /goals:
+    get:
+      operationId: listGoals
+      tags: [projects]
+      summary: List goals
+      parameters:
+        - name: projectId
+          in: query
+          required: false
+          schema: { type: integer }
+      responses:
+        "200":
+          description: Goals
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Goal"
+    post:
+      operationId: createGoal
+      tags: [projects]
+      summary: Create goal
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/GoalInput"
+      responses:
+        "201":
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Goal"
+  /goals/{id}:
+    patch:
+      operationId: updateGoal
+      tags: [projects]
+      summary: Update goal
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: integer }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/GoalUpdate"
+      responses:
+        "200":
+          description: Updated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Goal"
+    delete:
+      operationId: deleteGoal
+      tags: [projects]
+      summary: Delete goal
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: integer }
+      responses:
+        "204":
+          description: Deleted
+  /backlog-items:
+    get:
+      operationId: listBacklogItems
+      tags: [projects]
+      summary: List backlog items
+      parameters:
+        - name: projectId
+          in: query
+          required: false
+          schema: { type: integer }
+      responses:
+        "200":
+          description: Backlog items
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/BacklogItem"
+    post:
+      operationId: createBacklogItem
+      tags: [projects]
+      summary: Create backlog item
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/BacklogItemInput"
+      responses:
+        "201":
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/BacklogItem"
+  /backlog-items/{id}:
+    patch:
+      operationId: updateBacklogItem
+      tags: [projects]
+      summary: Update backlog item
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: integer }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/BacklogItemUpdate"
+      responses:
+        "200":
+          description: Updated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/BacklogItem"
+    delete:
+      operationId: deleteBacklogItem
+      tags: [projects]
+      summary: Delete backlog item
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: integer }
+      responses:
+        "204":
+          description: Deleted
+  /tasks:
+    get:
+      operationId: listTasks
+      tags: [tasks]
+      summary: List tasks
+      parameters:
+        - name: projectId
+          in: query
+          required: false
+          schema: { type: integer }
+        - name: status
+          in: query
+          required: false
+          schema: { type: string }
+      responses:
+        "200":
+          description: Tasks
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Task"
+    post:
+      operationId: createTask
+      tags: [tasks]
+      summary: Create task
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/TaskInput"
+      responses:
+        "201":
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Task"
+  /tasks/{id}:
+    get:
+      operationId: getTask
+      tags: [tasks]
+      summary: Get task
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: integer }
+      responses:
+        "200":
+          description: Task
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Task"
+        "404":
+          description: Not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+    patch:
+      operationId: updateTask
+      tags: [tasks]
+      summary: Update task
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: integer }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/TaskUpdate"
+      responses:
+        "200":
+          description: Updated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Task"
+    delete:
+      operationId: deleteTask
+      tags: [tasks]
+      summary: Delete task
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: integer }
+      responses:
+        "204":
+          description: Deleted
+  /decisions:
+    get:
+      operationId: listDecisions
+      tags: [tasks]
+      summary: List decisions
+      parameters:
+        - name: projectId
+          in: query
+          required: false
+          schema: { type: integer }
+      responses:
+        "200":
+          description: Decisions
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Decision"
+    post:
+      operationId: createDecision
+      tags: [tasks]
+      summary: Record decision
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/DecisionInput"
+      responses:
+        "201":
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Decision"
+  /risks:
+    get:
+      operationId: listRisks
+      tags: [tasks]
+      summary: List risks
+      parameters:
+        - name: projectId
+          in: query
+          required: false
+          schema: { type: integer }
+      responses:
+        "200":
+          description: Risks
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Risk"
+    post:
+      operationId: createRisk
+      tags: [tasks]
+      summary: Create risk
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/RiskInput"
+      responses:
+        "201":
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Risk"
+  /risks/{id}:
+    patch:
+      operationId: updateRisk
+      tags: [tasks]
+      summary: Update risk
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: integer }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/RiskUpdate"
+      responses:
+        "200":
+          description: Updated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Risk"
+  /modules:
+    get:
+      operationId: listModules
+      tags: [modules]
+      summary: List modules
+      responses:
+        "200":
+          description: Modules
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Module"
+    post:
+      operationId: createModule
+      tags: [modules]
+      summary: Create module
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ModuleInput"
+      responses:
+        "201":
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Module"
+        "400":
+          description: Invalid manifest
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+  /modules/{id}:
+    get:
+      operationId: getModule
+      tags: [modules]
+      summary: Get module with pipeline state
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: integer }
+      responses:
+        "200":
+          description: Module
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ModuleDetail"
+        "404":
+          description: Not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+    patch:
+      operationId: updateModule
+      tags: [modules]
+      summary: Update module
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: integer }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ModuleUpdate"
+      responses:
+        "200":
+          description: Updated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Module"
+        "403":
+          description: Blocked (locked core impact)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+    delete:
+      operationId: deleteModule
+      tags: [modules]
+      summary: Delete module
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: integer }
+      responses:
+        "204":
+          description: Deleted
+  /modules/{id}/activate:
+    post:
+      operationId: activateModule
+      tags: [modules]
+      summary: Activate module
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: integer }
+      responses:
+        "200":
+          description: Activated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Module"
+  /modules/{id}/deactivate:
+    post:
+      operationId: deactivateModule
+      tags: [modules]
+      summary: Deactivate module
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: integer }
+      responses:
+        "200":
+          description: Deactivated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Module"
+  /modules/{id}/install:
+    post:
+      operationId: installModule
+      tags: [modules]
+      summary: Request module installation (runs Governor decision pipeline)
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: integer }
+      responses:
+        "200":
+          description: Governor decision for this install request
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GovernorDecision"
+        "403":
+          description: Install blocked
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+  /modules/{id}/rollback:
+    post:
+      operationId: rollbackModule
+      tags: [modules]
+      summary: Roll module back to previous snapshot
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: integer }
+      responses:
+        "200":
+          description: Rolled back
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Module"
+        "400":
+          description: No snapshot available
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+  /modules/{id}/snapshots:
+    get:
+      operationId: listModuleSnapshots
+      tags: [modules]
+      summary: List module snapshots
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: integer }
+      responses:
+        "200":
+          description: Snapshots
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/ModuleSnapshot"
+  /modules/{id}/guardian-review:
+    post:
+      operationId: runGuardianReview
+      tags: [guardian]
+      summary: Run Guardian review on a module
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: integer }
+      responses:
+        "200":
+          description: Guardian review report
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GuardianReview"
+  /guardian-reviews:
+    get:
+      operationId: listGuardianReviews
+      tags: [guardian]
+      summary: List Guardian reviews
+      parameters:
+        - name: moduleId
+          in: query
+          required: false
+          schema: { type: integer }
+      responses:
+        "200":
+          description: Guardian reviews
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/GuardianReview"
+  /governor-decisions:
+    get:
+      operationId: listGovernorDecisions
+      tags: [governor]
+      summary: List Governor decisions
+      parameters:
+        - name: moduleId
+          in: query
+          required: false
+          schema: { type: integer }
+      responses:
+        "200":
+          description: Governor decisions
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/GovernorDecision"
+  /sandboxes:
+    get:
+      operationId: listSandboxes
+      tags: [sandboxes]
+      summary: List sandboxes
+      responses:
+        "200":
+          description: Sandboxes
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Sandbox"
+    post:
+      operationId: createSandbox
+      tags: [sandboxes]
+      summary: Create sandbox workspace
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/SandboxInput"
+      responses:
+        "201":
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Sandbox"
+  /sandboxes/{id}:
+    get:
+      operationId: getSandbox
+      tags: [sandboxes]
+      summary: Get sandbox with files
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: integer }
+      responses:
+        "200":
+          description: Sandbox
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SandboxDetail"
+        "404":
+          description: Not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+    delete:
+      operationId: deleteSandbox
+      tags: [sandboxes]
+      summary: Delete sandbox completely
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: integer }
+      responses:
+        "204":
+          description: Deleted
+  /sandboxes/{id}/files:
+    post:
+      operationId: upsertSandboxFile
+      tags: [sandboxes]
+      summary: Create or update a file inside a sandbox
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: integer }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/SandboxFileInput"
+      responses:
+        "200":
+          description: File saved
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SandboxFile"
+        "403":
+          description: Blocked (attempt to write core/protected path)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+  /sandboxes/{id}/files/{fileId}:
+    delete:
+      operationId: deleteSandboxFile
+      tags: [sandboxes]
+      summary: Delete a sandbox file
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: integer }
+        - name: fileId
+          in: path
+          required: true
+          schema: { type: integer }
+      responses:
+        "204":
+          description: Deleted
+  /test-runs:
+    get:
+      operationId: listTestRuns
+      tags: [tests]
+      summary: List test runs
+      parameters:
+        - name: moduleId
+          in: query
+          required: false
+          schema: { type: integer }
+      responses:
+        "200":
+          description: Test runs
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/TestRun"
+    post:
+      operationId: startTestRun
+      tags: [tests]
+      summary: Start a test run for a module or sandbox
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/TestRunInput"
+      responses:
+        "201":
+          description: Test run completed and stored
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TestRun"
+  /approvals:
+    get:
+      operationId: listApprovals
+      tags: [approvals]
+      summary: List approval requests
+      parameters:
+        - name: status
+          in: query
+          required: false
+          schema: { type: string }
+      responses:
+        "200":
+          description: Approvals
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Approval"
+  /approvals/{id}/decide:
+    post:
+      operationId: decideApproval
+      tags: [approvals]
+      summary: Approve or reject an approval request
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: integer }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ApprovalDecision"
+      responses:
+        "200":
+          description: Decided
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Approval"
+        "400":
+          description: Rejection requires a reason
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+  /memory-items:
+    get:
+      operationId: listMemoryItems
+      tags: [memory]
+      summary: List / search memory items
+      parameters:
+        - name: q
+          in: query
+          required: false
+          schema: { type: string }
+        - name: category
+          in: query
+          required: false
+          schema: { type: string }
+      responses:
+        "200":
+          description: Memory items
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/MemoryItem"
+    post:
+      operationId: createMemoryItem
+      tags: [memory]
+      summary: Create memory item
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/MemoryItemInput"
+      responses:
+        "201":
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MemoryItem"
+  /memory-items/{id}:
+    delete:
+      operationId: deleteMemoryItem
+      tags: [memory]
+      summary: Delete memory item
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: integer }
+      responses:
+        "204":
+          description: Deleted
+  /improvements:
+    get:
+      operationId: listImprovements
+      tags: [improvements]
+      summary: List self-improvement backlog
+      responses:
+        "200":
+          description: Improvements
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Improvement"
+    post:
+      operationId: createImprovement
+      tags: [improvements]
+      summary: Create improvement item
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ImprovementInput"
+      responses:
+        "201":
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Improvement"
+  /improvements/{id}:
+    patch:
+      operationId: updateImprovement
+      tags: [improvements]
+      summary: Update improvement (e.g. priority)
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: integer }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ImprovementUpdate"
+      responses:
+        "200":
+          description: Updated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Improvement"
+  /improvements/{id}/convert:
+    post:
+      operationId: convertImprovementToTask
+      tags: [improvements]
+      summary: Convert improvement into a module task
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: integer }
+      responses:
+        "201":
+          description: Task created from improvement
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Task"
+  /daily-loop/runs:
+    get:
+      operationId: listDailyLoopRuns
+      tags: [dailyloop]
+      summary: List daily loop runs and reports
+      responses:
+        "200":
+          description: Daily loop runs
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/DailyLoopRun"
+  /daily-loop/run:
+    post:
+      operationId: startDailyLoop
+      tags: [dailyloop]
+      summary: Manually start the daily autonomous loop
+      responses:
+        "201":
+          description: Loop executed, report produced
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DailyLoopRun"
 components:
   schemas:
     HealthStatus:
@@ -31,6 +1202,636 @@ components:
       properties:
         status:
           type: string
+        database:
+          type: string
+        storage:
+          type: string
       required:
         - status
-
+    ErrorResponse:
+      type: object
+      required: [error]
+      properties:
+        error: { type: string }
+    DashboardSummary:
+      type: object
+      required:
+        - projects
+        - activeTasks
+        - blockedTasks
+        - sandboxes
+        - modules
+        - activeModules
+        - pendingApprovals
+        - failedTests
+        - improvements
+        - memoryItems
+        - recentAuditLogs
+        - lockedCoreCount
+        - lastDailyReport
+      properties:
+        projects: { type: integer }
+        activeTasks: { type: integer }
+        blockedTasks: { type: integer }
+        sandboxes: { type: integer }
+        modules: { type: integer }
+        activeModules: { type: integer }
+        pendingApprovals: { type: integer }
+        failedTests: { type: integer }
+        improvements: { type: integer }
+        memoryItems: { type: integer }
+        lockedCoreCount: { type: integer }
+        lastDailyReport: { type: ["string", "null"] }
+        recentAuditLogs:
+          type: array
+          items:
+            $ref: "#/components/schemas/AuditLog"
+    CoreComponent:
+      type: object
+      required: [id, key, name, locked, version]
+      properties:
+        id: { type: integer }
+        key: { type: string }
+        name: { type: string }
+        description: { type: ["string", "null"] }
+        locked: { type: boolean }
+        version: { type: string }
+    CoreComponentUpdate:
+      type: object
+      properties:
+        name: { type: string }
+        description: { type: string }
+        version: { type: string }
+    AuditLog:
+      type: object
+      required: [id, actor, action, targetType, outcome, createdAt]
+      properties:
+        id: { type: integer }
+        actor: { type: string }
+        action: { type: string }
+        targetType: { type: string }
+        targetId: { type: ["string", "null"] }
+        details: { type: ["string", "null"] }
+        outcome: { type: string }
+        createdAt: { type: string }
+    AiProvider:
+      type: object
+      required: [name, configured, isDefault, taskTypes]
+      properties:
+        name: { type: string }
+        configured: { type: boolean }
+        isDefault: { type: boolean }
+        isFallback: { type: boolean }
+        taskTypes:
+          type: array
+          items: { type: string }
+    AiInvokeRequest:
+      type: object
+      required: [taskType, prompt]
+      properties:
+        taskType:
+          type: string
+          enum:
+            - planning
+            - architecture
+            - codegeneration
+            - testing
+            - securityreview
+            - documentation
+            - summary
+            - erroranalysis
+        prompt: { type: string, minLength: 1 }
+        context: { type: string }
+    AiInvokeResult:
+      type: object
+      required: [id, provider, model, taskType, response]
+      properties:
+        id: { type: integer }
+        provider: { type: string }
+        model: { type: string }
+        taskType: { type: string }
+        response: { type: string }
+        tokensIn: { type: ["integer", "null"] }
+        tokensOut: { type: ["integer", "null"] }
+        costIndication: { type: ["string", "null"] }
+    AiCall:
+      type: object
+      required: [id, provider, model, taskType, status, createdAt]
+      properties:
+        id: { type: integer }
+        provider: { type: string }
+        model: { type: string }
+        taskType: { type: string }
+        status: { type: string }
+        tokensIn: { type: ["integer", "null"] }
+        tokensOut: { type: ["integer", "null"] }
+        costIndication: { type: ["string", "null"] }
+        errorMessage: { type: ["string", "null"] }
+        createdAt: { type: string }
+    Project:
+      type: object
+      required: [id, name, status, createdAt]
+      properties:
+        id: { type: integer }
+        name: { type: string }
+        description: { type: ["string", "null"] }
+        status: { type: string }
+        createdAt: { type: string }
+    ProjectInput:
+      type: object
+      required: [name]
+      properties:
+        name: { type: string, minLength: 1 }
+        description: { type: string }
+        status: { type: string }
+    ProjectUpdate:
+      type: object
+      properties:
+        name: { type: string, minLength: 1 }
+        description: { type: string }
+        status: { type: string }
+    Goal:
+      type: object
+      required: [id, projectId, title, status]
+      properties:
+        id: { type: integer }
+        projectId: { type: integer }
+        title: { type: string }
+        description: { type: ["string", "null"] }
+        status: { type: string }
+    GoalInput:
+      type: object
+      required: [projectId, title]
+      properties:
+        projectId: { type: integer }
+        title: { type: string, minLength: 1 }
+        description: { type: string }
+        status: { type: string }
+    GoalUpdate:
+      type: object
+      properties:
+        title: { type: string, minLength: 1 }
+        description: { type: string }
+        status: { type: string }
+    BacklogItem:
+      type: object
+      required: [id, projectId, title, priority, status]
+      properties:
+        id: { type: integer }
+        projectId: { type: integer }
+        title: { type: string }
+        description: { type: ["string", "null"] }
+        priority: { type: string }
+        status: { type: string }
+    BacklogItemInput:
+      type: object
+      required: [projectId, title]
+      properties:
+        projectId: { type: integer }
+        title: { type: string, minLength: 1 }
+        description: { type: string }
+        priority: { type: string }
+        status: { type: string }
+    BacklogItemUpdate:
+      type: object
+      properties:
+        title: { type: string, minLength: 1 }
+        description: { type: string }
+        priority: { type: string }
+        status: { type: string }
+    Task:
+      type: object
+      required: [id, title, status, risk, ownerAgent, createdAt]
+      properties:
+        id: { type: integer }
+        projectId: { type: ["integer", "null"] }
+        parentTaskId: { type: ["integer", "null"] }
+        title: { type: string }
+        goal: { type: ["string", "null"] }
+        scope: { type: ["string", "null"] }
+        risk: { type: string }
+        ownerAgent: { type: string }
+        status:
+          type: string
+          enum: [draft, planned, active, blocked, testing, review, approved, rejected, done]
+        acceptanceCriteria: { type: ["string", "null"] }
+        blockedReason: { type: ["string", "null"] }
+        source: { type: ["string", "null"] }
+        createdAt: { type: string }
+        updatedAt: { type: ["string", "null"] }
+    TaskInput:
+      type: object
+      required: [title]
+      properties:
+        projectId: { type: integer }
+        parentTaskId: { type: integer }
+        title: { type: string, minLength: 1 }
+        goal: { type: string }
+        scope: { type: string }
+        risk: { type: string }
+        ownerAgent: { type: string }
+        status:
+          type: string
+          enum: [draft, planned, active, blocked, testing, review, approved, rejected, done]
+        acceptanceCriteria: { type: string }
+        source: { type: string }
+    TaskUpdate:
+      type: object
+      properties:
+        projectId: { type: integer }
+        title: { type: string, minLength: 1 }
+        goal: { type: string }
+        scope: { type: string }
+        risk: { type: string }
+        ownerAgent: { type: string }
+        status:
+          type: string
+          enum: [draft, planned, active, blocked, testing, review, approved, rejected, done]
+        acceptanceCriteria: { type: string }
+        blockedReason: { type: string }
+    Decision:
+      type: object
+      required: [id, title, madeBy, createdAt]
+      properties:
+        id: { type: integer }
+        projectId: { type: ["integer", "null"] }
+        taskId: { type: ["integer", "null"] }
+        title: { type: string }
+        rationale: { type: ["string", "null"] }
+        madeBy: { type: string }
+        createdAt: { type: string }
+    DecisionInput:
+      type: object
+      required: [title]
+      properties:
+        projectId: { type: integer }
+        taskId: { type: integer }
+        title: { type: string, minLength: 1 }
+        rationale: { type: string }
+        madeBy: { type: string }
+    Risk:
+      type: object
+      required: [id, title, severity, status]
+      properties:
+        id: { type: integer }
+        projectId: { type: ["integer", "null"] }
+        title: { type: string }
+        severity: { type: string }
+        mitigation: { type: ["string", "null"] }
+        status: { type: string }
+    RiskInput:
+      type: object
+      required: [title]
+      properties:
+        projectId: { type: integer }
+        title: { type: string, minLength: 1 }
+        severity: { type: string }
+        mitigation: { type: string }
+        status: { type: string }
+    RiskUpdate:
+      type: object
+      properties:
+        title: { type: string, minLength: 1 }
+        severity: { type: string }
+        mitigation: { type: string }
+        status: { type: string }
+    Module:
+      type: object
+      required: [id, name, type, version, status, riskLevel, testStatus, installStatus, ownerAgent, active, createdAt]
+      properties:
+        id: { type: integer }
+        name: { type: string }
+        type:
+          type: string
+          enum:
+            - planner
+            - architect
+            - frontend-builder
+            - backend-builder
+            - database-builder
+            - test-generator
+            - security-reviewer
+            - ux-reviewer
+            - documentation-generator
+            - performance-analyzer
+            - dependency-checker
+        purpose: { type: ["string", "null"] }
+        version: { type: string }
+        status: { type: string }
+        active: { type: boolean }
+        dependencies:
+          type: array
+          items: { type: string }
+        ownerAgent: { type: string }
+        riskLevel:
+          type: string
+          enum: [low, medium, high]
+        testStatus: { type: string }
+        installStatus: { type: string }
+        rollbackInfo: { type: ["string", "null"] }
+        manifest: { type: ["string", "null"] }
+        touchesCore: { type: boolean }
+        createdAt: { type: string }
+    ModuleDetail:
+      type: object
+      required: [module, testRuns, guardianReviews, governorDecisions, approvals, snapshots]
+      properties:
+        module:
+          $ref: "#/components/schemas/Module"
+        testRuns:
+          type: array
+          items:
+            $ref: "#/components/schemas/TestRun"
+        guardianReviews:
+          type: array
+          items:
+            $ref: "#/components/schemas/GuardianReview"
+        governorDecisions:
+          type: array
+          items:
+            $ref: "#/components/schemas/GovernorDecision"
+        approvals:
+          type: array
+          items:
+            $ref: "#/components/schemas/Approval"
+        snapshots:
+          type: array
+          items:
+            $ref: "#/components/schemas/ModuleSnapshot"
+    ModuleInput:
+      type: object
+      required: [name, type]
+      properties:
+        name: { type: string, minLength: 1 }
+        type:
+          type: string
+          enum:
+            - planner
+            - architect
+            - frontend-builder
+            - backend-builder
+            - database-builder
+            - test-generator
+            - security-reviewer
+            - ux-reviewer
+            - documentation-generator
+            - performance-analyzer
+            - dependency-checker
+        purpose: { type: string }
+        version: { type: string }
+        dependencies:
+          type: array
+          items: { type: string }
+        ownerAgent: { type: string }
+        riskLevel:
+          type: string
+          enum: [low, medium, high]
+        manifest: { type: string }
+        touchesCore: { type: boolean }
+    ModuleUpdate:
+      type: object
+      properties:
+        name: { type: string, minLength: 1 }
+        purpose: { type: string }
+        version: { type: string }
+        dependencies:
+          type: array
+          items: { type: string }
+        ownerAgent: { type: string }
+        riskLevel:
+          type: string
+          enum: [low, medium, high]
+        manifest: { type: string }
+        touchesCore: { type: boolean }
+    ModuleSnapshot:
+      type: object
+      required: [id, moduleId, version, createdAt]
+      properties:
+        id: { type: integer }
+        moduleId: { type: integer }
+        version: { type: string }
+        data: { type: ["string", "null"] }
+        reason: { type: ["string", "null"] }
+        createdAt: { type: string }
+    Sandbox:
+      type: object
+      required: [id, name, status, testStatus, createdAt]
+      properties:
+        id: { type: integer }
+        moduleId: { type: ["integer", "null"] }
+        name: { type: string }
+        purpose: { type: ["string", "null"] }
+        status: { type: string }
+        testStatus: { type: string }
+        storagePath: { type: ["string", "null"] }
+        createdAt: { type: string }
+    SandboxDetail:
+      type: object
+      required: [sandbox, files]
+      properties:
+        sandbox:
+          $ref: "#/components/schemas/Sandbox"
+        files:
+          type: array
+          items:
+            $ref: "#/components/schemas/SandboxFile"
+    SandboxInput:
+      type: object
+      required: [name]
+      properties:
+        name: { type: string, minLength: 1 }
+        moduleId: { type: integer }
+        purpose: { type: string }
+    SandboxFile:
+      type: object
+      required: [id, sandboxId, path, content, updatedAt]
+      properties:
+        id: { type: integer }
+        sandboxId: { type: integer }
+        path: { type: string }
+        content: { type: string }
+        updatedAt: { type: string }
+    SandboxFileInput:
+      type: object
+      required: [path, content]
+      properties:
+        path: { type: string, minLength: 1 }
+        content: { type: string }
+    TestRun:
+      type: object
+      required: [id, status, types, createdAt]
+      properties:
+        id: { type: integer }
+        moduleId: { type: ["integer", "null"] }
+        sandboxId: { type: ["integer", "null"] }
+        types:
+          type: array
+          items: { type: string }
+        status: { type: string }
+        results: { type: ["string", "null"] }
+        passed: { type: ["integer", "null"] }
+        failed: { type: ["integer", "null"] }
+        createdAt: { type: string }
+    TestRunInput:
+      type: object
+      required: [types]
+      properties:
+        moduleId: { type: integer }
+        sandboxId: { type: integer }
+        types:
+          type: array
+          items:
+            type: string
+            enum: [unit, integration, lint, typecheck, build, security, dependency]
+    Approval:
+      type: object
+      required: [id, moduleId, level, status, createdAt]
+      properties:
+        id: { type: integer }
+        moduleId: { type: integer }
+        moduleName: { type: ["string", "null"] }
+        level:
+          type: string
+          enum: [auto, review, owner, blocked]
+        status: { type: string }
+        reason: { type: ["string", "null"] }
+        decidedBy: { type: ["string", "null"] }
+        decidedAt: { type: ["string", "null"] }
+        createdAt: { type: string }
+    ApprovalDecision:
+      type: object
+      required: [approve]
+      properties:
+        approve: { type: boolean }
+        reason: { type: string }
+        decidedBy: { type: string }
+    GuardianReview:
+      type: object
+      required: [id, moduleId, outcome, findings, createdAt]
+      properties:
+        id: { type: integer }
+        moduleId: { type: integer }
+        moduleName: { type: ["string", "null"] }
+        outcome:
+          type: string
+          enum: [pass, warning, fail]
+        findings:
+          type: array
+          items:
+            $ref: "#/components/schemas/GuardianFinding"
+        createdAt: { type: string }
+    GuardianFinding:
+      type: object
+      required: [category, severity, message]
+      properties:
+        category: { type: string }
+        severity: { type: string }
+        message: { type: string }
+    GovernorDecision:
+      type: object
+      required: [id, moduleId, decision, rationale, createdAt]
+      properties:
+        id: { type: integer }
+        moduleId: { type: integer }
+        moduleName: { type: ["string", "null"] }
+        decision:
+          type: string
+          enum: [install_allowed, install_blocked, review_required, rollback_required]
+        rationale: { type: string }
+        inputs: { type: ["string", "null"] }
+        createdAt: { type: string }
+    MemoryItem:
+      type: object
+      required: [id, category, title, content, createdAt]
+      properties:
+        id: { type: integer }
+        category:
+          type: string
+          enum:
+            - successful_module
+            - failed_module
+            - error
+            - solution
+            - architecture_choice
+            - dependency_issue
+            - test_result
+            - recurring_blockade
+            - lesson_learned
+        title: { type: string }
+        content: { type: string }
+        tags:
+          type: array
+          items: { type: string }
+        taskId: { type: ["integer", "null"] }
+        createdAt: { type: string }
+    MemoryItemInput:
+      type: object
+      required: [category, title, content]
+      properties:
+        category:
+          type: string
+          enum:
+            - successful_module
+            - failed_module
+            - error
+            - solution
+            - architecture_choice
+            - dependency_issue
+            - test_result
+            - recurring_blockade
+            - lesson_learned
+        title: { type: string, minLength: 1 }
+        content: { type: string, minLength: 1 }
+        tags:
+          type: array
+          items: { type: string }
+        taskId: { type: integer }
+    Improvement:
+      type: object
+      required: [id, problem, priority, status, createdAt]
+      properties:
+        id: { type: integer }
+        problem: { type: string }
+        cause: { type: ["string", "null"] }
+        proposedModule: { type: ["string", "null"] }
+        expectedImprovement: { type: ["string", "null"] }
+        risk: { type: string }
+        priority: { type: string }
+        requiredTests: { type: ["string", "null"] }
+        status: { type: string }
+        source: { type: ["string", "null"] }
+        createdAt: { type: string }
+    ImprovementInput:
+      type: object
+      required: [problem]
+      properties:
+        problem: { type: string, minLength: 1 }
+        cause: { type: string }
+        proposedModule: { type: string }
+        expectedImprovement: { type: string }
+        risk: { type: string }
+        priority: { type: string }
+        requiredTests: { type: string }
+        source: { type: string }
+    ImprovementUpdate:
+      type: object
+      properties:
+        problem: { type: string, minLength: 1 }
+        cause: { type: string }
+        proposedModule: { type: string }
+        expectedImprovement: { type: string }
+        risk: { type: string }
+        priority: { type: string }
+        requiredTests: { type: string }
+        status: { type: string }
+    DailyLoopRun:
+      type: object
+      required: [id, status, startedAt]
+      properties:
+        id: { type: integer }
+        status: { type: string }
+        report: { type: ["string", "null"] }
+        tasksCreated: { type: ["integer", "null"] }
+        approvalsRequested: { type: ["integer", "null"] }
+        startedAt: { type: string }
+        finishedAt: { type: ["string", "null"] }

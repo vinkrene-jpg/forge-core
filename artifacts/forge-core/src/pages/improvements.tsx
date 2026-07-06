@@ -1,0 +1,1 @@
+export default function Improvements() { return <div className="text-xl">Improvements</div>; }
