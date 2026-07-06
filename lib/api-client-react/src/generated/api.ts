@@ -80,6 +80,7 @@ import type {
   TaskInput,
   TaskUpdate,
   TestRun,
+  TestRunDetail,
   TestRunInput
 } from './api.schemas';
 
@@ -3226,6 +3227,76 @@ export const useRunGuardianReview = <TError = ErrorType<unknown>,
       return useMutation(getRunGuardianReviewMutationOptions(options));
     }
 
+export const getRunAiGuardianReviewUrl = (id: number,) => {
+
+
+
+
+  return `/api/modules/${id}/ai-guardian-review`
+}
+
+/**
+ * @summary Run the AI Guardian Reviewer module on a module (via the AI Gateway)
+ */
+export const runAiGuardianReview = async (id: number, options?: RequestInit): Promise<GuardianReview> => {
+
+  return customFetch<GuardianReview>(getRunAiGuardianReviewUrl(id),
+  {
+    ...options,
+    method: 'POST'
+
+
+  }
+);}
+
+
+
+
+export const getRunAiGuardianReviewMutationOptions = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof runAiGuardianReview>>, TError,{id: number}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof runAiGuardianReview>>, TError,{id: number}, TContext> => {
+
+const mutationKey = ['runAiGuardianReview'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof runAiGuardianReview>>, {id: number}> = (props) => {
+          const {id} = props ?? {};
+
+          return  runAiGuardianReview(id,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type RunAiGuardianReviewMutationResult = NonNullable<Awaited<ReturnType<typeof runAiGuardianReview>>>
+
+    export type RunAiGuardianReviewMutationError = ErrorType<unknown>
+
+    /**
+ * @summary Run the AI Guardian Reviewer module on a module (via the AI Gateway)
+ */
+export const useRunAiGuardianReview = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof runAiGuardianReview>>, TError,{id: number}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof runAiGuardianReview>>,
+        TError,
+        {id: number},
+        TContext
+      > => {
+      return useMutation(getRunAiGuardianReviewMutationOptions(options));
+    }
+
 export const getListGuardianReviewsUrl = (params?: ListGuardianReviewsParams,) => {
   const normalizedParams = new URLSearchParams();
 
@@ -3984,6 +4055,83 @@ export const useStartTestRun = <TError = ErrorType<unknown>,
       > => {
       return useMutation(getStartTestRunMutationOptions(options));
     }
+
+export const getGetTestRunUrl = (id: number,) => {
+
+
+
+
+  return `/api/test-runs/${id}`
+}
+
+/**
+ * @summary Get a test run with its execution steps (stdout, stderr, exit codes)
+ */
+export const getTestRun = async (id: number, options?: RequestInit): Promise<TestRunDetail> => {
+
+  return customFetch<TestRunDetail>(getGetTestRunUrl(id),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetTestRunQueryKey = (id: number,) => {
+    return [
+    `/api/test-runs/${id}`
+    ] as const;
+    }
+
+
+export const getGetTestRunQueryOptions = <TData = Awaited<ReturnType<typeof getTestRun>>, TError = ErrorType<unknown>>(id: number, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getTestRun>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetTestRunQueryKey(id);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getTestRun>>> = ({ signal }) => getTestRun(id, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, enabled: id !== null && id !== undefined, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getTestRun>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetTestRunQueryResult = NonNullable<Awaited<ReturnType<typeof getTestRun>>>
+export type GetTestRunQueryError = ErrorType<unknown>
+
+
+/**
+ * @summary Get a test run with its execution steps (stdout, stderr, exit codes)
+ */
+
+export function useGetTestRun<TData = Awaited<ReturnType<typeof getTestRun>>, TError = ErrorType<unknown>>(
+ id: number, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getTestRun>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetTestRunQueryOptions(id,options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
 
 export const getListApprovalsUrl = (params?: ListApprovalsParams,) => {
   const normalizedParams = new URLSearchParams();

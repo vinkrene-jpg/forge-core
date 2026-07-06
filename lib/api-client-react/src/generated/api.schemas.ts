@@ -390,6 +390,14 @@ export interface Module {
   createdAt: string;
 }
 
+export type TestRunMode = typeof TestRunMode[keyof typeof TestRunMode];
+
+
+export const TestRunMode = {
+  static: 'static',
+  real: 'real',
+} as const;
+
 export interface TestRun {
   id: number;
   /** @nullable */
@@ -404,6 +412,11 @@ export interface TestRun {
   passed?: number | null;
   /** @nullable */
   failed?: number | null;
+  mode: TestRunMode;
+  /** @nullable */
+  moduleVersion?: string | null;
+  /** @nullable */
+  durationMs?: number | null;
   createdAt: string;
 }
 
@@ -422,6 +435,14 @@ export interface GuardianFinding {
   message: string;
 }
 
+export type GuardianReviewReviewer = typeof GuardianReviewReviewer[keyof typeof GuardianReviewReviewer];
+
+
+export const GuardianReviewReviewer = {
+  rules: 'rules',
+  ai: 'ai',
+} as const;
+
 export interface GuardianReview {
   id: number;
   moduleId: number;
@@ -429,6 +450,11 @@ export interface GuardianReview {
   moduleName?: string | null;
   outcome: GuardianReviewOutcome;
   findings: GuardianFinding[];
+  reviewer: GuardianReviewReviewer;
+  /** @nullable */
+  summary?: string | null;
+  /** @nullable */
+  model?: string | null;
   createdAt: string;
 }
 
@@ -600,6 +626,42 @@ export interface SandboxFileInput {
   content: string;
 }
 
+export type TestRunStepStatus = typeof TestRunStepStatus[keyof typeof TestRunStepStatus];
+
+
+export const TestRunStepStatus = {
+  passed: 'passed',
+  failed: 'failed',
+  skipped: 'skipped',
+} as const;
+
+export interface TestRunStep {
+  id: number;
+  testRunId: number;
+  step: string;
+  command: string;
+  status: TestRunStepStatus;
+  /** @nullable */
+  exitCode?: number | null;
+  stdout: string;
+  stderr: string;
+  durationMs: number;
+  createdAt: string;
+}
+
+export interface TestRunDetail {
+  run: TestRun;
+  steps: TestRunStep[];
+}
+
+export type TestRunInputMode = typeof TestRunInputMode[keyof typeof TestRunInputMode];
+
+
+export const TestRunInputMode = {
+  static: 'static',
+  real: 'real',
+} as const;
+
 export type TestRunInputTypesItem = typeof TestRunInputTypesItem[keyof typeof TestRunInputTypesItem];
 
 
@@ -616,6 +678,8 @@ export const TestRunInputTypesItem = {
 export interface TestRunInput {
   moduleId?: number;
   sandboxId?: number;
+  mode?: TestRunInputMode;
+  /** @minItems 1 */
   types: TestRunInputTypesItem[];
 }
 

@@ -32,6 +32,8 @@ import {
   ListModuleSnapshotsResponse,
   RunGuardianReviewParams,
   RunGuardianReviewResponse,
+  RunAiGuardianReviewParams,
+  RunAiGuardianReviewResponse,
   ListGuardianReviewsQueryParams,
   ListGuardianReviewsResponse,
   ListGovernorDecisionsQueryParams,
@@ -40,6 +42,8 @@ import {
 import { audit } from "../lib/audit";
 import { validateManifest } from "../lib/corelock";
 import { runGuardian } from "../lib/guardian";
+import { runAiGuardianReview } from "../lib/aiGuardianReviewer";
+import { GatewayError } from "../lib/aiGateway";
 import { governInstall } from "../lib/governor";
 
 const router: IRouter = Router();
@@ -347,6 +351,29 @@ router.post("/modules/:id/guardian-review", async (req, res): Promise<void> => {
   }
   const review = await runGuardian(module);
   res.json(RunGuardianReviewResponse.parse(jsonSafe({ ...review, moduleName: module.name })));
+});
+
+router.post("/modules/:id/ai-guardian-review", async (req, res): Promise<void> => {
+  const params = RunAiGuardianReviewParams.safeParse(req.params);
+  if (!params.success) {
+    res.status(400).json({ error: params.error.message });
+    return;
+  }
+  const [module] = await db.select().from(modulesTable).where(eq(modulesTable.id, params.data.id));
+  if (!module) {
+    res.status(404).json({ error: "Module not found" });
+    return;
+  }
+  try {
+    const review = await runAiGuardianReview(module);
+    res.json(RunAiGuardianReviewResponse.parse(jsonSafe({ ...review, moduleName: module.name })));
+  } catch (err) {
+    if (err instanceof GatewayError) {
+      res.status(400).json({ error: err.message });
+      return;
+    }
+    throw err;
+  }
 });
 
 router.get("/guardian-reviews", async (req, res): Promise<void> => {

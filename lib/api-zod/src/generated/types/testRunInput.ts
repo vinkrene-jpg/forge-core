@@ -5,10 +5,13 @@
  * Forge Core API specification
  * OpenAPI spec version: 0.1.0
  */
+import type { TestRunInputMode } from './testRunInputMode';
 import type { TestRunInputTypesItem } from './testRunInputTypesItem';
 
 export interface TestRunInput {
   moduleId?: number;
   sandboxId?: number;
+  mode?: TestRunInputMode;
+  /** @minItems 1 */
   types: TestRunInputTypesItem[];
 }

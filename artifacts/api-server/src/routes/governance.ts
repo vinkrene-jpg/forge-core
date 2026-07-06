@@ -1,12 +1,14 @@
 import { Router, type IRouter } from "express";
 import { jsonSafe } from "../lib/jsonSafe";
 import { eq, desc } from "drizzle-orm";
-import { db, testRunsTable, approvalsTable, modulesTable } from "@workspace/db";
+import { db, testRunsTable, testRunStepsTable, approvalsTable, modulesTable } from "@workspace/db";
 import {
   ListTestRunsQueryParams,
   ListTestRunsResponse,
   StartTestRunBody,
   StartTestRunResponse,
+  GetTestRunParams,
+  GetTestRunResponse,
   ListApprovalsQueryParams,
   ListApprovalsResponse,
   DecideApprovalParams,
@@ -14,6 +16,7 @@ import {
   DecideApprovalResponse,
 } from "@workspace/api-zod";
 import { executeTestRun, TestTargetError } from "../lib/testRunner";
+import { executeRealTestRun } from "../lib/realTestRunner";
 import { governInstall } from "../lib/governor";
 import { audit } from "../lib/audit";
 
@@ -38,7 +41,9 @@ router.post("/test-runs", async (req, res): Promise<void> => {
     return;
   }
   try {
-    const row = await executeTestRun(body.data);
+    const row = body.data.mode === "real"
+      ? await executeRealTestRun(body.data)
+      : await executeTestRun(body.data);
     res.status(201).json(StartTestRunResponse.parse(jsonSafe(row)));
   } catch (err) {
     if (err instanceof TestTargetError) {
@@ -47,6 +52,25 @@ router.post("/test-runs", async (req, res): Promise<void> => {
     }
     throw err;
   }
+});
+
+router.get("/test-runs/:id", async (req, res): Promise<void> => {
+  const params = GetTestRunParams.safeParse(req.params);
+  if (!params.success) {
+    res.status(400).json({ error: params.error.message });
+    return;
+  }
+  const [run] = await db.select().from(testRunsTable).where(eq(testRunsTable.id, params.data.id));
+  if (!run) {
+    res.status(404).json({ error: "Test run not found" });
+    return;
+  }
+  const steps = await db
+    .select()
+    .from(testRunStepsTable)
+    .where(eq(testRunStepsTable.testRunId, run.id))
+    .orderBy(testRunStepsTable.id);
+  res.json(GetTestRunResponse.parse(jsonSafe({ run, steps })));
 });
 
 router.get("/approvals", async (req, res): Promise<void> => {

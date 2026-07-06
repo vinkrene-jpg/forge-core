@@ -752,6 +752,9 @@ export const GetModuleResponse = zod.object({
   "results": zod.string().nullish(),
   "passed": zod.number().nullish(),
   "failed": zod.number().nullish(),
+  "mode": zod.enum(['static', 'real']),
+  "moduleVersion": zod.string().nullish(),
+  "durationMs": zod.number().nullish(),
   "createdAt": zod.string()
 })),
   "guardianReviews": zod.array(zod.object({
@@ -764,6 +767,9 @@ export const GetModuleResponse = zod.object({
   "severity": zod.string(),
   "message": zod.string()
 })),
+  "reviewer": zod.enum(['rules', 'ai']),
+  "summary": zod.string().nullish(),
+  "model": zod.string().nullish(),
   "createdAt": zod.string()
 })),
   "governorDecisions": zod.array(zod.object({
@@ -982,6 +988,33 @@ export const RunGuardianReviewResponse = zod.object({
   "severity": zod.string(),
   "message": zod.string()
 })),
+  "reviewer": zod.enum(['rules', 'ai']),
+  "summary": zod.string().nullish(),
+  "model": zod.string().nullish(),
+  "createdAt": zod.string()
+})
+
+
+/**
+ * @summary Run the AI Guardian Reviewer module on a module (via the AI Gateway)
+ */
+export const RunAiGuardianReviewParams = zod.object({
+  "id": zod.coerce.number()
+})
+
+export const RunAiGuardianReviewResponse = zod.object({
+  "id": zod.number(),
+  "moduleId": zod.number(),
+  "moduleName": zod.string().nullish(),
+  "outcome": zod.enum(['pass', 'warning', 'fail']),
+  "findings": zod.array(zod.object({
+  "category": zod.string(),
+  "severity": zod.string(),
+  "message": zod.string()
+})),
+  "reviewer": zod.enum(['rules', 'ai']),
+  "summary": zod.string().nullish(),
+  "model": zod.string().nullish(),
   "createdAt": zod.string()
 })
 
@@ -1003,6 +1036,9 @@ export const ListGuardianReviewsResponseItem = zod.object({
   "severity": zod.string(),
   "message": zod.string()
 })),
+  "reviewer": zod.enum(['rules', 'ai']),
+  "summary": zod.string().nullish(),
+  "model": zod.string().nullish(),
   "createdAt": zod.string()
 })
 export const ListGuardianReviewsResponse = zod.array(ListGuardianReviewsResponseItem)
@@ -1156,6 +1192,9 @@ export const ListTestRunsResponseItem = zod.object({
   "results": zod.string().nullish(),
   "passed": zod.number().nullish(),
   "failed": zod.number().nullish(),
+  "mode": zod.enum(['static', 'real']),
+  "moduleVersion": zod.string().nullish(),
+  "durationMs": zod.number().nullish(),
   "createdAt": zod.string()
 })
 export const ListTestRunsResponse = zod.array(ListTestRunsResponseItem)
@@ -1164,10 +1203,14 @@ export const ListTestRunsResponse = zod.array(ListTestRunsResponseItem)
 /**
  * @summary Start a test run for a module or sandbox
  */
+
+
+
 export const StartTestRunBody = zod.object({
   "moduleId": zod.number().optional(),
   "sandboxId": zod.number().optional(),
-  "types": zod.array(zod.enum(['unit', 'integration', 'lint', 'typecheck', 'build', 'security', 'dependency']))
+  "mode": zod.enum(['static', 'real']).optional(),
+  "types": zod.array(zod.enum(['unit', 'integration', 'lint', 'typecheck', 'build', 'security', 'dependency'])).min(1)
 })
 
 export const StartTestRunResponse = zod.object({
@@ -1179,7 +1222,47 @@ export const StartTestRunResponse = zod.object({
   "results": zod.string().nullish(),
   "passed": zod.number().nullish(),
   "failed": zod.number().nullish(),
+  "mode": zod.enum(['static', 'real']),
+  "moduleVersion": zod.string().nullish(),
+  "durationMs": zod.number().nullish(),
   "createdAt": zod.string()
+})
+
+
+/**
+ * @summary Get a test run with its execution steps (stdout, stderr, exit codes)
+ */
+export const GetTestRunParams = zod.object({
+  "id": zod.coerce.number()
+})
+
+export const GetTestRunResponse = zod.object({
+  "run": zod.object({
+  "id": zod.number(),
+  "moduleId": zod.number().nullish(),
+  "sandboxId": zod.number().nullish(),
+  "types": zod.array(zod.string()),
+  "status": zod.string(),
+  "results": zod.string().nullish(),
+  "passed": zod.number().nullish(),
+  "failed": zod.number().nullish(),
+  "mode": zod.enum(['static', 'real']),
+  "moduleVersion": zod.string().nullish(),
+  "durationMs": zod.number().nullish(),
+  "createdAt": zod.string()
+}),
+  "steps": zod.array(zod.object({
+  "id": zod.number(),
+  "testRunId": zod.number(),
+  "step": zod.string(),
+  "command": zod.string(),
+  "status": zod.enum(['passed', 'failed', 'skipped']),
+  "exitCode": zod.number().nullish(),
+  "stdout": zod.string(),
+  "stderr": zod.string(),
+  "durationMs": zod.number(),
+  "createdAt": zod.string()
+}))
 })
 
 

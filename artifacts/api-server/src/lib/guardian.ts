@@ -17,6 +17,9 @@ export interface GuardianResult {
   moduleId: number;
   outcome: "pass" | "warning" | "fail";
   findings: GuardianFindingData[];
+  reviewer: string;
+  summary: string | null;
+  model: string | null;
   createdAt: Date;
 }
 
@@ -137,6 +140,9 @@ export async function runGuardian(module: ModuleRow): Promise<GuardianResult> {
     moduleId: row.moduleId,
     outcome,
     findings,
+    reviewer: row.reviewer,
+    summary: row.summary,
+    model: row.model,
     createdAt: row.createdAt,
   };
 }

@@ -1,11 +1,60 @@
-import { useListModules } from "@workspace/api-client-react";
+import { useState } from "react";
+import { useQueryClient } from "@tanstack/react-query";
+import {
+  useListModules,
+  useRunAiGuardianReview,
+  getListGuardianReviewsQueryKey,
+} from "@workspace/api-client-react";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Package, ShieldAlert } from "lucide-react";
+import { Package, ShieldAlert, Sparkles, Loader2 } from "lucide-react";
 
 export default function Modules() {
   const { data: modules, isLoading } = useListModules();
+  const queryClient = useQueryClient();
+  const aiReview = useRunAiGuardianReview();
+  const [reviewingId, setReviewingId] = useState<number | null>(null);
+  const [reviewResult, setReviewResult] = useState<{
+    moduleId: number;
+    outcome: string;
+    summary: string | null;
+    model: string | null;
+    findingCount: number;
+    error?: string;
+  } | null>(null);
+
+  const runAiReview = (moduleId: number) => {
+    setReviewingId(moduleId);
+    setReviewResult(null);
+    aiReview.mutate(
+      { id: moduleId },
+      {
+        onSuccess: (review) => {
+          setReviewResult({
+            moduleId,
+            outcome: review.outcome,
+            summary: review.summary ?? null,
+            model: review.model ?? null,
+            findingCount: review.findings.length,
+          });
+          queryClient.invalidateQueries({ queryKey: getListGuardianReviewsQueryKey() });
+        },
+        onError: (err) => {
+          setReviewResult({
+            moduleId,
+            outcome: "error",
+            summary: null,
+            model: null,
+            findingCount: 0,
+            error: err instanceof Error ? err.message : "AI review failed",
+          });
+        },
+        onSettled: () => setReviewingId(null),
+      },
+    );
+  };
 
   if (isLoading) {
     return (
@@ -65,6 +114,51 @@ export default function Modules() {
                   Inst: {mod.installStatus}
                 </Badge>
               </div>
+              <Button
+                size="sm"
+                variant="outline"
+                className="mt-4 w-full"
+                disabled={reviewingId === mod.id}
+                onClick={() => runAiReview(mod.id)}
+              >
+                {reviewingId === mod.id ? (
+                  <Loader2 className="w-3.5 h-3.5 mr-2 animate-spin" />
+                ) : (
+                  <Sparkles className="w-3.5 h-3.5 mr-2" />
+                )}
+                AI Guardian Review
+              </Button>
+              {reviewResult?.moduleId === mod.id && (
+                <div className="mt-3 text-xs border border-border/50 rounded-md p-3 bg-background/40 space-y-1">
+                  {reviewResult.error ? (
+                    <p className="text-destructive">{reviewResult.error}</p>
+                  ) : (
+                    <>
+                      <div className="flex items-center gap-2">
+                        <Badge
+                          variant={
+                            reviewResult.outcome === "pass"
+                              ? "default"
+                              : reviewResult.outcome === "fail"
+                                ? "destructive"
+                                : "secondary"
+                          }
+                          className="uppercase text-[10px]"
+                        >
+                          {reviewResult.outcome}
+                        </Badge>
+                        <span className="text-muted-foreground">
+                          {reviewResult.findingCount} findings
+                          {reviewResult.model ? ` · ${reviewResult.model}` : ""}
+                        </span>
+                      </div>
+                      {reviewResult.summary && (
+                        <p className="text-muted-foreground">{reviewResult.summary}</p>
+                      )}
+                    </>
+                  )}
+                </div>
+              )}
             </CardContent>
           </Card>
         ))}

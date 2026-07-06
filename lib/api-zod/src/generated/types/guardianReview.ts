@@ -7,6 +7,7 @@
  */
 import type { GuardianFinding } from './guardianFinding';
 import type { GuardianReviewOutcome } from './guardianReviewOutcome';
+import type { GuardianReviewReviewer } from './guardianReviewReviewer';
 
 export interface GuardianReview {
   id: number;
@@ -15,5 +16,10 @@ export interface GuardianReview {
   moduleName?: string | null;
   outcome: GuardianReviewOutcome;
   findings: GuardianFinding[];
+  reviewer: GuardianReviewReviewer;
+  /** @nullable */
+  summary?: string | null;
+  /** @nullable */
+  model?: string | null;
   createdAt: string;
 }

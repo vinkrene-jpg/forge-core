@@ -5,6 +5,7 @@
  * Forge Core API specification
  * OpenAPI spec version: 0.1.0
  */
+import type { TestRunMode } from './testRunMode';
 
 export interface TestRun {
   id: number;
@@ -20,5 +21,10 @@ export interface TestRun {
   passed?: number | null;
   /** @nullable */
   failed?: number | null;
+  mode: TestRunMode;
+  /** @nullable */
+  moduleVersion?: string | null;
+  /** @nullable */
+  durationMs?: number | null;
   createdAt: string;
 }
