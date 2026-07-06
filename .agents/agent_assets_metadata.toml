@@ -1,0 +1,8 @@
+uploads = []
+generated = []
+
+[[outputs]]
+id = "rP7jn2s1PeSYIGiN4WPlq"
+uri = "file://FORGE_CORE_OPLEVERRAPPORT.md"
+type = "text"
+title = "Forge Core — Technisch Opleverrapport"
