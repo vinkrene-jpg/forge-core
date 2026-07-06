@@ -17,6 +17,11 @@ services:
       interval: 5s
       timeout: 3s
       retries: 10
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
 
   app:
     image: node:24-alpine
@@ -31,7 +36,8 @@ services:
       NODE_ENV: production
       STORAGE_DIR: /app/storage
     env_file:
-      - .env
+      - path: .env
+        required: false
     volumes:
       - .:/app
       - forge_storage:/app/storage
@@ -42,7 +48,18 @@ services:
              pnpm install --frozen-lockfile &&
              pnpm --filter @workspace/db run push --force &&
              pnpm --filter @workspace/api-server run build &&
-             node artifacts/api-server/dist/index.cjs"
+             node artifacts/api-server/dist/index.mjs"
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://localhost:5000/api/healthz >/dev/null 2>&1 || exit 1"]
+      interval: 30s
+      timeout: 5s
+      retries: 5
+      start_period: 600s
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
 
 volumes:
   forge_pgdata:

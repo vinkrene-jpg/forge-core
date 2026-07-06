@@ -12,7 +12,7 @@ A self-governing autonomous AI development platform: AI agent modules are built 
 - `pnpm --filter @workspace/db run push` — push DB schema changes (dev only)
 - Required env: `DATABASE_URL` — Postgres connection string
 - Optional env: `OPENAI_API_KEY` / `ANTHROPIC_API_KEY` / `CUSTOM_AI_*` (AI Gateway), `AI_DEFAULT_PROVIDER`, `AI_FALLBACK_PROVIDER`, `AI_ROUTE_<TASKTYPE>`, `STORAGE_DIR`, `CORE_ADMIN_OVERRIDE`
-- Portability: `docker-compose.yml`, `.env.example`, `INSTALL.md`, `scripts/src/{install,backup,restore,migrate}.sh`
+- Portability: `docker-compose.yml`, `.env.example`, `scripts/src/{install,backup,restore,migrate}.sh`; docs: `INSTALL.md`, `MIGRATION.md`, `BACKUP_RESTORE.md`, `UPDATE_PROCEDURE.md`, `VERIFICATION_CHECKLIST.md`
 
 ## Stack
 
@@ -62,4 +62,8 @@ A self-governing autonomous AI development platform: AI agent modules are built 
 ## Pointers
 
 - See the `pnpm-workspace` skill for workspace structure, TypeScript setup, and package details
-- `INSTALL.md` — full install/backup/restore/migration documentation (Windows & Linux)
+- `INSTALL.md` — install & operations (Docker Compose, Linux, Windows+WSL, versions, start/stop, healthchecks)
+- `MIGRATION.md` — Replit → local migration (DB/storage export & import, post-migration checks)
+- `BACKUP_RESTORE.md` — backup/restore/rollback and disaster recovery
+- `UPDATE_PROCEDURE.md` — safe update flow with mandatory pre-backup and rollback
+- `VERIFICATION_CHECKLIST.md` — 14-section local verification checklist
