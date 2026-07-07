@@ -24,7 +24,7 @@ import {
   evolutionRunsTable,
   type IntrospectionSnapshotRow,
 } from "@workspace/db";
-import { sql, eq } from "drizzle-orm";
+import { sql, eq, and } from "drizzle-orm";
 import { audit } from "./audit";
 
 const workspaceRoot = process.cwd().endsWith(path.join("artifacts", "api-server"))
@@ -238,6 +238,7 @@ export const CAPABILITY_SEEDS: CapabilitySeed[] = [
   { key: "audit_logging", name: "Audit Logging", description: "Every relevant action leaves an audit trail.", dependencies: [] },
   { key: "self_learning", name: "Self Learning", description: "Store lessons after each iteration and feed them back into future planning and proposals.", dependencies: [] },
   { key: "evolution_loop", name: "Recursive Evolution Loop", description: "Repeatable observe→plan→generate→test→review→govern→learn cycle without external development orders.", dependencies: ["self_awareness", "gap_analysis", "autonomous_planning", "proposal_generation", "self_learning"] },
+  { key: "operator_console", name: "Operator Console", description: "Local operator tooling to manage and monitor Forge as a daily service: start/stop, status, health check, database status, recent important logs with noise (e.g. /api/healthz polling) filtered out, surfacing errors, opening the dashboard. Local only: no production actions, no VPS actions, never prints secrets.", dependencies: ["audit_logging"] },
 ];
 
 interface EvidenceCounts {
@@ -255,6 +256,7 @@ interface EvidenceCounts {
   auditEntries: number;
   memoryItems: number;
   evolutionRuns: number;
+  consoleModules: number;
 }
 
 function hasEndpoint(model: SelfModel, method: string, p: string): boolean {
@@ -342,6 +344,11 @@ export function assessCapability(
       used = need(counts.evolutionRuns > 0, `${counts.evolutionRuns} evolution run(s) executed`, "loop never executed");
       limitations = "Full loop through proposal generation requires a configured AI provider.";
       break;
+    case "operator_console":
+      implemented = need(counts.consoleModules > 0, `${counts.consoleModules} installed console module(s)`, "no operator console module installed; owner currently manages Forge via raw Docker logs and manual /api/healthz polling");
+      used = implemented;
+      limitations = "Local operation only: never performs production or VPS actions and never prints secrets.";
+      break;
   }
 
   const status: "missing" | "partial" | "working" = implemented && used ? "working" : implemented ? "partial" : "missing";
@@ -368,6 +375,12 @@ export async function refreshCapabilities(model: SelfModel): Promise<void> {
     auditEntries: await countRows(auditLogsTable),
     memoryItems: await countRows(memoryItemsTable),
     evolutionRuns: await countRows(evolutionRunsTable),
+    consoleModules: (
+      await db
+        .select({ id: modulesTable.id })
+        .from(modulesTable)
+        .where(and(eq(modulesTable.name, "forge-console"), eq(modulesTable.installStatus, "installed")))
+    ).length,
   };
 
   for (const seed of CAPABILITY_SEEDS) {

@@ -122,7 +122,7 @@ test("assessCapability: endpoint present + usage evidence => working", () => {
   const counts = {
     snapshots: 2, nodes: 0, capabilities: 0, plans: 0, proposals: 0, sandboxes: 0,
     testRuns: 0, guardianReviews: 0, governorDecisions: 0, approvals: 0,
-    moduleSnapshots: 0, auditEntries: 0, memoryItems: 0, evolutionRuns: 0,
+    moduleSnapshots: 0, auditEntries: 0, memoryItems: 0, evolutionRuns: 0, consoleModules: 0,
   };
   const working = assessCapability(seed, model, counts);
   assert.equal(working.status, "working");
@@ -134,6 +134,12 @@ test("assessCapability: endpoint present + usage evidence => working", () => {
   const noEndpoint = assessCapability(seed, { ...model, endpoints: [] }, counts);
   assert.equal(noEndpoint.status, "missing");
   assert.equal(noEndpoint.maturity, 0);
+
+  const consoleSeed = CAPABILITY_SEEDS.find((s) => s.key === "operator_console")!;
+  const consoleMissing = assessCapability(consoleSeed, model, counts);
+  assert.equal(consoleMissing.status, "missing");
+  const consoleWorking = assessCapability(consoleSeed, model, { ...counts, consoleModules: 1 });
+  assert.equal(consoleWorking.status, "working");
 });
 
 test("path safety: traversal and absolute paths stay blocked", () => {
