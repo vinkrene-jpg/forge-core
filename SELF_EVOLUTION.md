@@ -26,12 +26,21 @@ Nothing is ever installed by the loop itself outside the existing governance pip
 |---|---|---|
 | Self Awareness | `artifacts/api-server/src/lib/selfAwareness.ts` | Read-only scan of source files, endpoints, DB tables, docs, dependencies, config keys; persists snapshots |
 | Knowledge Graph | same (built per snapshot) | Nodes (services, files, endpoints, tables, docs, dependencies) + typed edges |
-| Capability Map | same (`CAPABILITY_SEEDS`, `assessCapability`) | 15 capabilities with status (missing/partial/working), maturity, dependencies, limitations, evidence |
+| Capability Map | same (`CAPABILITY_SEEDS`, `assessCapability`) | 24 capabilities with status (missing/partial/working), maturity, dependencies, limitations, evidence |
 | Gap Analysis | `lib/gapAnalysis.ts` | Ranks non-working capabilities by impact (dependents unblocked, unmet dependencies, maturity) |
 | Autonomous Planner | `lib/evolutionPlanner.ts` | Plan with design, steps, files, risk, priority, test + rollback strategy; AI (taskType `planning`) or deterministic fallback; creates a backlog task |
 | Proposal Generator | `lib/proposalGenerator.ts` | AI code generation (taskType `codegeneration`) into a fresh sandbox; path protection; never installs |
 | Self Learning | `lib/selfLearning.ts` | Derives lessons per iteration and stores them in the Memory Engine |
-| Evolution loop | `routes/evolution.ts` | Orchestrates the full iteration; every phase audited |
+| Evolution loop | `lib/evolutionLoop.ts` (routes in `routes/evolution.ts`) | Orchestrates the full iteration; every phase audited; single-run guard |
+| Evolution Scheduler | `lib/evolutionScheduler.ts` | In-memory interval timer that triggers the loop autonomously; disabled by default (`EVOLUTION_SCHEDULER_ENABLED=true`, `EVOLUTION_SCHEDULER_INTERVAL_MINUTES`); every tick audited |
+| Quality Analyzer | `lib/qualityAnalyzer.ts` | Static quality scan of own source (oversized files, weak typing, logging discipline) with score |
+| Technical Debt Analyzer | `lib/techDebtAnalyzer.ts` | TODO/FIXME markers, skipped tests, deprecated code, oversized modules, duplicate routes |
+| Dependency Analyzer | `lib/dependencyAnalyzer.ts` | Maps workspace dependencies to their users; flags version mismatches |
+| Architecture Validator | `lib/architectureValidator.ts` | Validates architecture rules against the live self-model (router registration, jsonSafe, logging, locked core, governance chain) |
+| Refactoring Engine | `lib/refactoringEngine.ts` | Turns quality/debt findings into improvements that flow through the normal improvement→task→proposal→governance pipeline; never edits code directly |
+| Roadmap Generator | `lib/roadmapGenerator.ts` | Ranked roadmap from gaps, planned backlog tasks, open improvements and critical debt |
+| Internal Knowledge Base | `lib/knowledgeBase.ts` | Unified search over knowledge graph, memory, capabilities, docs and audit trail |
+| Documentation Generator | `lib/docsGenerator.ts` | Regenerates `SELF_MODEL.md` from the live self-model, capability map and installed modules |
 
 ## API
 
@@ -45,6 +54,16 @@ Nothing is ever installed by the loop itself outside the existing governance pip
 - `POST /api/evolution/run` — execute one full iteration
 - `GET /api/evolution/runs` — run history with reports
 - `GET /api/evolution/status` — overview: capability counts, gaps, latest run, pending approvals, AI configured
+- `GET /api/evolution/scheduler` / `POST /api/evolution/scheduler` — scheduler status / configure (`{"enabled": true, "intervalMinutes": 60}`)
+- `GET /api/analysis/quality` · `GET /api/analysis/debt` · `GET /api/analysis/dependencies` · `GET /api/analysis/architecture` — self-analysis reports
+- `POST /api/analysis/refactor-plan` — convert current quality/debt findings into improvements (backlog)
+- `GET /api/roadmap` — generated evolution roadmap
+- `GET /api/knowledge-base/search?q=...` — internal knowledge base search
+- `POST /api/docs/generate` — regenerate `SELF_MODEL.md`
+
+## Backlog-driven evolution
+
+When no capability gaps remain, the loop picks the oldest planned backlog task without a proposal. The Refactoring Engine feeds this backlog: `POST /api/analysis/refactor-plan` creates improvements from findings, an owner (or the loop's roadmap) converts them to tasks via `POST /api/improvements/{id}/convert`, and the next evolution run builds them through the full generate→test→Guardian→Governor chain. Failed tests or a Guardian fail always block installation.
 
 ## Requirements & limits
 
@@ -54,4 +73,4 @@ Nothing is ever installed by the loop itself outside the existing governance pip
 
 ## Tests
 
-`pnpm --filter @workspace/api-server run test` — unit tests for gap ranking, lesson derivation, fallback planning, capability assessment, path safety and proposal parsing.
+`pnpm --filter @workspace/api-server run test` — unit tests for gap ranking, lesson derivation, fallback planning, capability assessment, path safety, proposal parsing, and the analyzers (quality, debt, dependencies, architecture, refactoring mapping).

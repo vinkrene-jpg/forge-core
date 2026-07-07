@@ -123,6 +123,7 @@ test("assessCapability: endpoint present + usage evidence => working", () => {
     snapshots: 2, nodes: 0, capabilities: 0, plans: 0, proposals: 0, sandboxes: 0,
     testRuns: 0, guardianReviews: 0, governorDecisions: 0, approvals: 0,
     moduleSnapshots: 0, auditEntries: 0, memoryItems: 0, evolutionRuns: 0, consoleModules: 0,
+    actionCounts: {} as Record<string, number>,
   };
   const working = assessCapability(seed, model, counts);
   assert.equal(working.status, "working");

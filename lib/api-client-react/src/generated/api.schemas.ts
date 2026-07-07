@@ -999,6 +999,161 @@ export interface ProposalGenerateInput {
   instructions?: string;
 }
 
+export type FindingSeverity = typeof FindingSeverity[keyof typeof FindingSeverity];
+
+
+export const FindingSeverity = {
+  info: 'info',
+  warning: 'warning',
+  critical: 'critical',
+} as const;
+
+export interface Finding {
+  code: string;
+  severity: FindingSeverity;
+  /** @nullable */
+  file?: string | null;
+  message: string;
+}
+
+export interface AnalysisReport {
+  generatedAt: string;
+  analyzer: string;
+  filesScanned: number;
+  /** @nullable */
+  score?: number | null;
+  findings: Finding[];
+  summary: string;
+}
+
+export type DependencyReportDependenciesItem = {
+  name: string;
+  versions: string[];
+  usedBy: string[];
+};
+
+export interface DependencyReport {
+  generatedAt: string;
+  packagesScanned: number;
+  dependencies: DependencyReportDependenciesItem[];
+  mismatches: string[];
+  findings: Finding[];
+}
+
+export type ArchitectureValidationResultsItem = {
+  rule: string;
+  passed: boolean;
+  detail: string;
+};
+
+export interface ArchitectureValidation {
+  generatedAt: string;
+  rulesChecked: number;
+  passed: boolean;
+  violations: number;
+  results: ArchitectureValidationResultsItem[];
+}
+
+export interface RefactorPlanResult {
+  created: number;
+  skippedExisting: number;
+  improvementIds: number[];
+  summary: string;
+}
+
+export type RoadmapItemsItemKind = typeof RoadmapItemsItemKind[keyof typeof RoadmapItemsItemKind];
+
+
+export const RoadmapItemsItemKind = {
+  capability_gap: 'capability_gap',
+  backlog_task: 'backlog_task',
+  improvement: 'improvement',
+  debt: 'debt',
+  maintenance: 'maintenance',
+} as const;
+
+export type RoadmapItemsItemPriority = typeof RoadmapItemsItemPriority[keyof typeof RoadmapItemsItemPriority];
+
+
+export const RoadmapItemsItemPriority = {
+  low: 'low',
+  medium: 'medium',
+  high: 'high',
+  critical: 'critical',
+} as const;
+
+export type RoadmapItemsItem = {
+  rank: number;
+  kind: RoadmapItemsItemKind;
+  /** @nullable */
+  refId?: number | null;
+  title: string;
+  priority: RoadmapItemsItemPriority;
+  rationale: string;
+};
+
+export interface Roadmap {
+  generatedAt: string;
+  summary: string;
+  items: RoadmapItemsItem[];
+}
+
+export type KnowledgeBaseResultResultsItemSourceType = typeof KnowledgeBaseResultResultsItemSourceType[keyof typeof KnowledgeBaseResultResultsItemSourceType];
+
+
+export const KnowledgeBaseResultResultsItemSourceType = {
+  knowledge_node: 'knowledge_node',
+  memory_item: 'memory_item',
+  capability: 'capability',
+  doc: 'doc',
+  audit_log: 'audit_log',
+} as const;
+
+export type KnowledgeBaseResultResultsItem = {
+  sourceType: KnowledgeBaseResultResultsItemSourceType;
+  /** @nullable */
+  refKey?: string | null;
+  title: string;
+  snippet: string;
+};
+
+export interface KnowledgeBaseResult {
+  query: string;
+  total: number;
+  results: KnowledgeBaseResultResultsItem[];
+}
+
+export interface DocsGenerated {
+  file: string;
+  bytes: number;
+  sections: string[];
+  generatedAt: string;
+}
+
+export interface SchedulerStatus {
+  enabled: boolean;
+  intervalMinutes: number;
+  running: boolean;
+  ticks: number;
+  /** @nullable */
+  lastRunId: number | null;
+  /** @nullable */
+  lastTickAt: string | null;
+  /** @nullable */
+  nextTickAt: string | null;
+  /** @nullable */
+  lastError?: string | null;
+}
+
+export interface SchedulerConfig {
+  enabled: boolean;
+  /**
+     * @minimum 1
+     * @maximum 10080
+     */
+  intervalMinutes?: number;
+}
+
 export type ListAuditLogsParams = {
 limit?: number;
 targetType?: string;
@@ -1048,5 +1203,9 @@ status?: string;
 export type ListMemoryItemsParams = {
 q?: string;
 category?: string;
+};
+
+export type SearchKnowledgeBaseParams = {
+q: string;
 };
 

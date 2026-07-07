@@ -26,6 +26,10 @@ tags:
   - name: dailyloop
   - name: proposals
   - name: evolution
+  - name: analysis
+  - name: roadmap
+  - name: knowledgebase
+  - name: docsgen
 paths:
   /healthz:
     get:
@@ -1472,6 +1476,142 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/EvolutionStatus"
+  /evolution/scheduler:
+    get:
+      operationId: getEvolutionScheduler
+      tags: [evolution]
+      summary: Evolution scheduler status
+      responses:
+        "200":
+          description: Scheduler status
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SchedulerStatus"
+    post:
+      operationId: configureEvolutionScheduler
+      tags: [evolution]
+      summary: Enable/disable the autonomous evolution scheduler
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/SchedulerConfig"
+      responses:
+        "200":
+          description: Updated scheduler status
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SchedulerStatus"
+        "400":
+          description: Invalid configuration
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+  /analysis/quality:
+    get:
+      operationId: getQualityAnalysis
+      tags: [analysis]
+      summary: Static quality analysis of Forge's own code
+      responses:
+        "200":
+          description: Quality report
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AnalysisReport"
+  /analysis/debt:
+    get:
+      operationId: getTechnicalDebtAnalysis
+      tags: [analysis]
+      summary: Technical debt analysis of Forge's own code
+      responses:
+        "200":
+          description: Debt report
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AnalysisReport"
+  /analysis/dependencies:
+    get:
+      operationId: getDependencyAnalysis
+      tags: [analysis]
+      summary: Workspace dependency analysis (versions, mismatches)
+      responses:
+        "200":
+          description: Dependency report
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DependencyReport"
+  /analysis/architecture:
+    get:
+      operationId: getArchitectureValidation
+      tags: [analysis]
+      summary: Validate architecture rules against the current self-model
+      responses:
+        "200":
+          description: Architecture validation report
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ArchitectureValidation"
+  /analysis/refactor-plan:
+    post:
+      operationId: createRefactorPlan
+      tags: [analysis]
+      summary: Turn quality/debt findings into refactoring improvements (backlog)
+      responses:
+        "201":
+          description: Improvements created from findings
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/RefactorPlanResult"
+  /roadmap:
+    get:
+      operationId: getRoadmap
+      tags: [roadmap]
+      summary: Generated evolution roadmap (gaps, debt, backlog, improvements)
+      responses:
+        "200":
+          description: Roadmap
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Roadmap"
+  /knowledge-base/search:
+    get:
+      operationId: searchKnowledgeBase
+      tags: [knowledgebase]
+      summary: Search the internal knowledge base (graph, memory, docs, capabilities)
+      parameters:
+        - name: q
+          in: query
+          required: true
+          schema: { type: string }
+      responses:
+        "200":
+          description: Search results
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/KnowledgeBaseResult"
+  /docs/generate:
+    post:
+      operationId: generateDocumentation
+      tags: [docsgen]
+      summary: Generate SELF_MODEL documentation from the current self-model
+      responses:
+        "201":
+          description: Documentation generated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DocsGenerated"
 components:
   schemas:
     HealthStatus:
@@ -2350,3 +2490,147 @@ components:
           enum: [task, improvement]
         sourceId: { type: integer }
         instructions: { type: string, maxLength: 4000 }
+    Finding:
+      type: object
+      required: [code, severity, message]
+      properties:
+        code: { type: string }
+        severity:
+          type: string
+          enum: [info, warning, critical]
+        file: { type: ["string", "null"] }
+        message: { type: string }
+    AnalysisReport:
+      type: object
+      required: [generatedAt, analyzer, filesScanned, findings, summary]
+      properties:
+        generatedAt: { type: string }
+        analyzer: { type: string }
+        filesScanned: { type: integer }
+        score: { type: ["integer", "null"] }
+        findings:
+          type: array
+          items:
+            $ref: "#/components/schemas/Finding"
+        summary: { type: string }
+    DependencyReport:
+      type: object
+      required: [generatedAt, packagesScanned, dependencies, mismatches, findings]
+      properties:
+        generatedAt: { type: string }
+        packagesScanned: { type: integer }
+        dependencies:
+          type: array
+          items:
+            type: object
+            required: [name, versions, usedBy]
+            properties:
+              name: { type: string }
+              versions:
+                type: array
+                items: { type: string }
+              usedBy:
+                type: array
+                items: { type: string }
+        mismatches:
+          type: array
+          items: { type: string }
+        findings:
+          type: array
+          items:
+            $ref: "#/components/schemas/Finding"
+    ArchitectureValidation:
+      type: object
+      required: [generatedAt, rulesChecked, passed, violations, results]
+      properties:
+        generatedAt: { type: string }
+        rulesChecked: { type: integer }
+        passed: { type: boolean }
+        violations: { type: integer }
+        results:
+          type: array
+          items:
+            type: object
+            required: [rule, passed, detail]
+            properties:
+              rule: { type: string }
+              passed: { type: boolean }
+              detail: { type: string }
+    RefactorPlanResult:
+      type: object
+      required: [created, skippedExisting, improvementIds, summary]
+      properties:
+        created: { type: integer }
+        skippedExisting: { type: integer }
+        improvementIds:
+          type: array
+          items: { type: integer }
+        summary: { type: string }
+    Roadmap:
+      type: object
+      required: [generatedAt, items, summary]
+      properties:
+        generatedAt: { type: string }
+        summary: { type: string }
+        items:
+          type: array
+          items:
+            type: object
+            required: [rank, kind, title, priority, rationale]
+            properties:
+              rank: { type: integer }
+              kind:
+                type: string
+                enum: [capability_gap, backlog_task, improvement, debt, maintenance]
+              refId: { type: ["integer", "null"] }
+              title: { type: string }
+              priority:
+                type: string
+                enum: [low, medium, high, critical]
+              rationale: { type: string }
+    KnowledgeBaseResult:
+      type: object
+      required: [query, total, results]
+      properties:
+        query: { type: string }
+        total: { type: integer }
+        results:
+          type: array
+          items:
+            type: object
+            required: [sourceType, title, snippet]
+            properties:
+              sourceType:
+                type: string
+                enum: [knowledge_node, memory_item, capability, doc, audit_log]
+              refKey: { type: ["string", "null"] }
+              title: { type: string }
+              snippet: { type: string }
+    DocsGenerated:
+      type: object
+      required: [file, bytes, sections, generatedAt]
+      properties:
+        file: { type: string }
+        bytes: { type: integer }
+        sections:
+          type: array
+          items: { type: string }
+        generatedAt: { type: string }
+    SchedulerStatus:
+      type: object
+      required: [enabled, intervalMinutes, running, ticks, lastRunId, lastTickAt, nextTickAt]
+      properties:
+        enabled: { type: boolean }
+        intervalMinutes: { type: integer }
+        running: { type: boolean }
+        ticks: { type: integer }
+        lastRunId: { type: ["integer", "null"] }
+        lastTickAt: { type: ["string", "null"] }
+        nextTickAt: { type: ["string", "null"] }
+        lastError: { type: ["string", "null"] }
+    SchedulerConfig:
+      type: object
+      required: [enabled]
+      properties:
+        enabled: { type: boolean }
+        intervalMinutes: { type: integer, minimum: 1, maximum: 10080 }

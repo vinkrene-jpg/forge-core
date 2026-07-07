@@ -1816,3 +1816,173 @@ export const GetEvolutionStatusResponse = zod.object({
 })
 
 
+/**
+ * @summary Evolution scheduler status
+ */
+export const GetEvolutionSchedulerResponse = zod.object({
+  "enabled": zod.boolean(),
+  "intervalMinutes": zod.number(),
+  "running": zod.boolean(),
+  "ticks": zod.number(),
+  "lastRunId": zod.number().nullable(),
+  "lastTickAt": zod.string().nullable(),
+  "nextTickAt": zod.string().nullable(),
+  "lastError": zod.string().nullish()
+})
+
+
+/**
+ * @summary Enable/disable the autonomous evolution scheduler
+ */
+export const configureEvolutionSchedulerBodyIntervalMinutesMax = 10080;
+
+
+
+export const ConfigureEvolutionSchedulerBody = zod.object({
+  "enabled": zod.boolean(),
+  "intervalMinutes": zod.number().min(1).max(configureEvolutionSchedulerBodyIntervalMinutesMax).optional()
+})
+
+export const ConfigureEvolutionSchedulerResponse = zod.object({
+  "enabled": zod.boolean(),
+  "intervalMinutes": zod.number(),
+  "running": zod.boolean(),
+  "ticks": zod.number(),
+  "lastRunId": zod.number().nullable(),
+  "lastTickAt": zod.string().nullable(),
+  "nextTickAt": zod.string().nullable(),
+  "lastError": zod.string().nullish()
+})
+
+
+/**
+ * @summary Static quality analysis of Forge's own code
+ */
+export const GetQualityAnalysisResponse = zod.object({
+  "generatedAt": zod.string(),
+  "analyzer": zod.string(),
+  "filesScanned": zod.number(),
+  "score": zod.number().nullish(),
+  "findings": zod.array(zod.object({
+  "code": zod.string(),
+  "severity": zod.enum(['info', 'warning', 'critical']),
+  "file": zod.string().nullish(),
+  "message": zod.string()
+})),
+  "summary": zod.string()
+})
+
+
+/**
+ * @summary Technical debt analysis of Forge's own code
+ */
+export const GetTechnicalDebtAnalysisResponse = zod.object({
+  "generatedAt": zod.string(),
+  "analyzer": zod.string(),
+  "filesScanned": zod.number(),
+  "score": zod.number().nullish(),
+  "findings": zod.array(zod.object({
+  "code": zod.string(),
+  "severity": zod.enum(['info', 'warning', 'critical']),
+  "file": zod.string().nullish(),
+  "message": zod.string()
+})),
+  "summary": zod.string()
+})
+
+
+/**
+ * @summary Workspace dependency analysis (versions, mismatches)
+ */
+export const GetDependencyAnalysisResponse = zod.object({
+  "generatedAt": zod.string(),
+  "packagesScanned": zod.number(),
+  "dependencies": zod.array(zod.object({
+  "name": zod.string(),
+  "versions": zod.array(zod.string()),
+  "usedBy": zod.array(zod.string())
+})),
+  "mismatches": zod.array(zod.string()),
+  "findings": zod.array(zod.object({
+  "code": zod.string(),
+  "severity": zod.enum(['info', 'warning', 'critical']),
+  "file": zod.string().nullish(),
+  "message": zod.string()
+}))
+})
+
+
+/**
+ * @summary Validate architecture rules against the current self-model
+ */
+export const GetArchitectureValidationResponse = zod.object({
+  "generatedAt": zod.string(),
+  "rulesChecked": zod.number(),
+  "passed": zod.boolean(),
+  "violations": zod.number(),
+  "results": zod.array(zod.object({
+  "rule": zod.string(),
+  "passed": zod.boolean(),
+  "detail": zod.string()
+}))
+})
+
+
+/**
+ * @summary Turn quality/debt findings into refactoring improvements (backlog)
+ */
+export const CreateRefactorPlanResponse = zod.object({
+  "created": zod.number(),
+  "skippedExisting": zod.number(),
+  "improvementIds": zod.array(zod.number()),
+  "summary": zod.string()
+})
+
+
+/**
+ * @summary Generated evolution roadmap (gaps, debt, backlog, improvements)
+ */
+export const GetRoadmapResponse = zod.object({
+  "generatedAt": zod.string(),
+  "summary": zod.string(),
+  "items": zod.array(zod.object({
+  "rank": zod.number(),
+  "kind": zod.enum(['capability_gap', 'backlog_task', 'improvement', 'debt', 'maintenance']),
+  "refId": zod.number().nullish(),
+  "title": zod.string(),
+  "priority": zod.enum(['low', 'medium', 'high', 'critical']),
+  "rationale": zod.string()
+}))
+})
+
+
+/**
+ * @summary Search the internal knowledge base (graph, memory, docs, capabilities)
+ */
+export const SearchKnowledgeBaseQueryParams = zod.object({
+  "q": zod.coerce.string()
+})
+
+export const SearchKnowledgeBaseResponse = zod.object({
+  "query": zod.string(),
+  "total": zod.number(),
+  "results": zod.array(zod.object({
+  "sourceType": zod.enum(['knowledge_node', 'memory_item', 'capability', 'doc', 'audit_log']),
+  "refKey": zod.string().nullish(),
+  "title": zod.string(),
+  "snippet": zod.string()
+}))
+})
+
+
+/**
+ * @summary Generate SELF_MODEL documentation from the current self-model
+ */
+export const GenerateDocumentationResponse = zod.object({
+  "file": zod.string(),
+  "bytes": zod.number(),
+  "sections": zod.array(zod.string()),
+  "generatedAt": zod.string()
+})
+
+

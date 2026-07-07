@@ -239,6 +239,15 @@ export const CAPABILITY_SEEDS: CapabilitySeed[] = [
   { key: "self_learning", name: "Self Learning", description: "Store lessons after each iteration and feed them back into future planning and proposals.", dependencies: [] },
   { key: "evolution_loop", name: "Recursive Evolution Loop", description: "Repeatable observe→plan→generate→test→review→govern→learn cycle without external development orders.", dependencies: ["self_awareness", "gap_analysis", "autonomous_planning", "proposal_generation", "self_learning"] },
   { key: "operator_console", name: "Operator Console", description: "Local operator tooling to manage and monitor Forge as a daily service: start/stop, status, health check, database status, recent important logs with noise (e.g. /api/healthz polling) filtered out, surfacing errors, opening the dashboard. Local only: no production actions, no VPS actions, never prints secrets.", dependencies: ["audit_logging"] },
+  { key: "evolution_scheduler", name: "Evolution Scheduler", description: "Periodically triggers the autonomous evolution loop without external orders; configurable interval; disabled by default; every tick audited.", dependencies: ["evolution_loop"] },
+  { key: "quality_analysis", name: "Quality Analyzer", description: "Static quality metrics over own source: oversized files, weak typing, logging discipline; produces a scored report.", dependencies: ["self_awareness"] },
+  { key: "technical_debt_analysis", name: "Technical Debt Analyzer", description: "Detects debt signals: TODO/FIXME markers, skipped tests, deprecated code, oversized modules, duplicate routes.", dependencies: ["self_awareness"] },
+  { key: "dependency_analysis", name: "Dependency Analyzer", description: "Maps every workspace dependency to its users and flags version mismatches across packages.", dependencies: ["self_awareness"] },
+  { key: "architecture_validation", name: "Architecture Validator", description: "Validates architecture rules against the live self-model: router registration, jsonSafe usage, logging discipline, locked-core and governance chain presence.", dependencies: ["self_awareness"] },
+  { key: "refactoring_engine", name: "Refactoring Engine", description: "Turns quality/debt findings into refactoring improvements that flow through the normal improvement→task→proposal→governance pipeline; never changes code directly.", dependencies: ["quality_analysis", "technical_debt_analysis"] },
+  { key: "roadmap_generation", name: "Roadmap Generator", description: "Composes a ranked evolution roadmap from capability gaps, planned backlog tasks, open improvements and critical debt.", dependencies: ["gap_analysis"] },
+  { key: "knowledge_base", name: "Internal Knowledge Base", description: "Unified search over knowledge graph, memory engine, capability map, documentation and audit trail.", dependencies: ["knowledge_graph", "self_learning"] },
+  { key: "documentation_generation", name: "Documentation Generator", description: "Generates SELF_MODEL.md from the live self-model, capability map and installed modules.", dependencies: ["self_awareness"] },
 ];
 
 interface EvidenceCounts {
@@ -257,6 +266,8 @@ interface EvidenceCounts {
   memoryItems: number;
   evolutionRuns: number;
   consoleModules: number;
+  /** Audit-log entry count per action, used as usage evidence for tooling capabilities. */
+  actionCounts: Record<string, number>;
 }
 
 function hasEndpoint(model: SelfModel, method: string, p: string): boolean {
@@ -349,6 +360,44 @@ export function assessCapability(
       used = implemented;
       limitations = "Local operation only: never performs production or VPS actions and never prints secrets.";
       break;
+    case "evolution_scheduler":
+      implemented = need(model.endpoints.some((e) => e.path === "/api/evolution/scheduler"), "scheduler endpoints present", "scheduler endpoints");
+      used = need((counts.actionCounts["scheduler_configured"] ?? 0) + (counts.actionCounts["scheduler_tick"] ?? 0) > 0, `${(counts.actionCounts["scheduler_configured"] ?? 0) + (counts.actionCounts["scheduler_tick"] ?? 0)} scheduler event(s) audited`, "scheduler never configured or ticked");
+      limitations = "Disabled by default; scheduled runs still require an AI provider to pass the generate phase.";
+      break;
+    case "quality_analysis":
+      implemented = need(hasEndpoint(model, "GET", "/api/analysis/quality"), "endpoint GET /api/analysis/quality", "quality analysis endpoint");
+      used = need((counts.actionCounts["quality_analysis_completed"] ?? 0) > 0, `${counts.actionCounts["quality_analysis_completed"]} quality analysis run(s) audited`, "quality analysis never executed");
+      break;
+    case "technical_debt_analysis":
+      implemented = need(hasEndpoint(model, "GET", "/api/analysis/debt"), "endpoint GET /api/analysis/debt", "debt analysis endpoint");
+      used = need((counts.actionCounts["debt_analysis_completed"] ?? 0) > 0, `${counts.actionCounts["debt_analysis_completed"]} debt analysis run(s) audited`, "debt analysis never executed");
+      break;
+    case "dependency_analysis":
+      implemented = need(hasEndpoint(model, "GET", "/api/analysis/dependencies"), "endpoint GET /api/analysis/dependencies", "dependency analysis endpoint");
+      used = need((counts.actionCounts["dependency_analysis_completed"] ?? 0) > 0, `${counts.actionCounts["dependency_analysis_completed"]} dependency analysis run(s) audited`, "dependency analysis never executed");
+      break;
+    case "architecture_validation":
+      implemented = need(hasEndpoint(model, "GET", "/api/analysis/architecture"), "endpoint GET /api/analysis/architecture", "architecture validation endpoint");
+      used = need((counts.actionCounts["architecture_validated"] ?? 0) > 0, `${counts.actionCounts["architecture_validated"]} validation run(s) audited`, "architecture validation never executed");
+      break;
+    case "refactoring_engine":
+      implemented = need(hasEndpoint(model, "POST", "/api/analysis/refactor-plan"), "endpoint POST /api/analysis/refactor-plan", "refactor plan endpoint");
+      used = need((counts.actionCounts["refactor_plan_created"] ?? 0) > 0, `${counts.actionCounts["refactor_plan_created"]} refactor plan(s) audited`, "refactoring engine never executed");
+      limitations = "Never changes code directly: findings become improvements that pass the normal governance pipeline.";
+      break;
+    case "roadmap_generation":
+      implemented = need(hasEndpoint(model, "GET", "/api/roadmap"), "endpoint GET /api/roadmap", "roadmap endpoint");
+      used = need((counts.actionCounts["roadmap_generated"] ?? 0) > 0, `${counts.actionCounts["roadmap_generated"]} roadmap generation(s) audited`, "roadmap never generated");
+      break;
+    case "knowledge_base":
+      implemented = need(hasEndpoint(model, "GET", "/api/knowledge-base/search"), "endpoint GET /api/knowledge-base/search", "knowledge base endpoint");
+      used = need((counts.actionCounts["kb_search_performed"] ?? 0) > 0, `${counts.actionCounts["kb_search_performed"]} knowledge base search(es) audited`, "knowledge base never queried");
+      break;
+    case "documentation_generation":
+      implemented = need(hasEndpoint(model, "POST", "/api/docs/generate"), "endpoint POST /api/docs/generate", "documentation generation endpoint");
+      used = need((counts.actionCounts["docs_generated"] ?? 0) > 0, `${counts.actionCounts["docs_generated"]} documentation generation(s) audited`, "documentation never generated");
+      break;
   }
 
   const status: "missing" | "partial" | "working" = implemented && used ? "working" : implemented ? "partial" : "missing";
@@ -381,6 +430,14 @@ export async function refreshCapabilities(model: SelfModel): Promise<void> {
         .from(modulesTable)
         .where(and(eq(modulesTable.name, "forge-console"), eq(modulesTable.installStatus, "installed")))
     ).length,
+    actionCounts: Object.fromEntries(
+      (
+        await db
+          .select({ action: auditLogsTable.action, n: sql<number>`count(*)::int` })
+          .from(auditLogsTable)
+          .groupBy(auditLogsTable.action)
+      ).map((r) => [r.action, r.n]),
+    ),
   };
 
   for (const seed of CAPABILITY_SEEDS) {
