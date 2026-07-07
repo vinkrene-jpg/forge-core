@@ -30,6 +30,7 @@ import type {
   BacklogItem,
   BacklogItemInput,
   BacklogItemUpdate,
+  Capability,
   CoreComponent,
   CoreComponentUpdate,
   DailyLoopRun,
@@ -37,6 +38,11 @@ import type {
   Decision,
   DecisionInput,
   ErrorResponse,
+  EvolutionPlan,
+  EvolutionPlanInput,
+  EvolutionRun,
+  EvolutionStatus,
+  GapAnalysis,
   Goal,
   GoalInput,
   GoalUpdate,
@@ -46,6 +52,8 @@ import type {
   Improvement,
   ImprovementInput,
   ImprovementUpdate,
+  IntrospectionSnapshot,
+  KnowledgeGraph,
   ListAiCallsParams,
   ListApprovalsParams,
   ListAuditLogsParams,
@@ -5173,4 +5181,756 @@ export const useGenerateProposal = <TError = ErrorType<ErrorResponse>,
       > => {
       return useMutation(getGenerateProposalMutationOptions(options));
     }
+
+export const getRunIntrospectionUrl = () => {
+
+
+
+
+  return `/api/evolution/introspect`
+}
+
+/**
+ * Scans the workspace read-only (source files, endpoints, database tables, docs, dependencies, config keys) and the database (modules, test runs, audit trail). Persists an introspection snapshot, rebuilds the knowledge graph and refreshes the capability map with fresh evidence.
+ * @summary Analyze Forge's own codebase, database and runtime state
+ */
+export const runIntrospection = async ( options?: RequestInit): Promise<IntrospectionSnapshot> => {
+
+  return customFetch<IntrospectionSnapshot>(getRunIntrospectionUrl(),
+  {
+    ...options,
+    method: 'POST'
+
+
+  }
+);}
+
+
+
+
+export const getRunIntrospectionMutationOptions = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof runIntrospection>>, TError,void, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof runIntrospection>>, TError,void, TContext> => {
+
+const mutationKey = ['runIntrospection'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof runIntrospection>>, void> = () => {
+
+
+          return  runIntrospection(requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type RunIntrospectionMutationResult = NonNullable<Awaited<ReturnType<typeof runIntrospection>>>
+
+    export type RunIntrospectionMutationError = ErrorType<unknown>
+
+    /**
+ * @summary Analyze Forge's own codebase, database and runtime state
+ */
+export const useRunIntrospection = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof runIntrospection>>, TError,void, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof runIntrospection>>,
+        TError,
+        void,
+        TContext
+      > => {
+      return useMutation(getRunIntrospectionMutationOptions(options));
+    }
+
+export const getGetSelfModelUrl = () => {
+
+
+
+
+  return `/api/evolution/self`
+}
+
+/**
+ * @summary Latest self-model snapshot
+ */
+export const getSelfModel = async ( options?: RequestInit): Promise<IntrospectionSnapshot> => {
+
+  return customFetch<IntrospectionSnapshot>(getGetSelfModelUrl(),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetSelfModelQueryKey = () => {
+    return [
+    `/api/evolution/self`
+    ] as const;
+    }
+
+
+export const getGetSelfModelQueryOptions = <TData = Awaited<ReturnType<typeof getSelfModel>>, TError = ErrorType<ErrorResponse>>( options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getSelfModel>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetSelfModelQueryKey();
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getSelfModel>>> = ({ signal }) => getSelfModel({ signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getSelfModel>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetSelfModelQueryResult = NonNullable<Awaited<ReturnType<typeof getSelfModel>>>
+export type GetSelfModelQueryError = ErrorType<ErrorResponse>
+
+
+/**
+ * @summary Latest self-model snapshot
+ */
+
+export function useGetSelfModel<TData = Awaited<ReturnType<typeof getSelfModel>>, TError = ErrorType<ErrorResponse>>(
+  options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getSelfModel>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetSelfModelQueryOptions(options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getGetKnowledgeGraphUrl = () => {
+
+
+
+
+  return `/api/evolution/graph`
+}
+
+/**
+ * @summary Knowledge graph from the latest introspection snapshot
+ */
+export const getKnowledgeGraph = async ( options?: RequestInit): Promise<KnowledgeGraph> => {
+
+  return customFetch<KnowledgeGraph>(getGetKnowledgeGraphUrl(),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetKnowledgeGraphQueryKey = () => {
+    return [
+    `/api/evolution/graph`
+    ] as const;
+    }
+
+
+export const getGetKnowledgeGraphQueryOptions = <TData = Awaited<ReturnType<typeof getKnowledgeGraph>>, TError = ErrorType<ErrorResponse>>( options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getKnowledgeGraph>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetKnowledgeGraphQueryKey();
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getKnowledgeGraph>>> = ({ signal }) => getKnowledgeGraph({ signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getKnowledgeGraph>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetKnowledgeGraphQueryResult = NonNullable<Awaited<ReturnType<typeof getKnowledgeGraph>>>
+export type GetKnowledgeGraphQueryError = ErrorType<ErrorResponse>
+
+
+/**
+ * @summary Knowledge graph from the latest introspection snapshot
+ */
+
+export function useGetKnowledgeGraph<TData = Awaited<ReturnType<typeof getKnowledgeGraph>>, TError = ErrorType<ErrorResponse>>(
+  options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getKnowledgeGraph>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetKnowledgeGraphQueryOptions(options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getListCapabilitiesUrl = () => {
+
+
+
+
+  return `/api/evolution/capabilities`
+}
+
+/**
+ * @summary Capability map with status, maturity and evidence
+ */
+export const listCapabilities = async ( options?: RequestInit): Promise<Capability[]> => {
+
+  return customFetch<Capability[]>(getListCapabilitiesUrl(),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getListCapabilitiesQueryKey = () => {
+    return [
+    `/api/evolution/capabilities`
+    ] as const;
+    }
+
+
+export const getListCapabilitiesQueryOptions = <TData = Awaited<ReturnType<typeof listCapabilities>>, TError = ErrorType<unknown>>( options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listCapabilities>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getListCapabilitiesQueryKey();
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof listCapabilities>>> = ({ signal }) => listCapabilities({ signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof listCapabilities>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type ListCapabilitiesQueryResult = NonNullable<Awaited<ReturnType<typeof listCapabilities>>>
+export type ListCapabilitiesQueryError = ErrorType<unknown>
+
+
+/**
+ * @summary Capability map with status, maturity and evidence
+ */
+
+export function useListCapabilities<TData = Awaited<ReturnType<typeof listCapabilities>>, TError = ErrorType<unknown>>(
+  options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listCapabilities>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getListCapabilitiesQueryOptions(options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getGetGapAnalysisUrl = () => {
+
+
+
+
+  return `/api/evolution/gaps`
+}
+
+/**
+ * @summary Ranked gap analysis over the capability map
+ */
+export const getGapAnalysis = async ( options?: RequestInit): Promise<GapAnalysis> => {
+
+  return customFetch<GapAnalysis>(getGetGapAnalysisUrl(),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetGapAnalysisQueryKey = () => {
+    return [
+    `/api/evolution/gaps`
+    ] as const;
+    }
+
+
+export const getGetGapAnalysisQueryOptions = <TData = Awaited<ReturnType<typeof getGapAnalysis>>, TError = ErrorType<unknown>>( options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getGapAnalysis>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetGapAnalysisQueryKey();
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getGapAnalysis>>> = ({ signal }) => getGapAnalysis({ signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getGapAnalysis>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetGapAnalysisQueryResult = NonNullable<Awaited<ReturnType<typeof getGapAnalysis>>>
+export type GetGapAnalysisQueryError = ErrorType<unknown>
+
+
+/**
+ * @summary Ranked gap analysis over the capability map
+ */
+
+export function useGetGapAnalysis<TData = Awaited<ReturnType<typeof getGapAnalysis>>, TError = ErrorType<unknown>>(
+  options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getGapAnalysis>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetGapAnalysisQueryOptions(options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getCreateEvolutionPlanUrl = () => {
+
+
+
+
+  return `/api/evolution/plan`
+}
+
+/**
+ * Picks the highest-impact gap (or the given capability key), and produces a plan with design, steps, affected files, risk, priority, test strategy and rollback strategy. Uses the AI Gateway (task type planning) when configured, with a deterministic rule-based fallback otherwise. Creates a backlog task linked to the plan so the Proposal Generator can pick it up.
+ * @summary Autonomously plan the next development step for the top gap
+ */
+export const createEvolutionPlan = async (evolutionPlanInput?: EvolutionPlanInput, options?: RequestInit): Promise<EvolutionPlan> => {
+
+  return customFetch<EvolutionPlan>(getCreateEvolutionPlanUrl(),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(evolutionPlanInput)
+  }
+);}
+
+
+
+
+export const getCreateEvolutionPlanMutationOptions = <TError = ErrorType<ErrorResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createEvolutionPlan>>, TError,{data?: BodyType<EvolutionPlanInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof createEvolutionPlan>>, TError,{data?: BodyType<EvolutionPlanInput>}, TContext> => {
+
+const mutationKey = ['createEvolutionPlan'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof createEvolutionPlan>>, {data?: BodyType<EvolutionPlanInput>}> = (props) => {
+          const {data} = props ?? {};
+
+          return  createEvolutionPlan(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type CreateEvolutionPlanMutationResult = NonNullable<Awaited<ReturnType<typeof createEvolutionPlan>>>
+    export type CreateEvolutionPlanMutationBody = BodyType<EvolutionPlanInput> | undefined
+    export type CreateEvolutionPlanMutationError = ErrorType<ErrorResponse>
+
+    /**
+ * @summary Autonomously plan the next development step for the top gap
+ */
+export const useCreateEvolutionPlan = <TError = ErrorType<ErrorResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createEvolutionPlan>>, TError,{data?: BodyType<EvolutionPlanInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof createEvolutionPlan>>,
+        TError,
+        {data?: BodyType<EvolutionPlanInput>},
+        TContext
+      > => {
+      return useMutation(getCreateEvolutionPlanMutationOptions(options));
+    }
+
+export const getListEvolutionPlansUrl = () => {
+
+
+
+
+  return `/api/evolution/plans`
+}
+
+/**
+ * @summary List evolution plans
+ */
+export const listEvolutionPlans = async ( options?: RequestInit): Promise<EvolutionPlan[]> => {
+
+  return customFetch<EvolutionPlan[]>(getListEvolutionPlansUrl(),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getListEvolutionPlansQueryKey = () => {
+    return [
+    `/api/evolution/plans`
+    ] as const;
+    }
+
+
+export const getListEvolutionPlansQueryOptions = <TData = Awaited<ReturnType<typeof listEvolutionPlans>>, TError = ErrorType<unknown>>( options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listEvolutionPlans>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getListEvolutionPlansQueryKey();
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof listEvolutionPlans>>> = ({ signal }) => listEvolutionPlans({ signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof listEvolutionPlans>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type ListEvolutionPlansQueryResult = NonNullable<Awaited<ReturnType<typeof listEvolutionPlans>>>
+export type ListEvolutionPlansQueryError = ErrorType<unknown>
+
+
+/**
+ * @summary List evolution plans
+ */
+
+export function useListEvolutionPlans<TData = Awaited<ReturnType<typeof listEvolutionPlans>>, TError = ErrorType<unknown>>(
+  options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listEvolutionPlans>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getListEvolutionPlansQueryOptions(options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getStartEvolutionRunUrl = () => {
+
+
+
+
+  return `/api/evolution/run`
+}
+
+/**
+ * Runs the loop introspect → gap analysis → plan → task → proposal (sandbox) → real test run → Guardian review → Governor decision → lessons stored in memory → next-step recommendation. Never installs anything by itself; installation stays behind the existing governance pipeline. If no AI provider is configured the run stops after planning with a clear blocked status.
+ * @summary Execute one full self-evolution iteration
+ */
+export const startEvolutionRun = async ( options?: RequestInit): Promise<EvolutionRun> => {
+
+  return customFetch<EvolutionRun>(getStartEvolutionRunUrl(),
+  {
+    ...options,
+    method: 'POST'
+
+
+  }
+);}
+
+
+
+
+export const getStartEvolutionRunMutationOptions = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof startEvolutionRun>>, TError,void, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof startEvolutionRun>>, TError,void, TContext> => {
+
+const mutationKey = ['startEvolutionRun'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof startEvolutionRun>>, void> = () => {
+
+
+          return  startEvolutionRun(requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type StartEvolutionRunMutationResult = NonNullable<Awaited<ReturnType<typeof startEvolutionRun>>>
+
+    export type StartEvolutionRunMutationError = ErrorType<unknown>
+
+    /**
+ * @summary Execute one full self-evolution iteration
+ */
+export const useStartEvolutionRun = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof startEvolutionRun>>, TError,void, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof startEvolutionRun>>,
+        TError,
+        void,
+        TContext
+      > => {
+      return useMutation(getStartEvolutionRunMutationOptions(options));
+    }
+
+export const getListEvolutionRunsUrl = () => {
+
+
+
+
+  return `/api/evolution/runs`
+}
+
+/**
+ * @summary List evolution runs
+ */
+export const listEvolutionRuns = async ( options?: RequestInit): Promise<EvolutionRun[]> => {
+
+  return customFetch<EvolutionRun[]>(getListEvolutionRunsUrl(),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getListEvolutionRunsQueryKey = () => {
+    return [
+    `/api/evolution/runs`
+    ] as const;
+    }
+
+
+export const getListEvolutionRunsQueryOptions = <TData = Awaited<ReturnType<typeof listEvolutionRuns>>, TError = ErrorType<unknown>>( options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listEvolutionRuns>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getListEvolutionRunsQueryKey();
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof listEvolutionRuns>>> = ({ signal }) => listEvolutionRuns({ signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof listEvolutionRuns>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type ListEvolutionRunsQueryResult = NonNullable<Awaited<ReturnType<typeof listEvolutionRuns>>>
+export type ListEvolutionRunsQueryError = ErrorType<unknown>
+
+
+/**
+ * @summary List evolution runs
+ */
+
+export function useListEvolutionRuns<TData = Awaited<ReturnType<typeof listEvolutionRuns>>, TError = ErrorType<unknown>>(
+  options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listEvolutionRuns>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getListEvolutionRunsQueryOptions(options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getGetEvolutionStatusUrl = () => {
+
+
+
+
+  return `/api/evolution/status`
+}
+
+/**
+ * @summary Current self-evolution status overview
+ */
+export const getEvolutionStatus = async ( options?: RequestInit): Promise<EvolutionStatus> => {
+
+  return customFetch<EvolutionStatus>(getGetEvolutionStatusUrl(),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetEvolutionStatusQueryKey = () => {
+    return [
+    `/api/evolution/status`
+    ] as const;
+    }
+
+
+export const getGetEvolutionStatusQueryOptions = <TData = Awaited<ReturnType<typeof getEvolutionStatus>>, TError = ErrorType<unknown>>( options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getEvolutionStatus>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetEvolutionStatusQueryKey();
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getEvolutionStatus>>> = ({ signal }) => getEvolutionStatus({ signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getEvolutionStatus>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetEvolutionStatusQueryResult = NonNullable<Awaited<ReturnType<typeof getEvolutionStatus>>>
+export type GetEvolutionStatusQueryError = ErrorType<unknown>
+
+
+/**
+ * @summary Current self-evolution status overview
+ */
+
+export function useGetEvolutionStatus<TData = Awaited<ReturnType<typeof getEvolutionStatus>>, TError = ErrorType<unknown>>(
+  options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getEvolutionStatus>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetEvolutionStatusQueryOptions(options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
 

@@ -11,6 +11,7 @@ import governanceRouter from "./governance";
 import memoryRouter from "./memory";
 import dailyLoopRouter from "./dailyLoop";
 import proposalsRouter from "./proposals";
+import evolutionRouter from "./evolution";
 
 const router: IRouter = Router();
 
@@ -26,5 +27,6 @@ router.use(governanceRouter);
 router.use(memoryRouter);
 router.use(dailyLoopRouter);
 router.use(proposalsRouter);
+router.use(evolutionRouter);
 
 export default router;

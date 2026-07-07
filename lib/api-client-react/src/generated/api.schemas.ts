@@ -715,6 +715,169 @@ export interface MemoryItem {
   createdAt: string;
 }
 
+export type IntrospectionSnapshotModel = { [key: string]: unknown };
+
+export interface IntrospectionSnapshot {
+  id: number;
+  sourceFiles: number;
+  endpoints: number;
+  dbTables: number;
+  docs: number;
+  dependencies: number;
+  configKeys: number;
+  modules: number;
+  testRuns: number;
+  auditEntries: number;
+  model: IntrospectionSnapshotModel;
+  createdAt: string;
+}
+
+export type KnowledgeGraphNodesItemMeta = { [key: string]: unknown };
+
+export type KnowledgeGraphNodesItem = {
+  nodeType: string;
+  key: string;
+  label: string;
+  meta?: KnowledgeGraphNodesItemMeta;
+};
+
+export type KnowledgeGraphEdgesItem = {
+  fromKey: string;
+  toKey: string;
+  relation: string;
+};
+
+export interface KnowledgeGraph {
+  snapshotId: number;
+  nodes: KnowledgeGraphNodesItem[];
+  edges: KnowledgeGraphEdgesItem[];
+}
+
+export type CapabilityStatus = typeof CapabilityStatus[keyof typeof CapabilityStatus];
+
+
+export const CapabilityStatus = {
+  missing: 'missing',
+  partial: 'partial',
+  working: 'working',
+} as const;
+
+export interface Capability {
+  id: number;
+  key: string;
+  name: string;
+  description: string;
+  status: CapabilityStatus;
+  maturity: number;
+  dependencies: string[];
+  /** @nullable */
+  limitations?: string | null;
+  missingParts: string[];
+  evidence: string[];
+  updatedAt: string;
+}
+
+export type GapAnalysisGapsItem = {
+  capabilityKey: string;
+  name: string;
+  status: string;
+  maturity: number;
+  impactScore: number;
+  reason: string;
+  blocking: string[];
+  risks: string[];
+  missingParts?: string[];
+};
+
+export interface GapAnalysis {
+  analyzedAt: string;
+  gaps: GapAnalysisGapsItem[];
+}
+
+export interface EvolutionPlanInput {
+  capabilityKey?: string;
+}
+
+export type EvolutionPlanSource = typeof EvolutionPlanSource[keyof typeof EvolutionPlanSource];
+
+
+export const EvolutionPlanSource = {
+  ai: 'ai',
+  fallback: 'fallback',
+} as const;
+
+export interface EvolutionPlan {
+  id: number;
+  capabilityKey: string;
+  gapSummary: string;
+  design: string;
+  steps: string[];
+  affectedFiles: string[];
+  risk: string;
+  priority: string;
+  testStrategy: string;
+  rollbackStrategy: string;
+  source: EvolutionPlanSource;
+  status: string;
+  /** @nullable */
+  taskId?: number | null;
+  createdAt: string;
+}
+
+export type EvolutionRunStatus = typeof EvolutionRunStatus[keyof typeof EvolutionRunStatus];
+
+
+export const EvolutionRunStatus = {
+  running: 'running',
+  completed: 'completed',
+  blocked: 'blocked',
+  failed: 'failed',
+} as const;
+
+export interface EvolutionRun {
+  id: number;
+  status: EvolutionRunStatus;
+  phase: string;
+  /** @nullable */
+  snapshotId?: number | null;
+  /** @nullable */
+  planId?: number | null;
+  /** @nullable */
+  taskId?: number | null;
+  /** @nullable */
+  proposalId?: number | null;
+  /** @nullable */
+  testRunId?: number | null;
+  /** @nullable */
+  guardianVerdict?: string | null;
+  /** @nullable */
+  governorDecision?: string | null;
+  lessons: string[];
+  /** @nullable */
+  nextStep?: string | null;
+  report: string;
+  startedAt: string;
+  /** @nullable */
+  finishedAt?: string | null;
+}
+
+export type EvolutionStatusCapabilities = {
+  total: number;
+  working: number;
+  partial: number;
+  missing: number;
+};
+
+export interface EvolutionStatus {
+  capabilities: EvolutionStatusCapabilities;
+  gaps: number;
+  /** @nullable */
+  latestSnapshotId: number | null;
+  latestRun: EvolutionRun | null;
+  pendingApprovals: number;
+  aiConfigured: boolean;
+}
+
 export type MemoryItemInputCategory = typeof MemoryItemInputCategory[keyof typeof MemoryItemInputCategory];
 
 

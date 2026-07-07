@@ -42,6 +42,7 @@ A self-governing autonomous AI development platform: AI agent modules are built 
 - **jsonSafe**: Drizzle returns `Date` objects but response Zod schemas expect ISO strings — every response `.parse()` wraps data in `jsonSafe()` (JSON round-trip). Skipping it causes 500 ZodErrors on any row with timestamps.
 
 - **Proposal Generator**: `POST /proposals/generate` turns an existing task/improvement into AI-generated code (AI Gateway, taskType `codegeneration`) written exclusively into a new sandbox + draft module; unsafe/protected paths are blocked and audited; no install happens — the normal test→Guardian→Governor→approval chain remains mandatory.
+- **Self-Evolution loop** (see `SELF_EVOLUTION.md`): `POST /evolution/run` executes observe→gap analysis→plan→proposal→test→Guardian→Governor→learn→next-step. Services: selfAwareness (introspection + knowledge graph + capability map), gapAnalysis, evolutionPlanner (AI planning with deterministic fallback), selfLearning (lessons → Memory Engine). When no capability gaps remain, the loop picks up planned backlog tasks without a proposal (backlog-driven evolution). Without an AI key the run stops after planning with status `blocked` (phase `blocked-no-ai`). Unit tests: `pnpm --filter @workspace/api-server run test`.
 
 ## Product
 

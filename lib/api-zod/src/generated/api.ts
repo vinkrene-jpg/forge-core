@@ -1592,3 +1592,227 @@ export const GenerateProposalResponse = zod.object({
 })
 
 
+/**
+ * Scans the workspace read-only (source files, endpoints, database tables, docs, dependencies, config keys) and the database (modules, test runs, audit trail). Persists an introspection snapshot, rebuilds the knowledge graph and refreshes the capability map with fresh evidence.
+ * @summary Analyze Forge's own codebase, database and runtime state
+ */
+export const RunIntrospectionResponse = zod.object({
+  "id": zod.number(),
+  "sourceFiles": zod.number(),
+  "endpoints": zod.number(),
+  "dbTables": zod.number(),
+  "docs": zod.number(),
+  "dependencies": zod.number(),
+  "configKeys": zod.number(),
+  "modules": zod.number(),
+  "testRuns": zod.number(),
+  "auditEntries": zod.number(),
+  "model": zod.record(zod.string(), zod.unknown()),
+  "createdAt": zod.string()
+})
+
+
+/**
+ * @summary Latest self-model snapshot
+ */
+export const GetSelfModelResponse = zod.object({
+  "id": zod.number(),
+  "sourceFiles": zod.number(),
+  "endpoints": zod.number(),
+  "dbTables": zod.number(),
+  "docs": zod.number(),
+  "dependencies": zod.number(),
+  "configKeys": zod.number(),
+  "modules": zod.number(),
+  "testRuns": zod.number(),
+  "auditEntries": zod.number(),
+  "model": zod.record(zod.string(), zod.unknown()),
+  "createdAt": zod.string()
+})
+
+
+/**
+ * @summary Knowledge graph from the latest introspection snapshot
+ */
+export const GetKnowledgeGraphResponse = zod.object({
+  "snapshotId": zod.number(),
+  "nodes": zod.array(zod.object({
+  "nodeType": zod.string(),
+  "key": zod.string(),
+  "label": zod.string(),
+  "meta": zod.record(zod.string(), zod.unknown()).optional()
+})),
+  "edges": zod.array(zod.object({
+  "fromKey": zod.string(),
+  "toKey": zod.string(),
+  "relation": zod.string()
+}))
+})
+
+
+/**
+ * @summary Capability map with status, maturity and evidence
+ */
+export const ListCapabilitiesResponseItem = zod.object({
+  "id": zod.number(),
+  "key": zod.string(),
+  "name": zod.string(),
+  "description": zod.string(),
+  "status": zod.enum(['missing', 'partial', 'working']),
+  "maturity": zod.number(),
+  "dependencies": zod.array(zod.string()),
+  "limitations": zod.string().nullish(),
+  "missingParts": zod.array(zod.string()),
+  "evidence": zod.array(zod.string()),
+  "updatedAt": zod.string()
+})
+export const ListCapabilitiesResponse = zod.array(ListCapabilitiesResponseItem)
+
+
+/**
+ * @summary Ranked gap analysis over the capability map
+ */
+export const GetGapAnalysisResponse = zod.object({
+  "analyzedAt": zod.string(),
+  "gaps": zod.array(zod.object({
+  "capabilityKey": zod.string(),
+  "name": zod.string(),
+  "status": zod.string(),
+  "maturity": zod.number(),
+  "impactScore": zod.number(),
+  "reason": zod.string(),
+  "blocking": zod.array(zod.string()),
+  "risks": zod.array(zod.string()),
+  "missingParts": zod.array(zod.string()).optional()
+}))
+})
+
+
+/**
+ * Picks the highest-impact gap (or the given capability key), and produces a plan with design, steps, affected files, risk, priority, test strategy and rollback strategy. Uses the AI Gateway (task type planning) when configured, with a deterministic rule-based fallback otherwise. Creates a backlog task linked to the plan so the Proposal Generator can pick it up.
+ * @summary Autonomously plan the next development step for the top gap
+ */
+export const CreateEvolutionPlanBody = zod.object({
+  "capabilityKey": zod.string().optional()
+})
+
+export const CreateEvolutionPlanResponse = zod.object({
+  "id": zod.number(),
+  "capabilityKey": zod.string(),
+  "gapSummary": zod.string(),
+  "design": zod.string(),
+  "steps": zod.array(zod.string()),
+  "affectedFiles": zod.array(zod.string()),
+  "risk": zod.string(),
+  "priority": zod.string(),
+  "testStrategy": zod.string(),
+  "rollbackStrategy": zod.string(),
+  "source": zod.enum(['ai', 'fallback']),
+  "status": zod.string(),
+  "taskId": zod.number().nullish(),
+  "createdAt": zod.string()
+})
+
+
+/**
+ * @summary List evolution plans
+ */
+export const ListEvolutionPlansResponseItem = zod.object({
+  "id": zod.number(),
+  "capabilityKey": zod.string(),
+  "gapSummary": zod.string(),
+  "design": zod.string(),
+  "steps": zod.array(zod.string()),
+  "affectedFiles": zod.array(zod.string()),
+  "risk": zod.string(),
+  "priority": zod.string(),
+  "testStrategy": zod.string(),
+  "rollbackStrategy": zod.string(),
+  "source": zod.enum(['ai', 'fallback']),
+  "status": zod.string(),
+  "taskId": zod.number().nullish(),
+  "createdAt": zod.string()
+})
+export const ListEvolutionPlansResponse = zod.array(ListEvolutionPlansResponseItem)
+
+
+/**
+ * Runs the loop introspect → gap analysis → plan → task → proposal (sandbox) → real test run → Guardian review → Governor decision → lessons stored in memory → next-step recommendation. Never installs anything by itself; installation stays behind the existing governance pipeline. If no AI provider is configured the run stops after planning with a clear blocked status.
+ * @summary Execute one full self-evolution iteration
+ */
+export const StartEvolutionRunResponse = zod.object({
+  "id": zod.number(),
+  "status": zod.enum(['running', 'completed', 'blocked', 'failed']),
+  "phase": zod.string(),
+  "snapshotId": zod.number().nullish(),
+  "planId": zod.number().nullish(),
+  "taskId": zod.number().nullish(),
+  "proposalId": zod.number().nullish(),
+  "testRunId": zod.number().nullish(),
+  "guardianVerdict": zod.string().nullish(),
+  "governorDecision": zod.string().nullish(),
+  "lessons": zod.array(zod.string()),
+  "nextStep": zod.string().nullish(),
+  "report": zod.string(),
+  "startedAt": zod.string(),
+  "finishedAt": zod.string().nullish()
+})
+
+
+/**
+ * @summary List evolution runs
+ */
+export const ListEvolutionRunsResponseItem = zod.object({
+  "id": zod.number(),
+  "status": zod.enum(['running', 'completed', 'blocked', 'failed']),
+  "phase": zod.string(),
+  "snapshotId": zod.number().nullish(),
+  "planId": zod.number().nullish(),
+  "taskId": zod.number().nullish(),
+  "proposalId": zod.number().nullish(),
+  "testRunId": zod.number().nullish(),
+  "guardianVerdict": zod.string().nullish(),
+  "governorDecision": zod.string().nullish(),
+  "lessons": zod.array(zod.string()),
+  "nextStep": zod.string().nullish(),
+  "report": zod.string(),
+  "startedAt": zod.string(),
+  "finishedAt": zod.string().nullish()
+})
+export const ListEvolutionRunsResponse = zod.array(ListEvolutionRunsResponseItem)
+
+
+/**
+ * @summary Current self-evolution status overview
+ */
+export const GetEvolutionStatusResponse = zod.object({
+  "capabilities": zod.object({
+  "total": zod.number(),
+  "working": zod.number(),
+  "partial": zod.number(),
+  "missing": zod.number()
+}),
+  "gaps": zod.number(),
+  "latestSnapshotId": zod.number().nullable(),
+  "latestRun": zod.union([zod.object({
+  "id": zod.number(),
+  "status": zod.enum(['running', 'completed', 'blocked', 'failed']),
+  "phase": zod.string(),
+  "snapshotId": zod.number().nullish(),
+  "planId": zod.number().nullish(),
+  "taskId": zod.number().nullish(),
+  "proposalId": zod.number().nullish(),
+  "testRunId": zod.number().nullish(),
+  "guardianVerdict": zod.string().nullish(),
+  "governorDecision": zod.string().nullish(),
+  "lessons": zod.array(zod.string()),
+  "nextStep": zod.string().nullish(),
+  "report": zod.string(),
+  "startedAt": zod.string(),
+  "finishedAt": zod.string().nullish()
+}),zod.null()]),
+  "pendingApprovals": zod.number(),
+  "aiConfigured": zod.boolean()
+})
+
+
