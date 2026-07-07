@@ -1,0 +1,11 @@
+{
+  "name": "forge-console",
+  "version": "0.1.0",
+  "type": "module",
+  "bin": {
+    "forge-console": "./index.js"
+  },
+  "scripts": {
+    "test": "node --test --test-isolation=none"
+  }
+}

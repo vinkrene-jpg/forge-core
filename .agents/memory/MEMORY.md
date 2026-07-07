@@ -1,1 +1,3 @@
 - [Drizzle rows vs response Zod schemas](drizzle-zod-response-dates.md) — always wrap response `.parse()` data in `jsonSafe()`; raw Date objects 500 at runtime while typecheck stays green.
+- [node --test vs permission model](node-test-permission-model.md) — sandboxed test scripts must use `node --test --test-isolation=none`; per-file child processes lose permission-flag values and fail.
+- [Sandbox background processes](sandbox-background-procs.md) — nohup/setsid procs die when a bash tool call exits; run helper servers + their consumers inside one bash call.

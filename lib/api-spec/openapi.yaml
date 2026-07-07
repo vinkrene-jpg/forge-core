@@ -24,6 +24,12 @@ tags:
   - name: memory
   - name: improvements
   - name: dailyloop
+  - name: proposals
+  - name: evolution
+  - name: analysis
+  - name: roadmap
+  - name: knowledgebase
+  - name: docsgen
 paths:
   /healthz:
     get:
@@ -1229,6 +1235,383 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/DailyLoopRun"
+  /proposals:
+    get:
+      operationId: listProposals
+      tags: [proposals]
+      summary: List change proposals
+      responses:
+        "200":
+          description: Proposals
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Proposal"
+  /proposals/{id}:
+    get:
+      operationId: getProposal
+      tags: [proposals]
+      summary: Get a single change proposal
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: integer }
+      responses:
+        "200":
+          description: Proposal
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Proposal"
+        "404":
+          description: Not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+  /proposals/generate:
+    post:
+      operationId: generateProposal
+      tags: [proposals]
+      summary: Generate a code proposal in a new sandbox from a task or improvement
+      description: >
+        Uses the AI Gateway (task type codegeneration) to turn an existing task or
+        improvement into a concrete code proposal. Generated files are written only
+        into a newly created sandbox; protected core paths are always blocked. No
+        installation happens — the normal chain (test runner, Guardian, Governor,
+        owner approval) remains mandatory.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ProposalGenerateInput"
+      responses:
+        "201":
+          description: Proposal generated into a sandbox
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Proposal"
+        "400":
+          description: Invalid request or AI Gateway not configured/failed
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "404":
+          description: Source task or improvement not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+  /evolution/introspect:
+    post:
+      operationId: runIntrospection
+      tags: [evolution]
+      summary: Analyze Forge's own codebase, database and runtime state
+      description: >
+        Scans the workspace read-only (source files, endpoints, database tables,
+        docs, dependencies, config keys) and the database (modules, test runs,
+        audit trail). Persists an introspection snapshot, rebuilds the knowledge
+        graph and refreshes the capability map with fresh evidence.
+      responses:
+        "201":
+          description: Introspection snapshot created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/IntrospectionSnapshot"
+  /evolution/self:
+    get:
+      operationId: getSelfModel
+      tags: [evolution]
+      summary: Latest self-model snapshot
+      responses:
+        "200":
+          description: Latest snapshot
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/IntrospectionSnapshot"
+        "404":
+          description: No introspection has run yet
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+  /evolution/graph:
+    get:
+      operationId: getKnowledgeGraph
+      tags: [evolution]
+      summary: Knowledge graph from the latest introspection snapshot
+      responses:
+        "200":
+          description: Nodes and edges
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/KnowledgeGraph"
+        "404":
+          description: No introspection has run yet
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+  /evolution/capabilities:
+    get:
+      operationId: listCapabilities
+      tags: [evolution]
+      summary: Capability map with status, maturity and evidence
+      responses:
+        "200":
+          description: Capabilities
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Capability"
+  /evolution/gaps:
+    get:
+      operationId: getGapAnalysis
+      tags: [evolution]
+      summary: Ranked gap analysis over the capability map
+      responses:
+        "200":
+          description: Gap analysis
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GapAnalysis"
+  /evolution/plan:
+    post:
+      operationId: createEvolutionPlan
+      tags: [evolution]
+      summary: Autonomously plan the next development step for the top gap
+      description: >
+        Picks the highest-impact gap (or the given capability key), and produces a
+        plan with design, steps, affected files, risk, priority, test strategy and
+        rollback strategy. Uses the AI Gateway (task type planning) when
+        configured, with a deterministic rule-based fallback otherwise. Creates a
+        backlog task linked to the plan so the Proposal Generator can pick it up.
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/EvolutionPlanInput"
+      responses:
+        "201":
+          description: Plan created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/EvolutionPlan"
+        "400":
+          description: No gaps to plan or invalid capability key
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+  /evolution/plans:
+    get:
+      operationId: listEvolutionPlans
+      tags: [evolution]
+      summary: List evolution plans
+      responses:
+        "200":
+          description: Plans
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/EvolutionPlan"
+  /evolution/run:
+    post:
+      operationId: startEvolutionRun
+      tags: [evolution]
+      summary: Execute one full self-evolution iteration
+      description: >
+        Runs the loop introspect → gap analysis → plan → task → proposal
+        (sandbox) → real test run → Guardian review → Governor decision → lessons
+        stored in memory → next-step recommendation. Never installs anything by
+        itself; installation stays behind the existing governance pipeline. If no
+        AI provider is configured the run stops after planning with a clear
+        blocked status.
+      responses:
+        "201":
+          description: Evolution run finished (completed or blocked)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/EvolutionRun"
+  /evolution/runs:
+    get:
+      operationId: listEvolutionRuns
+      tags: [evolution]
+      summary: List evolution runs
+      responses:
+        "200":
+          description: Runs
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/EvolutionRun"
+  /evolution/status:
+    get:
+      operationId: getEvolutionStatus
+      tags: [evolution]
+      summary: Current self-evolution status overview
+      responses:
+        "200":
+          description: Status
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/EvolutionStatus"
+  /evolution/scheduler:
+    get:
+      operationId: getEvolutionScheduler
+      tags: [evolution]
+      summary: Evolution scheduler status
+      responses:
+        "200":
+          description: Scheduler status
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SchedulerStatus"
+    post:
+      operationId: configureEvolutionScheduler
+      tags: [evolution]
+      summary: Enable/disable the autonomous evolution scheduler
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/SchedulerConfig"
+      responses:
+        "200":
+          description: Updated scheduler status
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SchedulerStatus"
+        "400":
+          description: Invalid configuration
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+  /analysis/quality:
+    get:
+      operationId: getQualityAnalysis
+      tags: [analysis]
+      summary: Static quality analysis of Forge's own code
+      responses:
+        "200":
+          description: Quality report
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AnalysisReport"
+  /analysis/debt:
+    get:
+      operationId: getTechnicalDebtAnalysis
+      tags: [analysis]
+      summary: Technical debt analysis of Forge's own code
+      responses:
+        "200":
+          description: Debt report
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AnalysisReport"
+  /analysis/dependencies:
+    get:
+      operationId: getDependencyAnalysis
+      tags: [analysis]
+      summary: Workspace dependency analysis (versions, mismatches)
+      responses:
+        "200":
+          description: Dependency report
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DependencyReport"
+  /analysis/architecture:
+    get:
+      operationId: getArchitectureValidation
+      tags: [analysis]
+      summary: Validate architecture rules against the current self-model
+      responses:
+        "200":
+          description: Architecture validation report
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ArchitectureValidation"
+  /analysis/refactor-plan:
+    post:
+      operationId: createRefactorPlan
+      tags: [analysis]
+      summary: Turn quality/debt findings into refactoring improvements (backlog)
+      responses:
+        "201":
+          description: Improvements created from findings
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/RefactorPlanResult"
+  /roadmap:
+    get:
+      operationId: getRoadmap
+      tags: [roadmap]
+      summary: Generated evolution roadmap (gaps, debt, backlog, improvements)
+      responses:
+        "200":
+          description: Roadmap
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Roadmap"
+  /knowledge-base/search:
+    get:
+      operationId: searchKnowledgeBase
+      tags: [knowledgebase]
+      summary: Search the internal knowledge base (graph, memory, docs, capabilities)
+      parameters:
+        - name: q
+          in: query
+          required: true
+          schema: { type: string }
+      responses:
+        "200":
+          description: Search results
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/KnowledgeBaseResult"
+  /docs/generate:
+    post:
+      operationId: generateDocumentation
+      tags: [docsgen]
+      summary: Generate SELF_MODEL documentation from the current self-model
+      responses:
+        "201":
+          description: Documentation generated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DocsGenerated"
 components:
   schemas:
     HealthStatus:
@@ -1838,6 +2221,172 @@ components:
           items: { type: string }
         taskId: { type: ["integer", "null"] }
         createdAt: { type: string }
+    IntrospectionSnapshot:
+      type: object
+      required:
+        [id, sourceFiles, endpoints, dbTables, docs, dependencies, configKeys, modules, testRuns, auditEntries, model, createdAt]
+      properties:
+        id: { type: integer }
+        sourceFiles: { type: integer }
+        endpoints: { type: integer }
+        dbTables: { type: integer }
+        docs: { type: integer }
+        dependencies: { type: integer }
+        configKeys: { type: integer }
+        modules: { type: integer }
+        testRuns: { type: integer }
+        auditEntries: { type: integer }
+        model:
+          type: object
+          additionalProperties: true
+        createdAt: { type: string }
+    KnowledgeGraph:
+      type: object
+      required: [snapshotId, nodes, edges]
+      properties:
+        snapshotId: { type: integer }
+        nodes:
+          type: array
+          items:
+            type: object
+            required: [nodeType, key, label]
+            properties:
+              nodeType: { type: string }
+              key: { type: string }
+              label: { type: string }
+              meta:
+                type: object
+                additionalProperties: true
+        edges:
+          type: array
+          items:
+            type: object
+            required: [fromKey, toKey, relation]
+            properties:
+              fromKey: { type: string }
+              toKey: { type: string }
+              relation: { type: string }
+    Capability:
+      type: object
+      required: [id, key, name, description, status, maturity, dependencies, missingParts, evidence, updatedAt]
+      properties:
+        id: { type: integer }
+        key: { type: string }
+        name: { type: string }
+        description: { type: string }
+        status:
+          type: string
+          enum: [missing, partial, working]
+        maturity: { type: integer }
+        dependencies:
+          type: array
+          items: { type: string }
+        limitations: { type: ["string", "null"] }
+        missingParts:
+          type: array
+          items: { type: string }
+        evidence:
+          type: array
+          items: { type: string }
+        updatedAt: { type: string }
+    GapAnalysis:
+      type: object
+      required: [analyzedAt, gaps]
+      properties:
+        analyzedAt: { type: string }
+        gaps:
+          type: array
+          items:
+            type: object
+            required: [capabilityKey, name, status, maturity, impactScore, reason, blocking, risks]
+            properties:
+              capabilityKey: { type: string }
+              name: { type: string }
+              status: { type: string }
+              maturity: { type: integer }
+              impactScore: { type: integer }
+              reason: { type: string }
+              blocking:
+                type: array
+                items: { type: string }
+              risks:
+                type: array
+                items: { type: string }
+              missingParts:
+                type: array
+                items: { type: string }
+    EvolutionPlanInput:
+      type: object
+      properties:
+        capabilityKey: { type: string }
+    EvolutionPlan:
+      type: object
+      required:
+        [id, capabilityKey, gapSummary, design, steps, affectedFiles, risk, priority, testStrategy, rollbackStrategy, source, status, createdAt]
+      properties:
+        id: { type: integer }
+        capabilityKey: { type: string }
+        gapSummary: { type: string }
+        design: { type: string }
+        steps:
+          type: array
+          items: { type: string }
+        affectedFiles:
+          type: array
+          items: { type: string }
+        risk: { type: string }
+        priority: { type: string }
+        testStrategy: { type: string }
+        rollbackStrategy: { type: string }
+        source:
+          type: string
+          enum: [ai, fallback]
+        status: { type: string }
+        taskId: { type: ["integer", "null"] }
+        createdAt: { type: string }
+    EvolutionRun:
+      type: object
+      required: [id, status, phase, lessons, report, startedAt]
+      properties:
+        id: { type: integer }
+        status:
+          type: string
+          enum: [running, completed, blocked, failed]
+        phase: { type: string }
+        snapshotId: { type: ["integer", "null"] }
+        planId: { type: ["integer", "null"] }
+        taskId: { type: ["integer", "null"] }
+        proposalId: { type: ["integer", "null"] }
+        testRunId: { type: ["integer", "null"] }
+        guardianVerdict: { type: ["string", "null"] }
+        governorDecision: { type: ["string", "null"] }
+        lessons:
+          type: array
+          items: { type: string }
+        nextStep: { type: ["string", "null"] }
+        report: { type: string }
+        startedAt: { type: string }
+        finishedAt: { type: ["string", "null"] }
+    EvolutionStatus:
+      type: object
+      required: [capabilities, gaps, latestSnapshotId, latestRun, pendingApprovals, aiConfigured]
+      properties:
+        capabilities:
+          type: object
+          required: [total, working, partial, missing]
+          properties:
+            total: { type: integer }
+            working: { type: integer }
+            partial: { type: integer }
+            missing: { type: integer }
+        gaps: { type: integer }
+        latestSnapshotId: { type: ["integer", "null"] }
+        latestRun:
+          oneOf:
+            - $ref: "#/components/schemas/EvolutionRun"
+            - type: "null"
+        pendingApprovals: { type: integer }
+        aiConfigured: { type: boolean }
     MemoryItemInput:
       type: object
       required: [category, title, content]
@@ -1909,3 +2458,179 @@ components:
         approvalsRequested: { type: ["integer", "null"] }
         startedAt: { type: string }
         finishedAt: { type: ["string", "null"] }
+    Proposal:
+      type: object
+      required: [id, sourceType, sourceId, prompt, status, riskEstimate, filesGenerated, blockedFiles, createdAt]
+      properties:
+        id: { type: integer }
+        sourceType: { type: string }
+        sourceId: { type: integer }
+        prompt: { type: string }
+        provider: { type: ["string", "null"] }
+        model: { type: ["string", "null"] }
+        status: { type: string }
+        summary: { type: ["string", "null"] }
+        riskEstimate: { type: string }
+        moduleId: { type: ["integer", "null"] }
+        sandboxId: { type: ["integer", "null"] }
+        filesGenerated:
+          type: array
+          items: { type: string }
+        blockedFiles:
+          type: array
+          items: { type: string }
+        errorMessage: { type: ["string", "null"] }
+        createdAt: { type: string }
+    ProposalGenerateInput:
+      type: object
+      required: [sourceType, sourceId]
+      properties:
+        sourceType:
+          type: string
+          enum: [task, improvement]
+        sourceId: { type: integer }
+        instructions: { type: string, maxLength: 4000 }
+    Finding:
+      type: object
+      required: [code, severity, message]
+      properties:
+        code: { type: string }
+        severity:
+          type: string
+          enum: [info, warning, critical]
+        file: { type: ["string", "null"] }
+        message: { type: string }
+    AnalysisReport:
+      type: object
+      required: [generatedAt, analyzer, filesScanned, findings, summary]
+      properties:
+        generatedAt: { type: string }
+        analyzer: { type: string }
+        filesScanned: { type: integer }
+        score: { type: ["integer", "null"] }
+        findings:
+          type: array
+          items:
+            $ref: "#/components/schemas/Finding"
+        summary: { type: string }
+    DependencyReport:
+      type: object
+      required: [generatedAt, packagesScanned, dependencies, mismatches, findings]
+      properties:
+        generatedAt: { type: string }
+        packagesScanned: { type: integer }
+        dependencies:
+          type: array
+          items:
+            type: object
+            required: [name, versions, usedBy]
+            properties:
+              name: { type: string }
+              versions:
+                type: array
+                items: { type: string }
+              usedBy:
+                type: array
+                items: { type: string }
+        mismatches:
+          type: array
+          items: { type: string }
+        findings:
+          type: array
+          items:
+            $ref: "#/components/schemas/Finding"
+    ArchitectureValidation:
+      type: object
+      required: [generatedAt, rulesChecked, passed, violations, results]
+      properties:
+        generatedAt: { type: string }
+        rulesChecked: { type: integer }
+        passed: { type: boolean }
+        violations: { type: integer }
+        results:
+          type: array
+          items:
+            type: object
+            required: [rule, passed, detail]
+            properties:
+              rule: { type: string }
+              passed: { type: boolean }
+              detail: { type: string }
+    RefactorPlanResult:
+      type: object
+      required: [created, skippedExisting, improvementIds, summary]
+      properties:
+        created: { type: integer }
+        skippedExisting: { type: integer }
+        improvementIds:
+          type: array
+          items: { type: integer }
+        summary: { type: string }
+    Roadmap:
+      type: object
+      required: [generatedAt, items, summary]
+      properties:
+        generatedAt: { type: string }
+        summary: { type: string }
+        items:
+          type: array
+          items:
+            type: object
+            required: [rank, kind, title, priority, rationale]
+            properties:
+              rank: { type: integer }
+              kind:
+                type: string
+                enum: [capability_gap, backlog_task, improvement, debt, maintenance]
+              refId: { type: ["integer", "null"] }
+              title: { type: string }
+              priority:
+                type: string
+                enum: [low, medium, high, critical]
+              rationale: { type: string }
+    KnowledgeBaseResult:
+      type: object
+      required: [query, total, results]
+      properties:
+        query: { type: string }
+        total: { type: integer }
+        results:
+          type: array
+          items:
+            type: object
+            required: [sourceType, title, snippet]
+            properties:
+              sourceType:
+                type: string
+                enum: [knowledge_node, memory_item, capability, doc, audit_log]
+              refKey: { type: ["string", "null"] }
+              title: { type: string }
+              snippet: { type: string }
+    DocsGenerated:
+      type: object
+      required: [file, bytes, sections, generatedAt]
+      properties:
+        file: { type: string }
+        bytes: { type: integer }
+        sections:
+          type: array
+          items: { type: string }
+        generatedAt: { type: string }
+    SchedulerStatus:
+      type: object
+      required: [enabled, intervalMinutes, running, ticks, lastRunId, lastTickAt, nextTickAt]
+      properties:
+        enabled: { type: boolean }
+        intervalMinutes: { type: integer }
+        running: { type: boolean }
+        ticks: { type: integer }
+        lastRunId: { type: ["integer", "null"] }
+        lastTickAt: { type: ["string", "null"] }
+        nextTickAt: { type: ["string", "null"] }
+        lastError: { type: ["string", "null"] }
+    SchedulerConfig:
+      type: object
+      required: [enabled]
+      properties:
+        enabled: { type: boolean }
+        intervalMinutes: { type: integer, minimum: 1, maximum: 10080 }

@@ -7,7 +7,8 @@
     "dev": "export NODE_ENV=development && pnpm run build && pnpm run start",
     "build": "node ./build.mjs",
     "start": "node --enable-source-maps ./dist/index.mjs",
-    "typecheck": "tsc -p tsconfig.json --noEmit"
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "test": "esbuild src/tests/evolution.test.ts src/tests/analysis.test.ts --bundle --platform=node --format=cjs --outdir=dist/tests --out-extension:.js=.cjs --log-level=warning && NODE_ENV=production node --test dist/tests/*.test.cjs"
   },
   "dependencies": {
     "@workspace/api-zod": "workspace:*",

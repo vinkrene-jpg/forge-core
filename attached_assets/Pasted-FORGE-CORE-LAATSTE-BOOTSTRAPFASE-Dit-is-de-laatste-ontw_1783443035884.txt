@@ -1,0 +1,170 @@
+FORGE CORE – LAATSTE BOOTSTRAPFASE
+
+Dit is de laatste ontwikkelopdracht voor Replit.
+
+Doel:
+Bouw Forge Core zodanig af dat Forge na migratie volledig zelfstandig zijn eigen verdere ontwikkeling uitvoert.
+
+Na deze opdracht mogen geen nieuwe Forge-capabilities meer door Replit worden gebouwd.
+
+Alle mechanismen die Forge nodig heeft om zichzelf verder te ontwikkelen moeten vooraf aanwezig zijn.
+
+Replit bouwt dus niet de volgende capabilities.
+
+Replit bouwt het complete evolutiemechanisme.
+
+Na migratie is Forge verantwoordelijk voor zijn eigen verdere groei.
+
+Architectuurprincipe
+
+Na oplevering geldt:
+
+Forge ontwikkelt Forge.
+
+Niet Replit.
+
+Forge bepaalt zelfstandig:
+
+- welke capability ontbreekt;
+- waarom deze ontbreekt;
+- hoe deze ontworpen moet worden;
+- hoe deze gebouwd moet worden;
+- hoe deze getest moet worden;
+- hoe deze beoordeeld moet worden;
+- wanneer deze veilig genoeg is;
+- wanneer deze geïnstalleerd mag worden.
+
+Dit proces moet volledig binnen Forge plaatsvinden.
+
+Geen nieuwe bootstrap-opdrachten meer.
+
+Verplichte bootstraponderdelen
+
+Replit moet alle onderstaande onderdelen vooraf volledig implementeren:
+
+- Self Awareness
+- Knowledge Graph
+- Capability Registry
+- Capability Maturity Assessment
+- Gap Analysis
+- Evolution Planner
+- Proposal Generator
+- Architecture Designer
+- Code Generator
+- Documentation Generator
+- Test Generator
+- Sandbox Builder
+- Real Test Runner
+- AI Guardian
+- Governor
+- Approval Workflow
+- Rollback
+- Audit
+- Memory Engine
+- Learning Engine
+- Evolution Scheduler
+- Capability Prioritizer
+- Refactoring Engine
+- Dependency Analyzer
+- Architecture Validator
+- Quality Analyzer
+- Technical Debt Analyzer
+- Roadmap Generator
+- Internal Knowledge Base
+
+Deze lijst moet volledig aanwezig zijn vóór de migratie.
+
+Na migratie mogen deze onderdelen zichzelf verder verbeteren.
+
+Autonome evolutie
+
+Na migratie voert Forge zelfstandig een permanente evolutielus uit.
+
+Observe
+Understand
+Analyse
+Evaluate
+Determine missing capability
+Design improvement
+Generate implementation
+Generate tests
+Generate documentation
+Build in sandbox
+Run tests
+Guardian review
+Governor decision
+Approval indien vereist
+Install
+Rollback indien nodig
+Audit
+Learn
+Update knowledge graph
+Update capability map
+Repeat
+
+Deze lus moet zonder Replit kunnen blijven draaien.
+
+Menselijke rol
+
+Voor Forge zelf:
+
+Geen inhoudelijke ontwikkelopdrachten meer.
+
+Forge bepaalt zijn eigen verdere ontwikkeling.
+
+Menselijke goedkeuring blijft uitsluitend nodig wanneer de bestaande governance dit vereist.
+
+Voor externe software
+
+Pas wanneer Forge zichzelf als voldoende volwassen beoordeelt, verandert zijn primaire taak.
+
+Vanaf dat moment mag de eigenaar opdrachten geven zoals:
+
+- bouw een ERP;
+- bouw een CRM;
+- bouw een mobiele app;
+- bouw een inspectieplatform.
+
+Forge bepaalt daarna zelfstandig:
+
+- requirements;
+- architectuur;
+- datamodel;
+- API;
+- frontend;
+- backend;
+- documentatie;
+- tests;
+- deployment;
+- onderhoud.
+
+Belangrijk
+
+Forge mag zichzelf onbeperkt blijven verbeteren.
+
+Forge mag geen afhankelijkheid meer hebben van Replit voor nieuwe Forge-functionaliteit.
+
+Replit is uitsluitend verantwoordelijk voor deze laatste bootstrapfase.
+
+Na deze fase is Forge zijn eigen software engineer.
+
+Acceptatiecriterium
+
+Deze opdracht is uitsluitend voltooid wanneer bewezen is dat:
+
+1. Forge zonder nieuwe Replit-opdrachten nieuwe interne capabilities kan ontwikkelen.
+2. Forge zelfstandig zijn capability map blijft uitbreiden.
+3. Forge zelfstandig ontbrekende capabilities kiest.
+4. Forge zelfstandig nieuwe Forge-modules ontwerpt.
+5. Forge zelfstandig code genereert.
+6. Forge zelfstandig tests genereert.
+7. Forge zelfstandig documentatie genereert.
+8. Forge zelfstandig leert van iedere iteratie.
+9. Forge zelfstandig zijn eigen architectuur verder ontwikkelt.
+10. Replit daarna niet meer nodig is voor de verdere ontwikkeling van Forge zelf.
+
+Rapporteer uitsluitend feitelijk bewijs.
+
+Geen aannames.
+Geen marketing.
+Geen 'klaar' zonder aantoonbare end-to-end demonstratie van autonome zelfontwikkeling.

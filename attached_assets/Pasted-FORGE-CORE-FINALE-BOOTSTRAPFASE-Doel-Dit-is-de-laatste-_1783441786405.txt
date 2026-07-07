@@ -1,0 +1,282 @@
+FORGE CORE – FINALE BOOTSTRAPFASE
+
+Doel:
+Dit is de laatste ontwikkelopdracht die door Replit wordt uitgevoerd.
+
+Na voltooiing moet Forge Core zelfstandig kunnen doorgroeien tot een taakvolwassen software engineering platform, zonder afhankelijk te zijn van Replit voor verdere architectuur, ontwerp of softwareontwikkeling.
+
+Vanaf dit moment is Replit uitsluitend nog een bootstrap-mechanisme.
+
+Na oplevering moet Forge zelf verantwoordelijk zijn voor zijn verdere evolutie.
+
+Belangrijk uitgangspunt:
+Bouw geen eindfunctionaliteit voor FPS, Sparki, VPS, backups, Microsoft, Azure, productie of klanten.
+
+Bouw uitsluitend de ontbrekende mogelijkheden waardoor Forge daarna zelf nieuwe mogelijkheden kan ontwikkelen.
+
+Na deze opdracht mag Forge zichzelf uitbreiden.
+Niet Replit.
+
+Einddoel:
+Forge moet kunnen doorgroeien naar een volledig software engineering platform dat uiteindelijk complete softwareproducten kan ontwerpen, bouwen, testen, beoordelen, verbeteren en onderhouden.
+
+Niet alleen voor FPS.
+Generiek.
+
+Ontwikkelcyclus:
+Na deze opdracht moet Forge zelfstandig de volgende cyclus kunnen uitvoeren:
+
+Observe
+Understand
+Evaluate
+Prioritize
+Design
+Generate
+Review
+Test
+Verify
+Improve
+Learn
+Repeat
+
+Deze cyclus moet herhaalbaar zijn.
+
+Vereiste capabilities:
+
+1. Self Awareness
+
+Forge moet volledig inzicht hebben in zichzelf.
+
+Minimaal:
+- volledige broncode lezen;
+- architectuur herkennen;
+- modules herkennen;
+- endpoints herkennen;
+- database-tabellen herkennen;
+- configuratie herkennen;
+- documentatie herkennen;
+- afhankelijkheden herkennen;
+- testdekking herkennen;
+- versiegeschiedenis herkennen.
+
+Forge moet deze informatie kunnen actualiseren.
+
+2. Knowledge Graph
+
+Forge bouwt een intern kennisnetwerk.
+
+Leg relaties vast tussen:
+- modules;
+- bestanden;
+- services;
+- API's;
+- database;
+- documentatie;
+- tests;
+- architectuur;
+- afhankelijkheden.
+
+Niet alleen opslaan.
+Ook bruikbaar maken voor analyse en planning.
+
+3. Capability Map
+
+Forge moet zijn eigen mogelijkheden kennen.
+
+Voor iedere capability:
+- status;
+- maturity;
+- afhankelijkheden;
+- beperkingen;
+- ontbrekende onderdelen;
+- bewijs uit code, endpoint, test of auditlog.
+
+4. Gap Analysis
+
+Forge moet zelfstandig kunnen bepalen:
+- welke capability ontbreekt;
+- waarom die ontbreekt;
+- wat verdere evolutie verhindert;
+- welke capability de grootste vooruitgang oplevert;
+- welke risico's daarbij horen.
+
+5. Autonomous Planning
+
+Forge bepaalt zelfstandig:
+- volgende ontwikkelstap;
+- benodigde modules;
+- betroffen bestanden;
+- risico;
+- prioriteit;
+- implementatievolgorde;
+- teststrategie;
+- rollbackstrategie.
+
+6. Proposal Generator
+
+Forge genereert zelfstandig:
+- ontwerp;
+- implementatieplan;
+- codevoorstel;
+- documentatie;
+- migraties;
+- tests.
+
+Alles uitsluitend binnen een sandbox.
+
+Forge mag nooit direct de locked core of productiecode wijzigen.
+
+7. Autonomous Sandbox Development
+
+Forge ontwikkelt uitsluitend binnen sandboxen.
+
+Alle gegenereerde bestanden moeten in een toegewezen sandbox terechtkomen.
+
+Geen directe writes buiten sandbox.
+Geen directe installaties.
+Geen productiewijzigingen.
+
+8. Governance Pipeline
+
+Gebruik de bestaande beveiligings- en kwaliteitslaag:
+
+- Real Test Runner;
+- AI Guardian Reviewer;
+- Governor;
+- Owner Approval;
+- Rollback;
+- Audit Log;
+- Memory Engine.
+
+De Proposal Generator mag niets installeren.
+Installatie mag alleen via de bestaande governance pipeline.
+
+9. Self Learning
+
+Na iedere iteratie leert Forge:
+- wat werkte;
+- wat faalde;
+- waarom het faalde;
+- welke patronen zichtbaar zijn;
+- welke lessen moeten worden opgeslagen;
+- hoe toekomstige iteraties beter kunnen.
+
+Deze lessen moeten terugkomen in latere planning en voorstellen.
+
+10. Recursive Evolution
+
+Forge moet zichzelf blijven verbeteren.
+
+Iedere toegevoegde capability moet daarna zelf beschikbaar zijn voor verdere verbetering van Forge.
+
+Forge moet dus niet alleen één voorstel kunnen maken, maar een herhaalbare evolutielus krijgen.
+
+Zelfstandigheid:
+Na deze bootstrapfase mag Forge zelfstandig:
+
+- nieuwe capabilities bedenken;
+- ontbrekende onderdelen identificeren;
+- voorstellen maken;
+- code genereren;
+- tests genereren;
+- documentatie genereren;
+- resultaten beoordelen;
+- verbeteringen plannen;
+- zijn eigen roadmap aanpassen.
+
+Dit moet kunnen zonder nieuwe inhoudelijke ontwikkelopdrachten aan Replit.
+
+Rol van de eigenaar:
+De eigenaar bepaalt uitsluitend:
+- visie;
+- functionele doelen;
+- ethische grenzen;
+- beveiligingsbeleid;
+- productiegoedkeuring.
+
+De eigenaar hoeft niet meer technische implementatieopdrachten te schrijven.
+
+Rol van Forge:
+Forge bepaalt daarna zelfstandig:
+- wat de volgende capability is;
+- waarom die capability nodig is;
+- hoe die gebouwd wordt;
+- welke architectuur nodig is;
+- welke code moet worden geschreven;
+- welke tests nodig zijn;
+- wanneer iets gereed is;
+- of iets veilig genoeg is om voor owner approval aan te bieden.
+
+Belangrijke beperkingen:
+- Geen productie-acties.
+- Geen VPS-acties.
+- Geen Azure-acties.
+- Geen FortiGate-acties.
+- Geen e-mailacties.
+- Geen secrets tonen.
+- Geen directe wijzigingen buiten sandbox.
+- Geen automatische installatie zonder governance.
+- Geen wijzigingen aan locked core zonder expliciete bestaande core-governance.
+- Geen nieuwe FPS-, Sparki- of klantfunctionaliteit bouwen.
+
+Deliverables:
+1. Self Awareness-service.
+2. Knowledge Graph-service.
+3. Capability Map-service.
+4. Gap Analysis-service.
+5. Autonomous Planner.
+6. Proposal Generator.
+7. Sandbox Proposal Writer.
+8. Self Learning-logica.
+9. Endpoints of CLI-commando's waarmee Forge zijn eigen evolutiestatus kan tonen.
+10. Tests voor alle bovenstaande onderdelen.
+11. Documentatie van de nieuwe self-evolution flow.
+12. Een feitelijk eindrapport.
+
+Acceptance criteria:
+De opdracht is pas klaar wanneer Forge zelfstandig kan:
+
+1. zichzelf analyseren;
+2. ontbrekende capabilities bepalen;
+3. de eerstvolgende noodzakelijke capability kiezen;
+4. daar een ontwerp voor maken;
+5. daar een codevoorstel voor genereren;
+6. dat voorstel in een sandbox schrijven;
+7. tests genereren of koppelen;
+8. de bestaande Real Test Runner laten draaien;
+9. AI Guardian Review laten uitvoeren;
+10. Governor-beslissing laten nemen;
+11. owner approval vragen indien nodig;
+12. auditlogs schrijven;
+13. lessen opslaan;
+14. daarna zelfstandig de volgende evolutiestap bepalen.
+
+Verificatie:
+Voer na implementatie een volledige demonstratie uit met één neutrale self-evolution taak.
+
+Bijvoorbeeld:
+- Forge detecteert een ontbrekende kleine interne capability.
+- Forge maakt zelf een plan.
+- Forge genereert een proposal.
+- Forge schrijft het voorstel in een sandbox.
+- Forge draait tests.
+- Forge laat Guardian en Governor beslissen.
+- Forge schrijft auditlogs.
+- Forge slaat lessen op.
+- Forge bepaalt daarna de volgende stap.
+
+Rapporteer uitsluitend feitelijk:
+- wat werkt;
+- wat deels werkt;
+- wat ontbreekt;
+- welk bewijs er is;
+- welke endpoints, scripts, tests of auditregels dit aantonen.
+
+Geen marketingtaal.
+Geen aannames.
+Geen “klaar” verklaren zonder bewijs.
+
+Eindcriterium:
+Deze opdracht is uitsluitend voltooid wanneer Forge na de laatste commit zelfstandig kan doorgroeien zonder nieuwe ontwikkelopdrachten aan Replit.
+
+Als dat niet volledig lukt, rapporteer exact welke capability nog ontbreekt en waarom.

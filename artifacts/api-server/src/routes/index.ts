@@ -10,6 +10,9 @@ import sandboxesRouter from "./sandboxes";
 import governanceRouter from "./governance";
 import memoryRouter from "./memory";
 import dailyLoopRouter from "./dailyLoop";
+import proposalsRouter from "./proposals";
+import evolutionRouter from "./evolution";
+import analysisRouter from "./analysis";
 
 const router: IRouter = Router();
 
@@ -24,5 +27,8 @@ router.use(sandboxesRouter);
 router.use(governanceRouter);
 router.use(memoryRouter);
 router.use(dailyLoopRouter);
+router.use(proposalsRouter);
+router.use(evolutionRouter);
+router.use(analysisRouter);
 
 export default router;

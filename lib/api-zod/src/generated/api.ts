@@ -1510,3 +1510,479 @@ export const StartDailyLoopResponse = zod.object({
 })
 
 
+/**
+ * @summary List change proposals
+ */
+export const ListProposalsResponseItem = zod.object({
+  "id": zod.number(),
+  "sourceType": zod.string(),
+  "sourceId": zod.number(),
+  "prompt": zod.string(),
+  "provider": zod.string().nullish(),
+  "model": zod.string().nullish(),
+  "status": zod.string(),
+  "summary": zod.string().nullish(),
+  "riskEstimate": zod.string(),
+  "moduleId": zod.number().nullish(),
+  "sandboxId": zod.number().nullish(),
+  "filesGenerated": zod.array(zod.string()),
+  "blockedFiles": zod.array(zod.string()),
+  "errorMessage": zod.string().nullish(),
+  "createdAt": zod.string()
+})
+export const ListProposalsResponse = zod.array(ListProposalsResponseItem)
+
+
+/**
+ * @summary Get a single change proposal
+ */
+export const GetProposalParams = zod.object({
+  "id": zod.coerce.number()
+})
+
+export const GetProposalResponse = zod.object({
+  "id": zod.number(),
+  "sourceType": zod.string(),
+  "sourceId": zod.number(),
+  "prompt": zod.string(),
+  "provider": zod.string().nullish(),
+  "model": zod.string().nullish(),
+  "status": zod.string(),
+  "summary": zod.string().nullish(),
+  "riskEstimate": zod.string(),
+  "moduleId": zod.number().nullish(),
+  "sandboxId": zod.number().nullish(),
+  "filesGenerated": zod.array(zod.string()),
+  "blockedFiles": zod.array(zod.string()),
+  "errorMessage": zod.string().nullish(),
+  "createdAt": zod.string()
+})
+
+
+/**
+ * Uses the AI Gateway (task type codegeneration) to turn an existing task or improvement into a concrete code proposal. Generated files are written only into a newly created sandbox; protected core paths are always blocked. No installation happens — the normal chain (test runner, Guardian, Governor, owner approval) remains mandatory.
+ * @summary Generate a code proposal in a new sandbox from a task or improvement
+ */
+export const generateProposalBodyInstructionsMax = 4000;
+
+
+
+export const GenerateProposalBody = zod.object({
+  "sourceType": zod.enum(['task', 'improvement']),
+  "sourceId": zod.number(),
+  "instructions": zod.string().max(generateProposalBodyInstructionsMax).optional()
+})
+
+export const GenerateProposalResponse = zod.object({
+  "id": zod.number(),
+  "sourceType": zod.string(),
+  "sourceId": zod.number(),
+  "prompt": zod.string(),
+  "provider": zod.string().nullish(),
+  "model": zod.string().nullish(),
+  "status": zod.string(),
+  "summary": zod.string().nullish(),
+  "riskEstimate": zod.string(),
+  "moduleId": zod.number().nullish(),
+  "sandboxId": zod.number().nullish(),
+  "filesGenerated": zod.array(zod.string()),
+  "blockedFiles": zod.array(zod.string()),
+  "errorMessage": zod.string().nullish(),
+  "createdAt": zod.string()
+})
+
+
+/**
+ * Scans the workspace read-only (source files, endpoints, database tables, docs, dependencies, config keys) and the database (modules, test runs, audit trail). Persists an introspection snapshot, rebuilds the knowledge graph and refreshes the capability map with fresh evidence.
+ * @summary Analyze Forge's own codebase, database and runtime state
+ */
+export const RunIntrospectionResponse = zod.object({
+  "id": zod.number(),
+  "sourceFiles": zod.number(),
+  "endpoints": zod.number(),
+  "dbTables": zod.number(),
+  "docs": zod.number(),
+  "dependencies": zod.number(),
+  "configKeys": zod.number(),
+  "modules": zod.number(),
+  "testRuns": zod.number(),
+  "auditEntries": zod.number(),
+  "model": zod.record(zod.string(), zod.unknown()),
+  "createdAt": zod.string()
+})
+
+
+/**
+ * @summary Latest self-model snapshot
+ */
+export const GetSelfModelResponse = zod.object({
+  "id": zod.number(),
+  "sourceFiles": zod.number(),
+  "endpoints": zod.number(),
+  "dbTables": zod.number(),
+  "docs": zod.number(),
+  "dependencies": zod.number(),
+  "configKeys": zod.number(),
+  "modules": zod.number(),
+  "testRuns": zod.number(),
+  "auditEntries": zod.number(),
+  "model": zod.record(zod.string(), zod.unknown()),
+  "createdAt": zod.string()
+})
+
+
+/**
+ * @summary Knowledge graph from the latest introspection snapshot
+ */
+export const GetKnowledgeGraphResponse = zod.object({
+  "snapshotId": zod.number(),
+  "nodes": zod.array(zod.object({
+  "nodeType": zod.string(),
+  "key": zod.string(),
+  "label": zod.string(),
+  "meta": zod.record(zod.string(), zod.unknown()).optional()
+})),
+  "edges": zod.array(zod.object({
+  "fromKey": zod.string(),
+  "toKey": zod.string(),
+  "relation": zod.string()
+}))
+})
+
+
+/**
+ * @summary Capability map with status, maturity and evidence
+ */
+export const ListCapabilitiesResponseItem = zod.object({
+  "id": zod.number(),
+  "key": zod.string(),
+  "name": zod.string(),
+  "description": zod.string(),
+  "status": zod.enum(['missing', 'partial', 'working']),
+  "maturity": zod.number(),
+  "dependencies": zod.array(zod.string()),
+  "limitations": zod.string().nullish(),
+  "missingParts": zod.array(zod.string()),
+  "evidence": zod.array(zod.string()),
+  "updatedAt": zod.string()
+})
+export const ListCapabilitiesResponse = zod.array(ListCapabilitiesResponseItem)
+
+
+/**
+ * @summary Ranked gap analysis over the capability map
+ */
+export const GetGapAnalysisResponse = zod.object({
+  "analyzedAt": zod.string(),
+  "gaps": zod.array(zod.object({
+  "capabilityKey": zod.string(),
+  "name": zod.string(),
+  "status": zod.string(),
+  "maturity": zod.number(),
+  "impactScore": zod.number(),
+  "reason": zod.string(),
+  "blocking": zod.array(zod.string()),
+  "risks": zod.array(zod.string()),
+  "missingParts": zod.array(zod.string()).optional()
+}))
+})
+
+
+/**
+ * Picks the highest-impact gap (or the given capability key), and produces a plan with design, steps, affected files, risk, priority, test strategy and rollback strategy. Uses the AI Gateway (task type planning) when configured, with a deterministic rule-based fallback otherwise. Creates a backlog task linked to the plan so the Proposal Generator can pick it up.
+ * @summary Autonomously plan the next development step for the top gap
+ */
+export const CreateEvolutionPlanBody = zod.object({
+  "capabilityKey": zod.string().optional()
+})
+
+export const CreateEvolutionPlanResponse = zod.object({
+  "id": zod.number(),
+  "capabilityKey": zod.string(),
+  "gapSummary": zod.string(),
+  "design": zod.string(),
+  "steps": zod.array(zod.string()),
+  "affectedFiles": zod.array(zod.string()),
+  "risk": zod.string(),
+  "priority": zod.string(),
+  "testStrategy": zod.string(),
+  "rollbackStrategy": zod.string(),
+  "source": zod.enum(['ai', 'fallback']),
+  "status": zod.string(),
+  "taskId": zod.number().nullish(),
+  "createdAt": zod.string()
+})
+
+
+/**
+ * @summary List evolution plans
+ */
+export const ListEvolutionPlansResponseItem = zod.object({
+  "id": zod.number(),
+  "capabilityKey": zod.string(),
+  "gapSummary": zod.string(),
+  "design": zod.string(),
+  "steps": zod.array(zod.string()),
+  "affectedFiles": zod.array(zod.string()),
+  "risk": zod.string(),
+  "priority": zod.string(),
+  "testStrategy": zod.string(),
+  "rollbackStrategy": zod.string(),
+  "source": zod.enum(['ai', 'fallback']),
+  "status": zod.string(),
+  "taskId": zod.number().nullish(),
+  "createdAt": zod.string()
+})
+export const ListEvolutionPlansResponse = zod.array(ListEvolutionPlansResponseItem)
+
+
+/**
+ * Runs the loop introspect → gap analysis → plan → task → proposal (sandbox) → real test run → Guardian review → Governor decision → lessons stored in memory → next-step recommendation. Never installs anything by itself; installation stays behind the existing governance pipeline. If no AI provider is configured the run stops after planning with a clear blocked status.
+ * @summary Execute one full self-evolution iteration
+ */
+export const StartEvolutionRunResponse = zod.object({
+  "id": zod.number(),
+  "status": zod.enum(['running', 'completed', 'blocked', 'failed']),
+  "phase": zod.string(),
+  "snapshotId": zod.number().nullish(),
+  "planId": zod.number().nullish(),
+  "taskId": zod.number().nullish(),
+  "proposalId": zod.number().nullish(),
+  "testRunId": zod.number().nullish(),
+  "guardianVerdict": zod.string().nullish(),
+  "governorDecision": zod.string().nullish(),
+  "lessons": zod.array(zod.string()),
+  "nextStep": zod.string().nullish(),
+  "report": zod.string(),
+  "startedAt": zod.string(),
+  "finishedAt": zod.string().nullish()
+})
+
+
+/**
+ * @summary List evolution runs
+ */
+export const ListEvolutionRunsResponseItem = zod.object({
+  "id": zod.number(),
+  "status": zod.enum(['running', 'completed', 'blocked', 'failed']),
+  "phase": zod.string(),
+  "snapshotId": zod.number().nullish(),
+  "planId": zod.number().nullish(),
+  "taskId": zod.number().nullish(),
+  "proposalId": zod.number().nullish(),
+  "testRunId": zod.number().nullish(),
+  "guardianVerdict": zod.string().nullish(),
+  "governorDecision": zod.string().nullish(),
+  "lessons": zod.array(zod.string()),
+  "nextStep": zod.string().nullish(),
+  "report": zod.string(),
+  "startedAt": zod.string(),
+  "finishedAt": zod.string().nullish()
+})
+export const ListEvolutionRunsResponse = zod.array(ListEvolutionRunsResponseItem)
+
+
+/**
+ * @summary Current self-evolution status overview
+ */
+export const GetEvolutionStatusResponse = zod.object({
+  "capabilities": zod.object({
+  "total": zod.number(),
+  "working": zod.number(),
+  "partial": zod.number(),
+  "missing": zod.number()
+}),
+  "gaps": zod.number(),
+  "latestSnapshotId": zod.number().nullable(),
+  "latestRun": zod.union([zod.object({
+  "id": zod.number(),
+  "status": zod.enum(['running', 'completed', 'blocked', 'failed']),
+  "phase": zod.string(),
+  "snapshotId": zod.number().nullish(),
+  "planId": zod.number().nullish(),
+  "taskId": zod.number().nullish(),
+  "proposalId": zod.number().nullish(),
+  "testRunId": zod.number().nullish(),
+  "guardianVerdict": zod.string().nullish(),
+  "governorDecision": zod.string().nullish(),
+  "lessons": zod.array(zod.string()),
+  "nextStep": zod.string().nullish(),
+  "report": zod.string(),
+  "startedAt": zod.string(),
+  "finishedAt": zod.string().nullish()
+}),zod.null()]),
+  "pendingApprovals": zod.number(),
+  "aiConfigured": zod.boolean()
+})
+
+
+/**
+ * @summary Evolution scheduler status
+ */
+export const GetEvolutionSchedulerResponse = zod.object({
+  "enabled": zod.boolean(),
+  "intervalMinutes": zod.number(),
+  "running": zod.boolean(),
+  "ticks": zod.number(),
+  "lastRunId": zod.number().nullable(),
+  "lastTickAt": zod.string().nullable(),
+  "nextTickAt": zod.string().nullable(),
+  "lastError": zod.string().nullish()
+})
+
+
+/**
+ * @summary Enable/disable the autonomous evolution scheduler
+ */
+export const configureEvolutionSchedulerBodyIntervalMinutesMax = 10080;
+
+
+
+export const ConfigureEvolutionSchedulerBody = zod.object({
+  "enabled": zod.boolean(),
+  "intervalMinutes": zod.number().min(1).max(configureEvolutionSchedulerBodyIntervalMinutesMax).optional()
+})
+
+export const ConfigureEvolutionSchedulerResponse = zod.object({
+  "enabled": zod.boolean(),
+  "intervalMinutes": zod.number(),
+  "running": zod.boolean(),
+  "ticks": zod.number(),
+  "lastRunId": zod.number().nullable(),
+  "lastTickAt": zod.string().nullable(),
+  "nextTickAt": zod.string().nullable(),
+  "lastError": zod.string().nullish()
+})
+
+
+/**
+ * @summary Static quality analysis of Forge's own code
+ */
+export const GetQualityAnalysisResponse = zod.object({
+  "generatedAt": zod.string(),
+  "analyzer": zod.string(),
+  "filesScanned": zod.number(),
+  "score": zod.number().nullish(),
+  "findings": zod.array(zod.object({
+  "code": zod.string(),
+  "severity": zod.enum(['info', 'warning', 'critical']),
+  "file": zod.string().nullish(),
+  "message": zod.string()
+})),
+  "summary": zod.string()
+})
+
+
+/**
+ * @summary Technical debt analysis of Forge's own code
+ */
+export const GetTechnicalDebtAnalysisResponse = zod.object({
+  "generatedAt": zod.string(),
+  "analyzer": zod.string(),
+  "filesScanned": zod.number(),
+  "score": zod.number().nullish(),
+  "findings": zod.array(zod.object({
+  "code": zod.string(),
+  "severity": zod.enum(['info', 'warning', 'critical']),
+  "file": zod.string().nullish(),
+  "message": zod.string()
+})),
+  "summary": zod.string()
+})
+
+
+/**
+ * @summary Workspace dependency analysis (versions, mismatches)
+ */
+export const GetDependencyAnalysisResponse = zod.object({
+  "generatedAt": zod.string(),
+  "packagesScanned": zod.number(),
+  "dependencies": zod.array(zod.object({
+  "name": zod.string(),
+  "versions": zod.array(zod.string()),
+  "usedBy": zod.array(zod.string())
+})),
+  "mismatches": zod.array(zod.string()),
+  "findings": zod.array(zod.object({
+  "code": zod.string(),
+  "severity": zod.enum(['info', 'warning', 'critical']),
+  "file": zod.string().nullish(),
+  "message": zod.string()
+}))
+})
+
+
+/**
+ * @summary Validate architecture rules against the current self-model
+ */
+export const GetArchitectureValidationResponse = zod.object({
+  "generatedAt": zod.string(),
+  "rulesChecked": zod.number(),
+  "passed": zod.boolean(),
+  "violations": zod.number(),
+  "results": zod.array(zod.object({
+  "rule": zod.string(),
+  "passed": zod.boolean(),
+  "detail": zod.string()
+}))
+})
+
+
+/**
+ * @summary Turn quality/debt findings into refactoring improvements (backlog)
+ */
+export const CreateRefactorPlanResponse = zod.object({
+  "created": zod.number(),
+  "skippedExisting": zod.number(),
+  "improvementIds": zod.array(zod.number()),
+  "summary": zod.string()
+})
+
+
+/**
+ * @summary Generated evolution roadmap (gaps, debt, backlog, improvements)
+ */
+export const GetRoadmapResponse = zod.object({
+  "generatedAt": zod.string(),
+  "summary": zod.string(),
+  "items": zod.array(zod.object({
+  "rank": zod.number(),
+  "kind": zod.enum(['capability_gap', 'backlog_task', 'improvement', 'debt', 'maintenance']),
+  "refId": zod.number().nullish(),
+  "title": zod.string(),
+  "priority": zod.enum(['low', 'medium', 'high', 'critical']),
+  "rationale": zod.string()
+}))
+})
+
+
+/**
+ * @summary Search the internal knowledge base (graph, memory, docs, capabilities)
+ */
+export const SearchKnowledgeBaseQueryParams = zod.object({
+  "q": zod.coerce.string()
+})
+
+export const SearchKnowledgeBaseResponse = zod.object({
+  "query": zod.string(),
+  "total": zod.number(),
+  "results": zod.array(zod.object({
+  "sourceType": zod.enum(['knowledge_node', 'memory_item', 'capability', 'doc', 'audit_log']),
+  "refKey": zod.string().nullish(),
+  "title": zod.string(),
+  "snippet": zod.string()
+}))
+})
+
+
+/**
+ * @summary Generate SELF_MODEL documentation from the current self-model
+ */
+export const GenerateDocumentationResponse = zod.object({
+  "file": zod.string(),
+  "bytes": zod.number(),
+  "sections": zod.array(zod.string()),
+  "generatedAt": zod.string()
+})
+
+

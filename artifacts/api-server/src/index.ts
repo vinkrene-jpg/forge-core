@@ -2,6 +2,7 @@ import app from "./app";
 import { logger } from "./lib/logger";
 import { ensureStorage } from "./lib/storage";
 import { seedCoreRegistry } from "./lib/seed";
+import { initSchedulerFromEnv } from "./lib/evolutionScheduler";
 
 const rawPort = process.env["PORT"];
 
@@ -23,6 +24,7 @@ async function start(): Promise<void> {
   // The locked core registry must exist before any request is served —
   // core protection depends on it.
   await seedCoreRegistry();
+  initSchedulerFromEnv();
 
   app.listen(port, (err) => {
     if (err) {

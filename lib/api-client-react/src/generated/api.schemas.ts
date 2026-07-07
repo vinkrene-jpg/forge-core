@@ -715,6 +715,169 @@ export interface MemoryItem {
   createdAt: string;
 }
 
+export type IntrospectionSnapshotModel = { [key: string]: unknown };
+
+export interface IntrospectionSnapshot {
+  id: number;
+  sourceFiles: number;
+  endpoints: number;
+  dbTables: number;
+  docs: number;
+  dependencies: number;
+  configKeys: number;
+  modules: number;
+  testRuns: number;
+  auditEntries: number;
+  model: IntrospectionSnapshotModel;
+  createdAt: string;
+}
+
+export type KnowledgeGraphNodesItemMeta = { [key: string]: unknown };
+
+export type KnowledgeGraphNodesItem = {
+  nodeType: string;
+  key: string;
+  label: string;
+  meta?: KnowledgeGraphNodesItemMeta;
+};
+
+export type KnowledgeGraphEdgesItem = {
+  fromKey: string;
+  toKey: string;
+  relation: string;
+};
+
+export interface KnowledgeGraph {
+  snapshotId: number;
+  nodes: KnowledgeGraphNodesItem[];
+  edges: KnowledgeGraphEdgesItem[];
+}
+
+export type CapabilityStatus = typeof CapabilityStatus[keyof typeof CapabilityStatus];
+
+
+export const CapabilityStatus = {
+  missing: 'missing',
+  partial: 'partial',
+  working: 'working',
+} as const;
+
+export interface Capability {
+  id: number;
+  key: string;
+  name: string;
+  description: string;
+  status: CapabilityStatus;
+  maturity: number;
+  dependencies: string[];
+  /** @nullable */
+  limitations?: string | null;
+  missingParts: string[];
+  evidence: string[];
+  updatedAt: string;
+}
+
+export type GapAnalysisGapsItem = {
+  capabilityKey: string;
+  name: string;
+  status: string;
+  maturity: number;
+  impactScore: number;
+  reason: string;
+  blocking: string[];
+  risks: string[];
+  missingParts?: string[];
+};
+
+export interface GapAnalysis {
+  analyzedAt: string;
+  gaps: GapAnalysisGapsItem[];
+}
+
+export interface EvolutionPlanInput {
+  capabilityKey?: string;
+}
+
+export type EvolutionPlanSource = typeof EvolutionPlanSource[keyof typeof EvolutionPlanSource];
+
+
+export const EvolutionPlanSource = {
+  ai: 'ai',
+  fallback: 'fallback',
+} as const;
+
+export interface EvolutionPlan {
+  id: number;
+  capabilityKey: string;
+  gapSummary: string;
+  design: string;
+  steps: string[];
+  affectedFiles: string[];
+  risk: string;
+  priority: string;
+  testStrategy: string;
+  rollbackStrategy: string;
+  source: EvolutionPlanSource;
+  status: string;
+  /** @nullable */
+  taskId?: number | null;
+  createdAt: string;
+}
+
+export type EvolutionRunStatus = typeof EvolutionRunStatus[keyof typeof EvolutionRunStatus];
+
+
+export const EvolutionRunStatus = {
+  running: 'running',
+  completed: 'completed',
+  blocked: 'blocked',
+  failed: 'failed',
+} as const;
+
+export interface EvolutionRun {
+  id: number;
+  status: EvolutionRunStatus;
+  phase: string;
+  /** @nullable */
+  snapshotId?: number | null;
+  /** @nullable */
+  planId?: number | null;
+  /** @nullable */
+  taskId?: number | null;
+  /** @nullable */
+  proposalId?: number | null;
+  /** @nullable */
+  testRunId?: number | null;
+  /** @nullable */
+  guardianVerdict?: string | null;
+  /** @nullable */
+  governorDecision?: string | null;
+  lessons: string[];
+  /** @nullable */
+  nextStep?: string | null;
+  report: string;
+  startedAt: string;
+  /** @nullable */
+  finishedAt?: string | null;
+}
+
+export type EvolutionStatusCapabilities = {
+  total: number;
+  working: number;
+  partial: number;
+  missing: number;
+};
+
+export interface EvolutionStatus {
+  capabilities: EvolutionStatusCapabilities;
+  gaps: number;
+  /** @nullable */
+  latestSnapshotId: number | null;
+  latestRun: EvolutionRun | null;
+  pendingApprovals: number;
+  aiConfigured: boolean;
+}
+
 export type MemoryItemInputCategory = typeof MemoryItemInputCategory[keyof typeof MemoryItemInputCategory];
 
 
@@ -797,6 +960,200 @@ export interface DailyLoopRun {
   finishedAt?: string | null;
 }
 
+export interface Proposal {
+  id: number;
+  sourceType: string;
+  sourceId: number;
+  prompt: string;
+  /** @nullable */
+  provider?: string | null;
+  /** @nullable */
+  model?: string | null;
+  status: string;
+  /** @nullable */
+  summary?: string | null;
+  riskEstimate: string;
+  /** @nullable */
+  moduleId?: number | null;
+  /** @nullable */
+  sandboxId?: number | null;
+  filesGenerated: string[];
+  blockedFiles: string[];
+  /** @nullable */
+  errorMessage?: string | null;
+  createdAt: string;
+}
+
+export type ProposalGenerateInputSourceType = typeof ProposalGenerateInputSourceType[keyof typeof ProposalGenerateInputSourceType];
+
+
+export const ProposalGenerateInputSourceType = {
+  task: 'task',
+  improvement: 'improvement',
+} as const;
+
+export interface ProposalGenerateInput {
+  sourceType: ProposalGenerateInputSourceType;
+  sourceId: number;
+  /** @maxLength 4000 */
+  instructions?: string;
+}
+
+export type FindingSeverity = typeof FindingSeverity[keyof typeof FindingSeverity];
+
+
+export const FindingSeverity = {
+  info: 'info',
+  warning: 'warning',
+  critical: 'critical',
+} as const;
+
+export interface Finding {
+  code: string;
+  severity: FindingSeverity;
+  /** @nullable */
+  file?: string | null;
+  message: string;
+}
+
+export interface AnalysisReport {
+  generatedAt: string;
+  analyzer: string;
+  filesScanned: number;
+  /** @nullable */
+  score?: number | null;
+  findings: Finding[];
+  summary: string;
+}
+
+export type DependencyReportDependenciesItem = {
+  name: string;
+  versions: string[];
+  usedBy: string[];
+};
+
+export interface DependencyReport {
+  generatedAt: string;
+  packagesScanned: number;
+  dependencies: DependencyReportDependenciesItem[];
+  mismatches: string[];
+  findings: Finding[];
+}
+
+export type ArchitectureValidationResultsItem = {
+  rule: string;
+  passed: boolean;
+  detail: string;
+};
+
+export interface ArchitectureValidation {
+  generatedAt: string;
+  rulesChecked: number;
+  passed: boolean;
+  violations: number;
+  results: ArchitectureValidationResultsItem[];
+}
+
+export interface RefactorPlanResult {
+  created: number;
+  skippedExisting: number;
+  improvementIds: number[];
+  summary: string;
+}
+
+export type RoadmapItemsItemKind = typeof RoadmapItemsItemKind[keyof typeof RoadmapItemsItemKind];
+
+
+export const RoadmapItemsItemKind = {
+  capability_gap: 'capability_gap',
+  backlog_task: 'backlog_task',
+  improvement: 'improvement',
+  debt: 'debt',
+  maintenance: 'maintenance',
+} as const;
+
+export type RoadmapItemsItemPriority = typeof RoadmapItemsItemPriority[keyof typeof RoadmapItemsItemPriority];
+
+
+export const RoadmapItemsItemPriority = {
+  low: 'low',
+  medium: 'medium',
+  high: 'high',
+  critical: 'critical',
+} as const;
+
+export type RoadmapItemsItem = {
+  rank: number;
+  kind: RoadmapItemsItemKind;
+  /** @nullable */
+  refId?: number | null;
+  title: string;
+  priority: RoadmapItemsItemPriority;
+  rationale: string;
+};
+
+export interface Roadmap {
+  generatedAt: string;
+  summary: string;
+  items: RoadmapItemsItem[];
+}
+
+export type KnowledgeBaseResultResultsItemSourceType = typeof KnowledgeBaseResultResultsItemSourceType[keyof typeof KnowledgeBaseResultResultsItemSourceType];
+
+
+export const KnowledgeBaseResultResultsItemSourceType = {
+  knowledge_node: 'knowledge_node',
+  memory_item: 'memory_item',
+  capability: 'capability',
+  doc: 'doc',
+  audit_log: 'audit_log',
+} as const;
+
+export type KnowledgeBaseResultResultsItem = {
+  sourceType: KnowledgeBaseResultResultsItemSourceType;
+  /** @nullable */
+  refKey?: string | null;
+  title: string;
+  snippet: string;
+};
+
+export interface KnowledgeBaseResult {
+  query: string;
+  total: number;
+  results: KnowledgeBaseResultResultsItem[];
+}
+
+export interface DocsGenerated {
+  file: string;
+  bytes: number;
+  sections: string[];
+  generatedAt: string;
+}
+
+export interface SchedulerStatus {
+  enabled: boolean;
+  intervalMinutes: number;
+  running: boolean;
+  ticks: number;
+  /** @nullable */
+  lastRunId: number | null;
+  /** @nullable */
+  lastTickAt: string | null;
+  /** @nullable */
+  nextTickAt: string | null;
+  /** @nullable */
+  lastError?: string | null;
+}
+
+export interface SchedulerConfig {
+  enabled: boolean;
+  /**
+     * @minimum 1
+     * @maximum 10080
+     */
+  intervalMinutes?: number;
+}
+
 export type ListAuditLogsParams = {
 limit?: number;
 targetType?: string;
@@ -846,5 +1203,9 @@ status?: string;
 export type ListMemoryItemsParams = {
 q?: string;
 category?: string;
+};
+
+export type SearchKnowledgeBaseParams = {
+q: string;
 };
 
