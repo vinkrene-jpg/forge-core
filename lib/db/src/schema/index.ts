@@ -5,3 +5,4 @@ export * from "./modules";
 export * from "./sandboxes";
 export * from "./governance";
 export * from "./memory";
+export * from "./proposals";

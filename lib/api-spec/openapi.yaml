@@ -24,6 +24,7 @@ tags:
   - name: memory
   - name: improvements
   - name: dailyloop
+  - name: proposals
 paths:
   /healthz:
     get:
@@ -1229,6 +1230,79 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/DailyLoopRun"
+  /proposals:
+    get:
+      operationId: listProposals
+      tags: [proposals]
+      summary: List change proposals
+      responses:
+        "200":
+          description: Proposals
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Proposal"
+  /proposals/{id}:
+    get:
+      operationId: getProposal
+      tags: [proposals]
+      summary: Get a single change proposal
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: integer }
+      responses:
+        "200":
+          description: Proposal
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Proposal"
+        "404":
+          description: Not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+  /proposals/generate:
+    post:
+      operationId: generateProposal
+      tags: [proposals]
+      summary: Generate a code proposal in a new sandbox from a task or improvement
+      description: >
+        Uses the AI Gateway (task type codegeneration) to turn an existing task or
+        improvement into a concrete code proposal. Generated files are written only
+        into a newly created sandbox; protected core paths are always blocked. No
+        installation happens — the normal chain (test runner, Guardian, Governor,
+        owner approval) remains mandatory.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ProposalGenerateInput"
+      responses:
+        "201":
+          description: Proposal generated into a sandbox
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Proposal"
+        "400":
+          description: Invalid request or AI Gateway not configured/failed
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "404":
+          description: Source task or improvement not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
 components:
   schemas:
     HealthStatus:
@@ -1909,3 +1983,35 @@ components:
         approvalsRequested: { type: ["integer", "null"] }
         startedAt: { type: string }
         finishedAt: { type: ["string", "null"] }
+    Proposal:
+      type: object
+      required: [id, sourceType, sourceId, prompt, status, riskEstimate, filesGenerated, blockedFiles, createdAt]
+      properties:
+        id: { type: integer }
+        sourceType: { type: string }
+        sourceId: { type: integer }
+        prompt: { type: string }
+        provider: { type: ["string", "null"] }
+        model: { type: ["string", "null"] }
+        status: { type: string }
+        summary: { type: ["string", "null"] }
+        riskEstimate: { type: string }
+        moduleId: { type: ["integer", "null"] }
+        sandboxId: { type: ["integer", "null"] }
+        filesGenerated:
+          type: array
+          items: { type: string }
+        blockedFiles:
+          type: array
+          items: { type: string }
+        errorMessage: { type: ["string", "null"] }
+        createdAt: { type: string }
+    ProposalGenerateInput:
+      type: object
+      required: [sourceType, sourceId]
+      properties:
+        sourceType:
+          type: string
+          enum: [task, improvement]
+        sourceId: { type: integer }
+        instructions: { type: string, maxLength: 4000 }

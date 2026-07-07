@@ -797,6 +797,45 @@ export interface DailyLoopRun {
   finishedAt?: string | null;
 }
 
+export interface Proposal {
+  id: number;
+  sourceType: string;
+  sourceId: number;
+  prompt: string;
+  /** @nullable */
+  provider?: string | null;
+  /** @nullable */
+  model?: string | null;
+  status: string;
+  /** @nullable */
+  summary?: string | null;
+  riskEstimate: string;
+  /** @nullable */
+  moduleId?: number | null;
+  /** @nullable */
+  sandboxId?: number | null;
+  filesGenerated: string[];
+  blockedFiles: string[];
+  /** @nullable */
+  errorMessage?: string | null;
+  createdAt: string;
+}
+
+export type ProposalGenerateInputSourceType = typeof ProposalGenerateInputSourceType[keyof typeof ProposalGenerateInputSourceType];
+
+
+export const ProposalGenerateInputSourceType = {
+  task: 'task',
+  improvement: 'improvement',
+} as const;
+
+export interface ProposalGenerateInput {
+  sourceType: ProposalGenerateInputSourceType;
+  sourceId: number;
+  /** @maxLength 4000 */
+  instructions?: string;
+}
+
 export type ListAuditLogsParams = {
 limit?: number;
 targetType?: string;

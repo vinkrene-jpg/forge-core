@@ -68,6 +68,8 @@ import type {
   Project,
   ProjectInput,
   ProjectUpdate,
+  Proposal,
+  ProposalGenerateInput,
   Risk,
   RiskInput,
   RiskUpdate,
@@ -4945,5 +4947,230 @@ export const useStartDailyLoop = <TError = ErrorType<unknown>,
         TContext
       > => {
       return useMutation(getStartDailyLoopMutationOptions(options));
+    }
+
+export const getListProposalsUrl = () => {
+
+
+
+
+  return `/api/proposals`
+}
+
+/**
+ * @summary List change proposals
+ */
+export const listProposals = async ( options?: RequestInit): Promise<Proposal[]> => {
+
+  return customFetch<Proposal[]>(getListProposalsUrl(),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getListProposalsQueryKey = () => {
+    return [
+    `/api/proposals`
+    ] as const;
+    }
+
+
+export const getListProposalsQueryOptions = <TData = Awaited<ReturnType<typeof listProposals>>, TError = ErrorType<unknown>>( options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listProposals>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getListProposalsQueryKey();
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof listProposals>>> = ({ signal }) => listProposals({ signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof listProposals>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type ListProposalsQueryResult = NonNullable<Awaited<ReturnType<typeof listProposals>>>
+export type ListProposalsQueryError = ErrorType<unknown>
+
+
+/**
+ * @summary List change proposals
+ */
+
+export function useListProposals<TData = Awaited<ReturnType<typeof listProposals>>, TError = ErrorType<unknown>>(
+  options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listProposals>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getListProposalsQueryOptions(options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getGetProposalUrl = (id: number,) => {
+
+
+
+
+  return `/api/proposals/${id}`
+}
+
+/**
+ * @summary Get a single change proposal
+ */
+export const getProposal = async (id: number, options?: RequestInit): Promise<Proposal> => {
+
+  return customFetch<Proposal>(getGetProposalUrl(id),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetProposalQueryKey = (id: number,) => {
+    return [
+    `/api/proposals/${id}`
+    ] as const;
+    }
+
+
+export const getGetProposalQueryOptions = <TData = Awaited<ReturnType<typeof getProposal>>, TError = ErrorType<ErrorResponse>>(id: number, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getProposal>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetProposalQueryKey(id);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getProposal>>> = ({ signal }) => getProposal(id, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, enabled: id !== null && id !== undefined, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getProposal>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetProposalQueryResult = NonNullable<Awaited<ReturnType<typeof getProposal>>>
+export type GetProposalQueryError = ErrorType<ErrorResponse>
+
+
+/**
+ * @summary Get a single change proposal
+ */
+
+export function useGetProposal<TData = Awaited<ReturnType<typeof getProposal>>, TError = ErrorType<ErrorResponse>>(
+ id: number, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getProposal>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetProposalQueryOptions(id,options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getGenerateProposalUrl = () => {
+
+
+
+
+  return `/api/proposals/generate`
+}
+
+/**
+ * Uses the AI Gateway (task type codegeneration) to turn an existing task or improvement into a concrete code proposal. Generated files are written only into a newly created sandbox; protected core paths are always blocked. No installation happens — the normal chain (test runner, Guardian, Governor, owner approval) remains mandatory.
+ * @summary Generate a code proposal in a new sandbox from a task or improvement
+ */
+export const generateProposal = async (proposalGenerateInput: ProposalGenerateInput, options?: RequestInit): Promise<Proposal> => {
+
+  return customFetch<Proposal>(getGenerateProposalUrl(),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(proposalGenerateInput)
+  }
+);}
+
+
+
+
+export const getGenerateProposalMutationOptions = <TError = ErrorType<ErrorResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof generateProposal>>, TError,{data: BodyType<ProposalGenerateInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof generateProposal>>, TError,{data: BodyType<ProposalGenerateInput>}, TContext> => {
+
+const mutationKey = ['generateProposal'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof generateProposal>>, {data: BodyType<ProposalGenerateInput>}> = (props) => {
+          const {data} = props ?? {};
+
+          return  generateProposal(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type GenerateProposalMutationResult = NonNullable<Awaited<ReturnType<typeof generateProposal>>>
+    export type GenerateProposalMutationBody = BodyType<ProposalGenerateInput>
+    export type GenerateProposalMutationError = ErrorType<ErrorResponse>
+
+    /**
+ * @summary Generate a code proposal in a new sandbox from a task or improvement
+ */
+export const useGenerateProposal = <TError = ErrorType<ErrorResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof generateProposal>>, TError,{data: BodyType<ProposalGenerateInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof generateProposal>>,
+        TError,
+        {data: BodyType<ProposalGenerateInput>},
+        TContext
+      > => {
+      return useMutation(getGenerateProposalMutationOptions(options));
     }
 

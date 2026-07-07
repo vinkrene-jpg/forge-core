@@ -1510,3 +1510,85 @@ export const StartDailyLoopResponse = zod.object({
 })
 
 
+/**
+ * @summary List change proposals
+ */
+export const ListProposalsResponseItem = zod.object({
+  "id": zod.number(),
+  "sourceType": zod.string(),
+  "sourceId": zod.number(),
+  "prompt": zod.string(),
+  "provider": zod.string().nullish(),
+  "model": zod.string().nullish(),
+  "status": zod.string(),
+  "summary": zod.string().nullish(),
+  "riskEstimate": zod.string(),
+  "moduleId": zod.number().nullish(),
+  "sandboxId": zod.number().nullish(),
+  "filesGenerated": zod.array(zod.string()),
+  "blockedFiles": zod.array(zod.string()),
+  "errorMessage": zod.string().nullish(),
+  "createdAt": zod.string()
+})
+export const ListProposalsResponse = zod.array(ListProposalsResponseItem)
+
+
+/**
+ * @summary Get a single change proposal
+ */
+export const GetProposalParams = zod.object({
+  "id": zod.coerce.number()
+})
+
+export const GetProposalResponse = zod.object({
+  "id": zod.number(),
+  "sourceType": zod.string(),
+  "sourceId": zod.number(),
+  "prompt": zod.string(),
+  "provider": zod.string().nullish(),
+  "model": zod.string().nullish(),
+  "status": zod.string(),
+  "summary": zod.string().nullish(),
+  "riskEstimate": zod.string(),
+  "moduleId": zod.number().nullish(),
+  "sandboxId": zod.number().nullish(),
+  "filesGenerated": zod.array(zod.string()),
+  "blockedFiles": zod.array(zod.string()),
+  "errorMessage": zod.string().nullish(),
+  "createdAt": zod.string()
+})
+
+
+/**
+ * Uses the AI Gateway (task type codegeneration) to turn an existing task or improvement into a concrete code proposal. Generated files are written only into a newly created sandbox; protected core paths are always blocked. No installation happens — the normal chain (test runner, Guardian, Governor, owner approval) remains mandatory.
+ * @summary Generate a code proposal in a new sandbox from a task or improvement
+ */
+export const generateProposalBodyInstructionsMax = 4000;
+
+
+
+export const GenerateProposalBody = zod.object({
+  "sourceType": zod.enum(['task', 'improvement']),
+  "sourceId": zod.number(),
+  "instructions": zod.string().max(generateProposalBodyInstructionsMax).optional()
+})
+
+export const GenerateProposalResponse = zod.object({
+  "id": zod.number(),
+  "sourceType": zod.string(),
+  "sourceId": zod.number(),
+  "prompt": zod.string(),
+  "provider": zod.string().nullish(),
+  "model": zod.string().nullish(),
+  "status": zod.string(),
+  "summary": zod.string().nullish(),
+  "riskEstimate": zod.string(),
+  "moduleId": zod.number().nullish(),
+  "sandboxId": zod.number().nullish(),
+  "filesGenerated": zod.array(zod.string()),
+  "blockedFiles": zod.array(zod.string()),
+  "errorMessage": zod.string().nullish(),
+  "createdAt": zod.string()
+})
+
+

@@ -1,0 +1,1 @@
+// protected core path, should be blocked

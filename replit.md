@@ -41,6 +41,8 @@ A self-governing autonomous AI development platform: AI agent modules are built 
 - **Contract-first**: OpenAPI spec drives codegen; server validates request bodies AND response payloads with generated Zod schemas.
 - **jsonSafe**: Drizzle returns `Date` objects but response Zod schemas expect ISO strings — every response `.parse()` wraps data in `jsonSafe()` (JSON round-trip). Skipping it causes 500 ZodErrors on any row with timestamps.
 
+- **Proposal Generator**: `POST /proposals/generate` turns an existing task/improvement into AI-generated code (AI Gateway, taskType `codegeneration`) written exclusively into a new sandbox + draft module; unsafe/protected paths are blocked and audited; no install happens — the normal test→Guardian→Governor→approval chain remains mandatory.
+
 ## Product
 
 - Dashboard (mission control summary), Projects/Goals/Backlog, Tasks (9 statuses) with decisions & risks, Modules (11 types, manifests, risk levels) with install/rollback, Sandboxes with file editing, Test Runs (7 types), Approvals, AI Gateway console, Memory Engine (9 categories), Self-Improvement backlog (convertible to tasks), Daily Loop runs & reports, Locked Core registry, Audit Logs.
