@@ -65,6 +65,15 @@ Nothing is ever installed by the loop itself outside the existing governance pip
 
 When no capability gaps remain, the loop picks the oldest planned backlog task without a proposal. The Refactoring Engine feeds this backlog: `POST /api/analysis/refactor-plan` creates improvements from findings, an owner (or the loop's roadmap) converts them to tasks via `POST /api/improvements/{id}/convert`, and the next evolution run builds them through the full generate→test→Guardian→Governor chain. Failed tests or a Guardian fail always block installation.
 
+## Self-Upgrade Loop (local, read-only)
+
+A local workflow that analyzes the codebase against a machine-readable upgrade backlog and only *proposes* changes:
+
+- **Start:** `pnpm forge:self-review` (from the repo root; validation tests: `pnpm forge:self-review:test`)
+- **Upgrade goals:** `config/forge-upgrades.json` — each goal has id, title, description, priority, risk, status, acceptance criteria, test requirements, owner-approval flag and evidence checks. The runner fails if mandatory fields are missing.
+- **Report:** `reports/forge-self-review.md` — per goal: current status (implemented/partial/missing), missing parts, proposed change, risk, required tests, and whether owner approval is required.
+- **Owner gate:** the runner is strictly read-only analysis. It never modifies code, never commits, never deploys, and never touches `.env`, secrets, VPS or production settings — a test enforces that the runner contains no process-execution or network primitives. Any actual change goes through the normal proposal → test → Guardian → Governor → owner-approval pipeline.
+
 ## Requirements & limits
 
 - **AI key required for code generation.** Without `OPENAI_API_KEY` / `ANTHROPIC_API_KEY` / `CUSTOM_AI_*`, the loop runs through OBSERVE→PLAN (deterministic fallback) and then stops with status `blocked` (phase `blocked-no-ai`). Plan and task remain ready; rerun once a key is set.

@@ -5,6 +5,8 @@
   "type": "module",
   "scripts": {
     "hello": "tsx ./src/hello.ts",
+    "forge:self-review": "tsx ./src/forge-self-review.ts",
+    "forge:self-review:test": "tsx --test ./src/forge-self-review.test.ts",
     "typecheck": "tsc -p tsconfig.json --noEmit"
   },
   "devDependencies": {

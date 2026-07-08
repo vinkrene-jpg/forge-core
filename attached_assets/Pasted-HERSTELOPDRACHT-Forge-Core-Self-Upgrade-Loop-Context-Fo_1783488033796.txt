@@ -1,0 +1,81 @@
+HERSTELOPDRACHT — Forge Core Self-Upgrade Loop
+
+Context:
+Forge Core draait lokaal correct. Docker, database, storage en health endpoint werken. De repository is opgeschoond en gepusht naar GitHub.
+
+Probleem:
+De eerder gevraagde self-evolution/upgrade-doelstelling lijkt vooral als documentatie te zijn vastgelegd, maar niet als werkende, uitvoerbare workflow. Dat is onvoldoende.
+
+Doel:
+Implementeer een minimale, veilige en lokaal uitvoerbare Forge Self-Upgrade Loop.
+
+Scope:
+Bouw geen productie-deploy.
+Raak geen VPS, externe systemen of secrets aan.
+Voer geen automatische codewijzigingen uit zonder expliciete owner approval.
+De workflow moet lokaal draaien binnen Forge Core.
+
+Vereisten:
+
+1. Upgrade-doelstellingen
+- Maak een machineleesbare upgrade-backlog, bijvoorbeeld:
+  `forge-upgrades.json`
+  of
+  `config/forge-upgrades.json`
+- Deze bevat minimaal:
+  - id
+  - titel
+  - beschrijving
+  - prioriteit
+  - risico-inschatting
+  - status
+  - acceptatiecriteria
+  - testvereisten
+
+2. Analyse-runner
+- Voeg een script toe in `package.json`, bijvoorbeeld:
+  `pnpm forge:self-review`
+- Dit script leest de upgrade-backlog.
+- Het analyseert de huidige codebase tegen deze doelen.
+- Het maakt géén automatische wijzigingen.
+- Het genereert een rapport.
+
+3. Rapportage
+- Genereer output naar:
+  `reports/forge-self-review.md`
+- Het rapport moet per upgrade-doel tonen:
+  - huidige status
+  - ontbrekende onderdelen
+  - voorgestelde wijziging
+  - risico
+  - benodigde tests
+  - owner approval vereist: ja/nee
+
+4. Owner gate
+- Wijzigingen mogen alleen als voorstel worden gepresenteerd.
+- Geen automatische commits.
+- Geen automatische deploy.
+- Geen wijzigingen aan `.env`, secrets, VPS-configuratie of productie-instellingen.
+
+5. Testen
+- Voeg een test of validatie toe die controleert:
+  - dat de backlog gelezen kan worden;
+  - dat het rapport gegenereerd wordt;
+  - dat de workflow faalt als verplichte velden ontbreken;
+  - dat er geen productie/deploy acties worden aangeroepen.
+
+6. Documentatie
+- Werk `SELF_EVOLUTION.md` bij zodat duidelijk staat:
+  - welk commando de self-review start;
+  - waar de upgrade-doelen staan;
+  - waar het rapport verschijnt;
+  - dat Forge alleen voorstellen doet en nooit zelfstandig productie wijzigt.
+
+Acceptatiecriteria:
+- `pnpm forge:self-review` werkt lokaal.
+- `reports/forge-self-review.md` wordt gegenereerd.
+- Er ontstaat geen automatische codewijziging.
+- Er ontstaat geen automatische commit.
+- Er is geen productie- of VPS-contact.
+- Tests/validatie slagen.
+- `git status` toont alleen bedoelde gewijzigde bestanden.

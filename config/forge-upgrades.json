@@ -1,0 +1,134 @@
+{
+  "version": 1,
+  "description": "Machine-readable upgrade backlog for the Forge Self-Upgrade Loop. Read by `pnpm forge:self-review`, which only analyzes and reports — it never changes code, commits, deploys or touches production.",
+  "upgrades": [
+    {
+      "id": "UPG-001",
+      "title": "Evolution Scheduler operational",
+      "description": "The evolution scheduler must exist, be disabled by default, configurable via env, and expose GET/POST /evolution/scheduler.",
+      "priority": "high",
+      "risk": "low",
+      "status": "planned",
+      "acceptanceCriteria": [
+        "Scheduler service exists in api-server",
+        "Endpoints /evolution/scheduler are declared in the OpenAPI contract",
+        "Scheduler is disabled unless EVOLUTION_SCHEDULER_ENABLED=true"
+      ],
+      "testRequirements": ["Unit tests in api-server pass (pnpm --filter @workspace/api-server run test)"],
+      "ownerApprovalRequired": false,
+      "evidence": {
+        "filesExist": ["artifacts/api-server/src/lib/evolutionScheduler.ts"],
+        "patterns": [
+          { "file": "lib/api-spec/openapi.yaml", "contains": "/evolution/scheduler" },
+          { "file": "artifacts/api-server/src/lib/evolutionScheduler.ts", "contains": "EVOLUTION_SCHEDULER_ENABLED" }
+        ]
+      }
+    },
+    {
+      "id": "UPG-002",
+      "title": "Self-analysis suite complete",
+      "description": "Quality, technical debt, dependency and architecture analysis must be available as API endpoints backed by real analyzers.",
+      "priority": "high",
+      "risk": "low",
+      "status": "planned",
+      "acceptanceCriteria": [
+        "Analyzers exist for quality, debt, dependencies and architecture",
+        "GET /analysis/{quality,debt,dependencies,architecture} are declared in the OpenAPI contract"
+      ],
+      "testRequirements": ["Analyzer unit tests pass (src/tests/analysis.test.ts)"],
+      "ownerApprovalRequired": false,
+      "evidence": {
+        "filesExist": [
+          "artifacts/api-server/src/lib/qualityAnalyzer.ts",
+          "artifacts/api-server/src/lib/techDebtAnalyzer.ts",
+          "artifacts/api-server/src/lib/dependencyAnalyzer.ts",
+          "artifacts/api-server/src/lib/architectureValidator.ts"
+        ],
+        "patterns": [
+          { "file": "lib/api-spec/openapi.yaml", "contains": "/analysis/quality" },
+          { "file": "lib/api-spec/openapi.yaml", "contains": "/analysis/architecture" }
+        ]
+      }
+    },
+    {
+      "id": "UPG-003",
+      "title": "Refactoring Engine feeds governance backlog",
+      "description": "Findings must become improvements that flow through the improvement→task→proposal→governance chain; the engine must never edit code directly.",
+      "priority": "medium",
+      "risk": "low",
+      "status": "planned",
+      "acceptanceCriteria": [
+        "POST /analysis/refactor-plan exists in the contract",
+        "Refactoring engine creates improvements only (no file writes outside sandboxes)"
+      ],
+      "testRequirements": ["findingToImprovement mapping covered by unit tests"],
+      "ownerApprovalRequired": true,
+      "evidence": {
+        "filesExist": ["artifacts/api-server/src/lib/refactoringEngine.ts"],
+        "patterns": [{ "file": "lib/api-spec/openapi.yaml", "contains": "/analysis/refactor-plan" }]
+      }
+    },
+    {
+      "id": "UPG-004",
+      "title": "Roadmap, Knowledge Base and Documentation Generator",
+      "description": "Forge must expose a generated roadmap, an internal knowledge base search and a self-model documentation generator.",
+      "priority": "medium",
+      "risk": "low",
+      "status": "planned",
+      "acceptanceCriteria": [
+        "GET /roadmap, GET /knowledge-base/search and POST /docs/generate exist in the contract",
+        "Documentation generator writes SELF_MODEL.md only"
+      ],
+      "testRequirements": ["Smoke test through the local proxy (localhost:80/api)"],
+      "ownerApprovalRequired": false,
+      "evidence": {
+        "filesExist": [
+          "artifacts/api-server/src/lib/roadmapGenerator.ts",
+          "artifacts/api-server/src/lib/knowledgeBase.ts",
+          "artifacts/api-server/src/lib/docsGenerator.ts"
+        ],
+        "patterns": [
+          { "file": "lib/api-spec/openapi.yaml", "contains": "/knowledge-base/search" },
+          { "file": "lib/api-spec/openapi.yaml", "contains": "/docs/generate" }
+        ]
+      }
+    },
+    {
+      "id": "UPG-005",
+      "title": "Concurrency-safe evolution loop",
+      "description": "Only one evolution run may execute at a time, enforced atomically at the database layer (advisory lock around check+insert).",
+      "priority": "high",
+      "risk": "medium",
+      "status": "planned",
+      "acceptanceCriteria": [
+        "Single-run guard uses a transaction with pg_advisory_xact_lock",
+        "Concurrent POST /evolution/run yields exactly one 201 and one 409"
+      ],
+      "testRequirements": ["Manual/automated concurrency check: two simultaneous runs"],
+      "ownerApprovalRequired": false,
+      "evidence": {
+        "filesExist": ["artifacts/api-server/src/lib/evolutionLoop.ts"],
+        "patterns": [{ "file": "artifacts/api-server/src/lib/evolutionLoop.ts", "contains": "pg_advisory_xact_lock" }]
+      }
+    },
+    {
+      "id": "UPG-006",
+      "title": "Self-review loop itself",
+      "description": "A local, read-only self-review workflow: machine-readable backlog, analysis runner and markdown report with an owner gate. Never commits, deploys or touches production.",
+      "priority": "high",
+      "risk": "low",
+      "status": "planned",
+      "acceptanceCriteria": [
+        "pnpm forge:self-review runs locally and generates reports/forge-self-review.md",
+        "Runner fails when mandatory backlog fields are missing",
+        "Runner performs no git/deploy/production actions"
+      ],
+      "testRequirements": ["pnpm forge:self-review:test passes"],
+      "ownerApprovalRequired": true,
+      "evidence": {
+        "filesExist": ["scripts/src/forge-self-review.ts", "config/forge-upgrades.json"],
+        "patterns": [{ "file": "package.json", "contains": "forge:self-review" }]
+      }
+    }
+  ]
+}
