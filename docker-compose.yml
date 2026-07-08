@@ -45,7 +45,7 @@ services:
       - "5000:5000"
     command: >
       sh -c "corepack enable &&
-             pnpm install --frozen-lockfile &&
+             pnpm install --frozen-lockfile --config.dangerouslyAllowAllBuilds=true &&
              pnpm --filter @workspace/db run push --force &&
              pnpm --filter @workspace/api-server run build &&
              node artifacts/api-server/dist/index.mjs"
