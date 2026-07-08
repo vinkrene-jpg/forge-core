@@ -1,6 +1,6 @@
 # Forge Self-Review Report
 
-Generated: 2026-07-08T05:26:27.587Z
+Generated: 2026-07-08T05:28:22.664Z
 
 > Read-only analysis by the Forge Self-Upgrade Loop (`pnpm forge:self-review`).
 > This workflow only proposes changes. It never modifies code, never commits,
