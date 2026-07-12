@@ -39,7 +39,7 @@ Gecontroleerd:
 - Git object history;
 - reflog;
 - unreachable Git objects;
-- lokale Forge-kopieÃ«n;
+- lokale Forge-kopieÃƒÂ«n;
 - lokale backup-archieven;
 - ChatGPT-data-export.
 
@@ -47,7 +47,7 @@ Er is geen herstelbare autonome Forge Core-implementatie aangetroffen.
 
 ## Current phase
 
-R1 â€” governance en canonical architecture herstellen.
+R1 Ã¢â‚¬â€ governance en canonical architecture herstellen.
 
 Nieuwe runtimecomponenten worden pas gebouwd nadat de bestaande repositorystructuur volledig is geclassificeerd.
 
@@ -80,3 +80,14 @@ Status: implemented and live verified.
 - Approved missions resume through MissionLoop.
 - Rejected missions are cancelled without execution.
 - Evidence: reconstruction/GOVERNANCE_ENGINE_VERIFICATION.json.
+## Capability Registry, Analysis and Evolution Planning
+
+Status: implemented and live verified.
+
+- Forge maintains a persistent registry of operational and experimental capabilities.
+- Every mission receives a capability precheck before governance and execution.
+- Capability requirements are compared against current maturity.
+- Missing or insufficient capabilities produce an improve-then-execute decision.
+- Evolution plans contain deterministic steps, target maturity and acceptance criteria.
+- Registry, analyses and plans survive a forced container restart.
+- Evidence: reconstruction/CAPABILITY_EVOLUTION_VERIFICATION.json.

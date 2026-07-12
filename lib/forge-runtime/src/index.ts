@@ -1,9 +1,48 @@
 export {
+  CapabilityAnalyzer,
+} from "./capability-analysis";
+
+export {
+  CapabilityRegistry,
+  type CapabilityRegistryOptions,
+} from "./capability-registry";
+
+export {
+  createInitialCapabilityState,
+  FileCapabilityStateStore,
+  resolveCapabilityStatePath,
+  CAPABILITY_STORE_VERSION,
+  type CapabilityStateStore,
+  type PersistedCapabilityState,
+} from "./capability-store";
+
+export {
+  type CapabilityAnalysisDecision,
+  type CapabilityAnalysisRecord,
+  type CapabilityAnalysisRequest,
+  type CapabilityGap,
+  type CapabilityRecord,
+  type CapabilityRequirement,
+  type CapabilityStatus,
+  type CapabilitySummary,
+  type EvolutionPlanRecord,
+  type EvolutionPlanStatus,
+  type EvolutionPlanStep,
+  type EvolutionPlanSummary,
+  type EvolutionStepAction,
+  type UpsertCapabilityRequest,
+} from "./capability";
+
+export {
   RuntimeEventBus,
   type RuntimeEvent,
   type RuntimeEventListener,
   type RuntimeEventType,
 } from "./event-bus";
+
+export {
+  EvolutionPlanner,
+} from "./evolution-planner";
 
 export {
   GovernanceEngine,
@@ -86,4 +125,5 @@ export {
   forgeRuntime,
   type ForgeRuntimeOptions,
   type ForgeRuntimeSnapshot,
+  type RuntimeMissionCreationResult,
 } from "./runtime";

@@ -1,9 +1,30 @@
 import { randomUUID } from "node:crypto";
 import {
+  CapabilityAnalyzer,
+} from "./capability-analysis";
+import {
+  CapabilityRegistry,
+  type CapabilityRegistryOptions,
+} from "./capability-registry";
+import {
+  FileCapabilityStateStore,
+  type CapabilityStateStore,
+} from "./capability-store";
+import type {
+  CapabilityAnalysisRecord,
+  CapabilityAnalysisRequest,
+  CapabilityRecord,
+  CapabilitySummary,
+  EvolutionPlanRecord,
+  EvolutionPlanSummary,
+  UpsertCapabilityRequest,
+} from "./capability";
+import {
   RuntimeEventBus,
   type RuntimeEvent,
   type RuntimeEventListener,
 } from "./event-bus";
+import { EvolutionPlanner } from "./evolution-planner";
 import {
   GovernanceEngine,
   type GovernanceEngineOptions,
@@ -12,9 +33,7 @@ import type {
   ApprovalDecisionResult,
   ApprovalRecord,
   ApprovalStatus,
-  GovernanceAssessment,
   GovernanceSummary,
-  MissionCreationResult,
 } from "./governance";
 import {
   FileGovernanceStateStore,
@@ -50,6 +69,13 @@ import type {
   KernelStatus,
 } from "./runtime-state";
 
+export interface RuntimeMissionCreationResult {
+  readonly mission: MissionRecord;
+  readonly governance: import("./governance").GovernanceAssessment;
+  readonly approval: ApprovalRecord | null;
+  readonly capabilityAnalysis: CapabilityAnalysisRecord;
+}
+
 export interface ForgeRuntimeSnapshot {
   readonly kernel: KernelStateSnapshot;
   readonly health: RuntimeHealthSnapshot;
@@ -57,6 +83,8 @@ export interface ForgeRuntimeSnapshot {
   readonly missionLoop: MissionLoopSnapshot;
   readonly missions: MissionSummary;
   readonly governance: GovernanceSummary;
+  readonly capabilities: CapabilitySummary;
+  readonly evolution: EvolutionPlanSummary;
   readonly events: readonly RuntimeEvent[];
 }
 
@@ -64,6 +92,7 @@ export interface ForgeRuntimeOptions {
   readonly stateStore?: RuntimeStateStore;
   readonly missionStateStore?: MissionStateStore;
   readonly governanceStateStore?: GovernanceStateStore;
+  readonly capabilityStateStore?: CapabilityStateStore;
   readonly missionLoopPollIntervalMs?: number;
 }
 
@@ -79,6 +108,9 @@ export class ForgeRuntime {
   readonly #stateStore: RuntimeStateStore;
   readonly #missionEngine: MissionEngine;
   readonly #governanceEngine: GovernanceEngine;
+  readonly #capabilityRegistry: CapabilityRegistry;
+  readonly #capabilityAnalyzer: CapabilityAnalyzer;
+  readonly #evolutionPlanner: EvolutionPlanner;
   readonly #missionLoop: MissionLoop;
   #persistence = createInitialRuntimeState();
 
@@ -105,6 +137,22 @@ export class ForgeRuntime {
 
     this.#governanceEngine =
       new GovernanceEngine(governanceOptions);
+
+    const capabilityOptions: CapabilityRegistryOptions = {
+      events: this.#events,
+      stateStore:
+        options.capabilityStateStore ??
+        new FileCapabilityStateStore(),
+    };
+
+    this.#capabilityRegistry =
+      new CapabilityRegistry(capabilityOptions);
+
+    this.#capabilityAnalyzer =
+      new CapabilityAnalyzer(this.#capabilityRegistry);
+
+    this.#evolutionPlanner =
+      new EvolutionPlanner(this.#capabilityRegistry);
 
     this.#missionLoop = new MissionLoop({
       engine: this.#missionEngine,
@@ -227,6 +275,7 @@ export class ForgeRuntime {
 
       await this.#missionEngine.initialize();
       await this.#governanceEngine.initialize();
+      await this.#capabilityRegistry.initialize();
       await this.#reconcileGovernanceState();
 
       this.#missionLoop.start();
@@ -270,11 +319,24 @@ export class ForgeRuntime {
 
   async createMission(
     request: CreateMissionRequest,
-  ): Promise<MissionCreationResult> {
-    const assessment =
+  ): Promise<RuntimeMissionCreationResult> {
+    const capabilityAnalysis =
+      await this.#capabilityAnalyzer.analyzeMission(request);
+
+    if (capabilityAnalysis.decision !== "execute_directly") {
+      const plan = await this.#evolutionPlanner.createPlan(
+        capabilityAnalysis.id,
+      );
+
+      throw new Error(
+        `Mission requires capability improvement; evolution plan ${plan.id} created`,
+      );
+    }
+
+    const governance =
       this.#governanceEngine.assess(request);
 
-    if (assessment.decision === "allow") {
+    if (governance.decision === "allow") {
       const mission =
         await this.#missionEngine.enqueue(
           request,
@@ -285,12 +347,13 @@ export class ForgeRuntime {
 
       return Object.freeze({
         mission,
-        assessment,
+        governance,
         approval: null,
+        capabilityAnalysis,
       });
     }
 
-    if (assessment.decision === "require_approval") {
+    if (governance.decision === "require_approval") {
       const mission =
         await this.#missionEngine.enqueue(
           request,
@@ -300,13 +363,14 @@ export class ForgeRuntime {
       const approval =
         await this.#governanceEngine.requestApproval(
           mission.id,
-          assessment,
+          governance,
         );
 
       return Object.freeze({
         mission,
-        assessment,
+        governance,
         approval,
+        capabilityAnalysis,
       });
     }
 
@@ -319,13 +383,14 @@ export class ForgeRuntime {
     const rejected =
       await this.#missionEngine.reject(
         mission.id,
-        assessment.reason,
+        governance.reason,
       );
 
     return Object.freeze({
       mission: rejected,
-      assessment,
+      governance,
       approval: null,
+      capabilityAnalysis,
     });
   }
 
@@ -402,6 +467,55 @@ export class ForgeRuntime {
     });
   }
 
+  listCapabilities(): readonly CapabilityRecord[] {
+    return this.#capabilityRegistry.listCapabilities();
+  }
+
+  getCapability(
+    capabilityId: string,
+  ): CapabilityRecord | null {
+    return this.#capabilityRegistry.getCapability(capabilityId);
+  }
+
+  upsertCapability(
+    request: UpsertCapabilityRequest,
+  ): Promise<CapabilityRecord> {
+    return this.#capabilityRegistry.upsert(request);
+  }
+
+  analyzeCapabilities(
+    request: CapabilityAnalysisRequest,
+  ): Promise<CapabilityAnalysisRecord> {
+    return this.#capabilityAnalyzer.analyzeManual(request);
+  }
+
+  listCapabilityAnalyses():
+    readonly CapabilityAnalysisRecord[] {
+    return this.#capabilityRegistry.listAnalyses();
+  }
+
+  getCapabilityAnalysis(
+    analysisId: string,
+  ): CapabilityAnalysisRecord | null {
+    return this.#capabilityRegistry.getAnalysis(analysisId);
+  }
+
+  createEvolutionPlan(
+    analysisId: string,
+  ): Promise<EvolutionPlanRecord> {
+    return this.#evolutionPlanner.createPlan(analysisId);
+  }
+
+  listEvolutionPlans(): readonly EvolutionPlanRecord[] {
+    return this.#capabilityRegistry.listPlans();
+  }
+
+  getEvolutionPlan(
+    planId: string,
+  ): EvolutionPlanRecord | null {
+    return this.#capabilityRegistry.getPlan(planId);
+  }
+
   snapshot(): ForgeRuntimeSnapshot {
     const missionLoop = this.#missionLoop.snapshot();
 
@@ -416,6 +530,8 @@ export class ForgeRuntime {
         missionLoop.currentMissionId,
       ),
       governance: this.#governanceEngine.summary(),
+      capabilities: this.#capabilityRegistry.summary(),
+      evolution: this.#capabilityRegistry.evolutionSummary(),
       events: this.#events.snapshot(),
     });
   }

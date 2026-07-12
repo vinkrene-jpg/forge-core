@@ -1,0 +1,529 @@
+{
+    "verifiedAt":  "2026-07-12T16:40:13.7947808+02:00",
+    "sourceCommit":  "5fa54c360003951ccaafb237a7f095db64768f78",
+    "test":  "capability-registry-analysis-evolution-plan-persistence",
+    "baselineCapabilityCount":  10,
+    "directAnalysis":  {
+                           "id":  "1c3863ad-5bba-4354-bfd5-d5e6e66a2bfc",
+                           "objective":  "Execute a governed runtime self-check",
+                           "sourceType":  "manual",
+                           "sourceMissionKind":  null,
+                           "requirements":  [
+                                                {
+                                                    "capabilityId":  "runtime.health.inspect",
+                                                    "minimumStatus":  "operational",
+                                                    "reason":  "Inspect live runtime health."
+                                                },
+                                                {
+                                                    "capabilityId":  "mission.loop.execute",
+                                                    "minimumStatus":  "operational",
+                                                    "reason":  "Execute the mission through MissionLoop."
+                                                },
+                                                {
+                                                    "capabilityId":  "governance.risk.assess",
+                                                    "minimumStatus":  "operational",
+                                                    "reason":  "Assess mission risk before execution."
+                                                }
+                                            ],
+                           "gaps":  [
+
+                                    ],
+                           "decision":  "execute_directly",
+                           "expectedReuse":  5,
+                           "missionCriticality":  3,
+                           "createdAt":  "2026-07-12T14:40:06.259Z"
+                       },
+    "missionPrecheck":  {
+                            "id":  "31dca882-c462-41ef-8427-339bfd20a13e",
+                            "objective":  "Execute mission \"Capability precheck mission\"",
+                            "sourceType":  "mission",
+                            "sourceMissionKind":  "runtime.self-check",
+                            "requirements":  [
+                                                 {
+                                                     "capabilityId":  "mission.loop.execute",
+                                                     "minimumStatus":  "operational",
+                                                     "reason":  "Mission must be executable by the live MissionLoop."
+                                                 },
+                                                 {
+                                                     "capabilityId":  "governance.risk.assess",
+                                                     "minimumStatus":  "operational",
+                                                     "reason":  "Mission must pass deterministic governance assessment."
+                                                 },
+                                                 {
+                                                     "capabilityId":  "runtime.health.inspect",
+                                                     "minimumStatus":  "operational",
+                                                     "reason":  "Mission inspects live runtime health."
+                                                 }
+                                             ],
+                            "gaps":  [
+
+                                     ],
+                            "decision":  "execute_directly",
+                            "expectedReuse":  5,
+                            "missionCriticality":  2,
+                            "createdAt":  "2026-07-12T14:40:06.306Z"
+                        },
+    "selfCheckMission":  {
+                             "id":  "58c49c4f-6949-4b4a-baed-02be6255b5c1",
+                             "kind":  "runtime.self-check",
+                             "title":  "Capability precheck mission",
+                             "status":  "succeeded",
+                             "createdAt":  "2026-07-12T14:40:06.308Z",
+                             "updatedAt":  "2026-07-12T14:40:06.314Z",
+                             "startedAt":  "2026-07-12T14:40:06.311Z",
+                             "completedAt":  "2026-07-12T14:40:06.314Z",
+                             "attempts":  1,
+                             "interruptedCount":  0,
+                             "input":  {
+
+                                       },
+                             "output":  {
+                                            "checkedAt":  "2026-07-12T14:40:06.313Z",
+                                            "kernelStatus":  "running",
+                                            "uptimeMs":  870,
+                                            "eventCount":  12
+                                        },
+                             "lastError":  null
+                         },
+    "customCapability":  {
+                             "id":  "software.refactor.apply",
+                             "name":  "Software Refactoring",
+                             "description":  "Apply controlled source-code refactoring inside an approved workspace.",
+                             "status":  "experimental",
+                             "version":  "0.1.0",
+                             "confidence":  0.4,
+                             "source":  "reconstruction-verification",
+                             "createdAt":  "2026-07-12T14:40:06.362Z",
+                             "updatedAt":  "2026-07-12T14:40:06.362Z"
+                         },
+    "gapAnalysis":  {
+                        "id":  "2daa8aed-c5ea-4705-8336-2d1bde990786",
+                        "objective":  "Apply autonomous repository refactoring",
+                        "sourceType":  "manual",
+                        "sourceMissionKind":  null,
+                        "requirements":  [
+                                             {
+                                                 "capabilityId":  "software.refactor.apply",
+                                                 "minimumStatus":  "operational",
+                                                 "reason":  "Refactoring must be validated before autonomous source changes."
+                                             },
+                                             {
+                                                 "capabilityId":  "mission.loop.execute",
+                                                 "minimumStatus":  "operational",
+                                                 "reason":  "The resulting work must execute through MissionLoop."
+                                             }
+                                         ],
+                        "gaps":  [
+                                     {
+                                         "capabilityId":  "software.refactor.apply",
+                                         "requiredStatus":  "operational",
+                                         "actualStatus":  "experimental",
+                                         "reason":  "Refactoring must be validated before autonomous source changes."
+                                     }
+                                 ],
+                        "decision":  "improve_then_execute",
+                        "expectedReuse":  5,
+                        "missionCriticality":  4,
+                        "createdAt":  "2026-07-12T14:40:06.410Z"
+                    },
+    "evolutionPlan":  {
+                          "id":  "cd9702a8-888c-410d-8cb2-ac366499540f",
+                          "analysisId":  "2daa8aed-c5ea-4705-8336-2d1bde990786",
+                          "objective":  "Apply autonomous repository refactoring",
+                          "status":  "proposed",
+                          "roiScore":  100,
+                          "steps":  [
+                                        {
+                                            "order":  1,
+                                            "capabilityId":  "software.refactor.apply",
+                                            "action":  "validate",
+                                            "fromStatus":  "experimental",
+                                            "toStatus":  "operational",
+                                            "acceptanceCriteria":  [
+                                                                       "Capability software.refactor.apply is implemented in the Forge runtime.",
+                                                                       "Automated verification proves status operational.",
+                                                                       "Verification evidence is persisted and linked to the capability record."
+                                                                   ]
+                                        }
+                                    ],
+                          "createdAt":  "2026-07-12T14:40:06.465Z",
+                          "updatedAt":  "2026-07-12T14:40:06.465Z"
+                      },
+    "runtimeAfterRestart":  {
+                                "kernel":  {
+                                               "status":  "running",
+                                               "revision":  2,
+                                               "startedAt":  "2026-07-12T14:40:12.551Z",
+                                               "updatedAt":  "2026-07-12T14:40:12.551Z",
+                                               "lastError":  null
+                                           },
+                                "health":  {
+                                               "status":  "ok",
+                                               "kernelStatus":  "running",
+                                               "checkedAt":  "2026-07-12T14:40:13.789Z",
+                                               "startedAt":  "2026-07-12T14:40:12.551Z",
+                                               "uptimeMs":  1238,
+                                               "eventCount":  7
+                                           },
+                                "persistence":  {
+                                                    "version":  1,
+                                                    "runtimeId":  "fe1f0a1f-7c34-401f-9e77-ac0fc9b0a442",
+                                                    "sessionId":  "649f9bad-6a61-48c7-ad5c-c67563cfd12b",
+                                                    "restartCount":  8,
+                                                    "recoveryCount":  7,
+                                                    "lastKnownKernelStatus":  "running",
+                                                    "lastStartedAt":  "2026-07-12T14:40:12.551Z",
+                                                    "lastStoppedAt":  null,
+                                                    "updatedAt":  "2026-07-12T14:40:12.551Z",
+                                                    "lastShutdownClean":  false,
+                                                    "recoveredFromStatus":  "running",
+                                                    "lastError":  null
+                                                },
+                                "missionLoop":  {
+                                                    "status":  "running",
+                                                    "currentMissionId":  null,
+                                                    "pollIntervalMs":  500
+                                                },
+                                "missions":  {
+                                                 "total":  6,
+                                                 "awaitingApproval":  0,
+                                                 "queued":  0,
+                                                 "running":  0,
+                                                 "succeeded":  5,
+                                                 "failed":  0,
+                                                 "cancelled":  1,
+                                                 "currentMissionId":  null
+                                             },
+                                "governance":  {
+                                                   "policyVersion":  "1.0.0",
+                                                   "total":  2,
+                                                   "pending":  0,
+                                                   "approved":  1,
+                                                   "rejected":  1
+                                               },
+                                "capabilities":  {
+                                                     "total":  11,
+                                                     "unavailable":  0,
+                                                     "experimental":  1,
+                                                     "validated":  0,
+                                                     "operational":  10,
+                                                     "analyses":  3
+                                                 },
+                                "evolution":  {
+                                                  "total":  1,
+                                                  "proposed":  1,
+                                                  "approved":  0,
+                                                  "executing":  0,
+                                                  "completed":  0,
+                                                  "cancelled":  0
+                                              },
+                                "events":  [
+                                               {
+                                                   "sequence":  1,
+                                                   "type":  "runtime.state.loaded",
+                                                   "occurredAt":  "2026-07-12T14:40:12.550Z",
+                                                   "payload":  {
+                                                                   "runtimeId":  "fe1f0a1f-7c34-401f-9e77-ac0fc9b0a442",
+                                                                   "restartCount":  7,
+                                                                   "recoveryCount":  6
+                                                               }
+                                               },
+                                               {
+                                                   "sequence":  2,
+                                                   "type":  "runtime.recovery.detected",
+                                                   "occurredAt":  "2026-07-12T14:40:12.550Z",
+                                                   "payload":  {
+                                                                   "runtimeId":  "fe1f0a1f-7c34-401f-9e77-ac0fc9b0a442",
+                                                                   "previousSessionId":  "8c8dec5e-1145-4a58-a41a-b1835e2efee3",
+                                                                   "recoveredFromStatus":  "running"
+                                                               }
+                                               },
+                                               {
+                                                   "sequence":  3,
+                                                   "type":  "kernel.starting",
+                                                   "occurredAt":  "2026-07-12T14:40:12.551Z",
+                                                   "payload":  {
+
+                                                               }
+                                               },
+                                               {
+                                                   "sequence":  4,
+                                                   "type":  "kernel.started",
+                                                   "occurredAt":  "2026-07-12T14:40:12.551Z",
+                                                   "payload":  {
+                                                                   "startedAt":  "2026-07-12T14:40:12.551Z"
+                                                               }
+                                               },
+                                               {
+                                                   "sequence":  5,
+                                                   "type":  "governance.state.loaded",
+                                                   "occurredAt":  "2026-07-12T14:40:12.555Z",
+                                                   "payload":  {
+                                                                   "policyVersion":  "1.0.0",
+                                                                   "approvalCount":  2
+                                                               }
+                                               },
+                                               {
+                                                   "sequence":  6,
+                                                   "type":  "capability.registry.loaded",
+                                                   "occurredAt":  "2026-07-12T14:40:12.557Z",
+                                                   "payload":  {
+                                                                   "capabilityCount":  11,
+                                                                   "analysisCount":  3,
+                                                                   "planCount":  1
+                                                               }
+                                               },
+                                               {
+                                                   "sequence":  7,
+                                                   "type":  "mission.loop.started",
+                                                   "occurredAt":  "2026-07-12T14:40:12.557Z",
+                                                   "payload":  {
+                                                                   "pollIntervalMs":  500
+                                                               }
+                                               }
+                                           ]
+                            },
+    "persistedCapabilityState":  {
+                                     "version":  1,
+                                     "capabilities":  [
+                                                          {
+                                                              "id":  "runtime.health.inspect",
+                                                              "name":  "Runtime Health Inspection",
+                                                              "description":  "Inspect kernel status, uptime, events and infrastructure health.",
+                                                              "status":  "operational",
+                                                              "version":  "1.0.0",
+                                                              "confidence":  1,
+                                                              "source":  "verified-runtime",
+                                                              "createdAt":  "2026-07-12T14:40:05.460Z",
+                                                              "updatedAt":  "2026-07-12T14:40:05.460Z"
+                                                          },
+                                                          {
+                                                              "id":  "runtime.stability.observe",
+                                                              "name":  "Runtime Stability Observation",
+                                                              "description":  "Observe runtime health continuously over a bounded time window.",
+                                                              "status":  "operational",
+                                                              "version":  "1.0.0",
+                                                              "confidence":  1,
+                                                              "source":  "verified-mission-executor",
+                                                              "createdAt":  "2026-07-12T14:40:05.460Z",
+                                                              "updatedAt":  "2026-07-12T14:40:05.460Z"
+                                                          },
+                                                          {
+                                                              "id":  "mission.queue.persist",
+                                                              "name":  "Persistent Mission Queue",
+                                                              "description":  "Persist queued and interrupted missions across runtime replacement.",
+                                                              "status":  "operational",
+                                                              "version":  "1.0.0",
+                                                              "confidence":  1,
+                                                              "source":  "verified-mission-recovery",
+                                                              "createdAt":  "2026-07-12T14:40:05.460Z",
+                                                              "updatedAt":  "2026-07-12T14:40:05.460Z"
+                                                          },
+                                                          {
+                                                              "id":  "mission.loop.execute",
+                                                              "name":  "MissionLoop Execution",
+                                                              "description":  "Execute one governed mission at a time and record the outcome.",
+                                                              "status":  "operational",
+                                                              "version":  "1.0.0",
+                                                              "confidence":  1,
+                                                              "source":  "verified-mission-loop",
+                                                              "createdAt":  "2026-07-12T14:40:05.460Z",
+                                                              "updatedAt":  "2026-07-12T14:40:05.460Z"
+                                                          },
+                                                          {
+                                                              "id":  "mission.recovery",
+                                                              "name":  "Mission Recovery",
+                                                              "description":  "Recover a running mission after unclean runtime shutdown.",
+                                                              "status":  "operational",
+                                                              "version":  "1.0.0",
+                                                              "confidence":  1,
+                                                              "source":  "verified-sigkill-recovery",
+                                                              "createdAt":  "2026-07-12T14:40:05.460Z",
+                                                              "updatedAt":  "2026-07-12T14:40:05.460Z"
+                                                          },
+                                                          {
+                                                              "id":  "governance.risk.assess",
+                                                              "name":  "Governance Risk Assessment",
+                                                              "description":  "Classify mission risk using a deterministic versioned policy.",
+                                                              "status":  "operational",
+                                                              "version":  "1.0.0",
+                                                              "confidence":  1,
+                                                              "source":  "verified-governance-policy",
+                                                              "createdAt":  "2026-07-12T14:40:05.460Z",
+                                                              "updatedAt":  "2026-07-12T14:40:05.460Z"
+                                                          },
+                                                          {
+                                                              "id":  "governance.approval.persist",
+                                                              "name":  "Persistent Approval Gate",
+                                                              "description":  "Persist approval decisions and block missions until authorized.",
+                                                              "status":  "operational",
+                                                              "version":  "1.0.0",
+                                                              "confidence":  1,
+                                                              "source":  "verified-governance-engine",
+                                                              "createdAt":  "2026-07-12T14:40:05.460Z",
+                                                              "updatedAt":  "2026-07-12T14:40:05.460Z"
+                                                          },
+                                                          {
+                                                              "id":  "capability.registry.read",
+                                                              "name":  "Capability Registry",
+                                                              "description":  "Maintain and query a persistent registry of Forge capabilities.",
+                                                              "status":  "operational",
+                                                              "version":  "1.0.0",
+                                                              "confidence":  1,
+                                                              "source":  "capability-system-bootstrap",
+                                                              "createdAt":  "2026-07-12T14:40:05.460Z",
+                                                              "updatedAt":  "2026-07-12T14:40:05.460Z"
+                                                          },
+                                                          {
+                                                              "id":  "capability.analysis.perform",
+                                                              "name":  "Capability Analysis",
+                                                              "description":  "Compare required capabilities with the current Forge capability state.",
+                                                              "status":  "operational",
+                                                              "version":  "1.0.0",
+                                                              "confidence":  1,
+                                                              "source":  "capability-system-bootstrap",
+                                                              "createdAt":  "2026-07-12T14:40:05.460Z",
+                                                              "updatedAt":  "2026-07-12T14:40:05.460Z"
+                                                          },
+                                                          {
+                                                              "id":  "evolution.plan.create",
+                                                              "name":  "Evolution Planning",
+                                                              "description":  "Create a deterministic improvement plan for capability gaps.",
+                                                              "status":  "operational",
+                                                              "version":  "1.0.0",
+                                                              "confidence":  1,
+                                                              "source":  "capability-system-bootstrap",
+                                                              "createdAt":  "2026-07-12T14:40:05.460Z",
+                                                              "updatedAt":  "2026-07-12T14:40:05.460Z"
+                                                          },
+                                                          {
+                                                              "id":  "software.refactor.apply",
+                                                              "name":  "Software Refactoring",
+                                                              "description":  "Apply controlled source-code refactoring inside an approved workspace.",
+                                                              "status":  "experimental",
+                                                              "version":  "0.1.0",
+                                                              "confidence":  0.4,
+                                                              "source":  "reconstruction-verification",
+                                                              "createdAt":  "2026-07-12T14:40:06.362Z",
+                                                              "updatedAt":  "2026-07-12T14:40:06.362Z"
+                                                          }
+                                                      ],
+                                     "analyses":  [
+                                                      {
+                                                          "id":  "1c3863ad-5bba-4354-bfd5-d5e6e66a2bfc",
+                                                          "objective":  "Execute a governed runtime self-check",
+                                                          "sourceType":  "manual",
+                                                          "sourceMissionKind":  null,
+                                                          "requirements":  [
+                                                                               {
+                                                                                   "capabilityId":  "runtime.health.inspect",
+                                                                                   "minimumStatus":  "operational",
+                                                                                   "reason":  "Inspect live runtime health."
+                                                                               },
+                                                                               {
+                                                                                   "capabilityId":  "mission.loop.execute",
+                                                                                   "minimumStatus":  "operational",
+                                                                                   "reason":  "Execute the mission through MissionLoop."
+                                                                               },
+                                                                               {
+                                                                                   "capabilityId":  "governance.risk.assess",
+                                                                                   "minimumStatus":  "operational",
+                                                                                   "reason":  "Assess mission risk before execution."
+                                                                               }
+                                                                           ],
+                                                          "gaps":  [
+
+                                                                   ],
+                                                          "decision":  "execute_directly",
+                                                          "expectedReuse":  5,
+                                                          "missionCriticality":  3,
+                                                          "createdAt":  "2026-07-12T14:40:06.259Z"
+                                                      },
+                                                      {
+                                                          "id":  "31dca882-c462-41ef-8427-339bfd20a13e",
+                                                          "objective":  "Execute mission \"Capability precheck mission\"",
+                                                          "sourceType":  "mission",
+                                                          "sourceMissionKind":  "runtime.self-check",
+                                                          "requirements":  [
+                                                                               {
+                                                                                   "capabilityId":  "mission.loop.execute",
+                                                                                   "minimumStatus":  "operational",
+                                                                                   "reason":  "Mission must be executable by the live MissionLoop."
+                                                                               },
+                                                                               {
+                                                                                   "capabilityId":  "governance.risk.assess",
+                                                                                   "minimumStatus":  "operational",
+                                                                                   "reason":  "Mission must pass deterministic governance assessment."
+                                                                               },
+                                                                               {
+                                                                                   "capabilityId":  "runtime.health.inspect",
+                                                                                   "minimumStatus":  "operational",
+                                                                                   "reason":  "Mission inspects live runtime health."
+                                                                               }
+                                                                           ],
+                                                          "gaps":  [
+
+                                                                   ],
+                                                          "decision":  "execute_directly",
+                                                          "expectedReuse":  5,
+                                                          "missionCriticality":  2,
+                                                          "createdAt":  "2026-07-12T14:40:06.306Z"
+                                                      },
+                                                      {
+                                                          "id":  "2daa8aed-c5ea-4705-8336-2d1bde990786",
+                                                          "objective":  "Apply autonomous repository refactoring",
+                                                          "sourceType":  "manual",
+                                                          "sourceMissionKind":  null,
+                                                          "requirements":  [
+                                                                               {
+                                                                                   "capabilityId":  "software.refactor.apply",
+                                                                                   "minimumStatus":  "operational",
+                                                                                   "reason":  "Refactoring must be validated before autonomous source changes."
+                                                                               },
+                                                                               {
+                                                                                   "capabilityId":  "mission.loop.execute",
+                                                                                   "minimumStatus":  "operational",
+                                                                                   "reason":  "The resulting work must execute through MissionLoop."
+                                                                               }
+                                                                           ],
+                                                          "gaps":  [
+                                                                       {
+                                                                           "capabilityId":  "software.refactor.apply",
+                                                                           "requiredStatus":  "operational",
+                                                                           "actualStatus":  "experimental",
+                                                                           "reason":  "Refactoring must be validated before autonomous source changes."
+                                                                       }
+                                                                   ],
+                                                          "decision":  "improve_then_execute",
+                                                          "expectedReuse":  5,
+                                                          "missionCriticality":  4,
+                                                          "createdAt":  "2026-07-12T14:40:06.410Z"
+                                                      }
+                                                  ],
+                                     "plans":  [
+                                                   {
+                                                       "id":  "cd9702a8-888c-410d-8cb2-ac366499540f",
+                                                       "analysisId":  "2daa8aed-c5ea-4705-8336-2d1bde990786",
+                                                       "objective":  "Apply autonomous repository refactoring",
+                                                       "status":  "proposed",
+                                                       "roiScore":  100,
+                                                       "steps":  [
+                                                                     {
+                                                                         "order":  1,
+                                                                         "capabilityId":  "software.refactor.apply",
+                                                                         "action":  "validate",
+                                                                         "fromStatus":  "experimental",
+                                                                         "toStatus":  "operational",
+                                                                         "acceptanceCriteria":  [
+                                                                                                    "Capability software.refactor.apply is implemented in the Forge runtime.",
+                                                                                                    "Automated verification proves status operational.",
+                                                                                                    "Verification evidence is persisted and linked to the capability record."
+                                                                                                ]
+                                                                     }
+                                                                 ],
+                                                       "createdAt":  "2026-07-12T14:40:06.465Z",
+                                                       "updatedAt":  "2026-07-12T14:40:06.465Z"
+                                                   }
+                                               ]
+                                 }
+}
