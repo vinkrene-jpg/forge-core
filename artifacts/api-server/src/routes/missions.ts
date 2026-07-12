@@ -40,8 +40,9 @@ router.post("/missions", async (req, res): Promise<void> => {
 
     res.status(202).json({
       ...result.mission,
-      governance: result.assessment,
+      governance: result.governance,
       approval: result.approval,
+      capabilityAnalysis: result.capabilityAnalysis,
     });
   } catch (error) {
     res.status(400).json({
