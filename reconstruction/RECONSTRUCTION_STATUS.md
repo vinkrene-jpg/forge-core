@@ -39,7 +39,7 @@ Gecontroleerd:
 - Git object history;
 - reflog;
 - unreachable Git objects;
-- lokale Forge-kopieÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â«n;
+- lokale Forge-kopieÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Â ÃƒÂ¢Ã¢â€šÂ¬Ã¢â€žÂ¢ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â«n;
 - lokale backup-archieven;
 - ChatGPT-data-export.
 
@@ -47,7 +47,7 @@ Er is geen herstelbare autonome Forge Core-implementatie aangetroffen.
 
 ## Current phase
 
-R1 ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡Ãƒâ€šÃ‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€šÃ‚Â governance en canonical architecture herstellen.
+R1 ÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€¦Ã‚Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¬ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡Ãƒâ€šÃ‚Â¬ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â governance en canonical architecture herstellen.
 
 Nieuwe runtimecomponenten worden pas gebouwd nadat de bestaande repositorystructuur volledig is geclassificeerd.
 
@@ -123,3 +123,14 @@ Status: implemented and live verified.
 - Operator Core state survives forced runtime replacement.
 - Forge Desktop exposes Project Memory, Workspace Connector, Prompt Composer and Model Router.
 - Evidence: reconstruction/OPERATOR_CORE_VERIFICATION.json.
+## AI Provider Gateway
+
+Status: provider-independent gateway implemented and live verified.
+
+- Grounded Prompt Compositions can be submitted through a persistent execution gateway.
+- Provider credentials are read only from local environment configuration and are never persisted in Forge state.
+- Input and output limits are enforced by configuration.
+- Execution status, provider metadata, output, usage and errors persist across runtime replacement.
+- The first connector uses the OpenAI Responses API; model selection remains explicit through OPENAI_MODEL.
+- Provider execution remains intentionally unavailable until local credentials and an explicit model are configured.
+- Evidence: reconstruction/AI_GATEWAY_VERIFICATION.json.
