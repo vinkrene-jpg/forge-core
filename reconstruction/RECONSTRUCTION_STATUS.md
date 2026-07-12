@@ -50,3 +50,13 @@ Er is geen herstelbare autonome Forge Core-implementatie aangetroffen.
 R1 — governance en canonical architecture herstellen.
 
 Nieuwe runtimecomponenten worden pas gebouwd nadat de bestaande repositorystructuur volledig is geclassificeerd.
+
+## Runtime persistence and restart recovery
+
+Status: implemented and live verified.
+
+- Runtime identity persists in the forge_storage volume.
+- Session and restart counters survive process replacement.
+- An unclean container stop is detected on the next start.
+- Recovery was verified with a forced SIGKILL.
+- Evidence: reconstruction/RUNTIME_PERSISTENCE_VERIFICATION.json.

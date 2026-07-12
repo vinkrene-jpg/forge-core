@@ -1,4 +1,7 @@
-﻿export type RuntimeEventType =
+export type RuntimeEventType =
+  | "runtime.state.initialized"
+  | "runtime.state.loaded"
+  | "runtime.recovery.detected"
   | "kernel.starting"
   | "kernel.started"
   | "kernel.stopping"
