@@ -39,7 +39,7 @@ Gecontroleerd:
 - Git object history;
 - reflog;
 - unreachable Git objects;
-- lokale Forge-kopieÃƒÆ’Ã‚Â«n;
+- lokale Forge-kopieÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â«n;
 - lokale backup-archieven;
 - ChatGPT-data-export.
 
@@ -47,7 +47,7 @@ Er is geen herstelbare autonome Forge Core-implementatie aangetroffen.
 
 ## Current phase
 
-R1 ÃƒÂ¢Ã¢â€šÂ¬Ã¢â‚¬Â governance en canonical architecture herstellen.
+R1 ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â governance en canonical architecture herstellen.
 
 Nieuwe runtimecomponenten worden pas gebouwd nadat de bestaande repositorystructuur volledig is geclassificeerd.
 
@@ -101,3 +101,13 @@ Status: implemented and live verified.
 - Verification evidence is persisted on the completed evolution plan.
 - Unsupported capabilities remain unpromoted and their plans are cancelled safely.
 - Evidence: reconstruction/EVOLUTION_ENGINE_VERIFICATION.json.
+## Forge Desktop Live Binding
+
+Status: implemented and live verified.
+
+- The existing Wouter/React shell is bound directly to the authoritative Forge runtime APIs.
+- Runtime, MissionLoop, missions, approvals, capabilities, evolution plans and events refresh live.
+- Mission creation, governance decisions and evolution actions are available from Forge Desktop.
+- The API server serves the production Desktop build with SPA fallback.
+- No separate demo or placeholder runtime state is used.
+- Evidence: reconstruction/DESKTOP_BINDING_VERIFICATION.json.
