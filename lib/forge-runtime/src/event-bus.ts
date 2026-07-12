@@ -38,7 +38,12 @@ export type RuntimeEventType =
   | "operator.memory.added"
   | "operator.workspace.inspected"
   | "operator.model.routed"
-  | "operator.prompt.composed";
+  | "operator.prompt.composed"
+  | "ai.gateway.loaded"
+  | "ai.execution.started"
+  | "ai.execution.succeeded"
+  | "ai.execution.failed"
+  | "ai.execution.unavailable";
 
 export interface RuntimeEvent {
   readonly sequence: number;

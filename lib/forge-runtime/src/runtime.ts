@@ -1,4 +1,16 @@
-import { randomUUID } from "node:crypto";
+import {
+  AiGatewayEngine,
+  type AiGatewayEngineOptions,
+} from "./ai-gateway-engine";
+import type {
+  AiExecutionRecord,
+  AiGatewayStatus,
+  AiGatewaySummary,
+} from "./ai-gateway";
+import {
+  FileAiGatewayStateStore,
+  type AiGatewayStateStore,
+} from "./ai-gateway-store";import { randomUUID } from "node:crypto";
 import {
   CapabilityAnalyzer,
 } from "./capability-analysis";
@@ -111,6 +123,7 @@ export interface ForgeRuntimeSnapshot {
   readonly capabilities: CapabilitySummary;
   readonly evolution: EvolutionPlanSummary;
   readonly operator: OperatorCoreSummary;
+  readonly aiGateway: AiGatewaySummary;
   readonly events: readonly RuntimeEvent[];
 }
 
@@ -120,6 +133,7 @@ export interface ForgeRuntimeOptions {
   readonly governanceStateStore?: GovernanceStateStore;
   readonly capabilityStateStore?: CapabilityStateStore;
   readonly operatorStateStore?: OperatorStateStore;
+  readonly aiGatewayStateStore?: AiGatewayStateStore;
   readonly missionLoopPollIntervalMs?: number;
 }
 
@@ -140,6 +154,7 @@ export class ForgeRuntime {
   readonly #evolutionPlanner: EvolutionPlanner;
   readonly #evolutionEngine: EvolutionEngine;
   readonly #operatorCore: OperatorCore;
+  readonly #aiGateway: AiGatewayEngine;
   readonly #missionLoop: MissionLoop;
   #persistence = createInitialRuntimeState();
 
@@ -201,6 +216,20 @@ export class ForgeRuntime {
 
     this.#operatorCore =
       new OperatorCore(operatorOptions);
+
+    const aiGatewayOptions: AiGatewayEngineOptions = {
+      events: this.#events,
+      stateStore:
+        options.aiGatewayStateStore ??
+        new FileAiGatewayStateStore(),
+      getComposition: (compositionId) =>
+        this.#operatorCore.getComposition(
+          compositionId,
+        ),
+    };
+
+    this.#aiGateway =
+      new AiGatewayEngine(aiGatewayOptions);
 
     this.#missionLoop = new MissionLoop({
       engine: this.#missionEngine,
@@ -325,6 +354,7 @@ export class ForgeRuntime {
       await this.#governanceEngine.initialize();
       await this.#capabilityRegistry.initialize();
       await this.#operatorCore.initialize();
+      await this.#aiGateway.initialize();
       await this.#reconcileGovernanceState();
 
       this.#missionLoop.start();
@@ -667,6 +697,35 @@ export class ForgeRuntime {
     );
   }
 
+  aiGatewayStatus(): AiGatewayStatus {
+    return this.#aiGateway.status();
+  }
+
+  aiGatewaySummary(): AiGatewaySummary {
+    return this.#aiGateway.summary();
+  }
+
+  listAiExecutions():
+    readonly AiExecutionRecord[] {
+    return this.#aiGateway.listExecutions();
+  }
+
+  getAiExecution(
+    executionId: string,
+  ): AiExecutionRecord | null {
+    return this.#aiGateway.getExecution(
+      executionId,
+    );
+  }
+
+  executePromptComposition(
+    compositionId: string,
+  ): Promise<AiExecutionRecord> {
+    return this.#aiGateway.executeComposition(
+      compositionId,
+    );
+  }
+
   snapshot(): ForgeRuntimeSnapshot {
     const missionLoop = this.#missionLoop.snapshot();
 
@@ -684,6 +743,7 @@ export class ForgeRuntime {
       capabilities: this.#capabilityRegistry.summary(),
       evolution: this.#capabilityRegistry.evolutionSummary(),
       operator: this.#operatorCore.summary(),
+      aiGateway: this.#aiGateway.summary(),
       events: this.#events.snapshot(),
     });
   }

@@ -1,4 +1,32 @@
 export {
+  AiGatewayEngine,
+  type AiGatewayEngineOptions,
+} from "./ai-gateway-engine";
+
+export {
+  createInitialAiGatewayState,
+  FileAiGatewayStateStore,
+  resolveAiGatewayStatePath,
+  AI_GATEWAY_STORE_VERSION,
+  type AiGatewayStateStore,
+  type PersistedAiGatewayState,
+} from "./ai-gateway-store";
+
+export {
+  type AiExecutionRecord,
+  type AiExecutionStatus,
+  type AiGatewayStatus,
+  type AiGatewaySummary,
+  type AiProviderConnector,
+  type AiProviderId,
+  type AiProviderResult,
+  type AiUsage,
+} from "./ai-gateway";
+
+export {
+  OpenAiResponsesConnector,
+} from "./openai-responses-connector";
+export {
   ModelRouter,
 } from "./model-router";
 

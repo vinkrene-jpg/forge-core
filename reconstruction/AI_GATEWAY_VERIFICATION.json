@@ -1,0 +1,94 @@
+{
+    "verifiedAt":  "2026-07-12T18:23:31.1547133+02:00",
+    "sourceCommit":  "4b214b34bfa871bb1ba3fee9563c06d6d185e05a",
+    "test":  "provider-independent-ai-gateway-configuration-execution-persistence-secret-isolation",
+    "gatewayStatus":  {
+                          "status":  {
+                                         "providerId":  null,
+                                         "configured":  false,
+                                         "secretConfigured":  false,
+                                         "model":  null,
+                                         "apiBase":  null,
+                                         "maxInputChars":  100000,
+                                         "maxOutputTokens":  1200,
+                                         "note":  "Gateway is operational, but provider execution is unavailable until provider, model and secret are configured."
+                                     },
+                          "summary":  {
+                                          "configured":  false,
+                                          "providerId":  null,
+                                          "model":  null,
+                                          "executions":  1,
+                                          "succeeded":  0,
+                                          "failed":  0,
+                                          "unavailable":  1,
+                                          "lastExecutionAt":  "2026-07-12T16:23:23.343Z"
+                                      }
+                      },
+    "composition":  {
+                        "routeProfileId":  "local-private",
+                        "id":  "5fe31688-4c2e-4b8d-a6dc-b21386fac4e4",
+                        "projectId":  "forge-core"
+                    },
+    "execution":  {
+                      "id":  "21274b12-d364-4548-94c3-a0e1fb3243fd",
+                      "compositionId":  "5fe31688-4c2e-4b8d-a6dc-b21386fac4e4",
+                      "projectId":  "forge-core",
+                      "routeProfileId":  "local-private",
+                      "providerId":  null,
+                      "model":  null,
+                      "status":  "unavailable",
+                      "inputChars":  3860,
+                      "outputText":  null,
+                      "usage":  {
+                                    "inputTokens":  null,
+                                    "outputTokens":  null,
+                                    "totalTokens":  null
+                                },
+                      "providerResponseId":  null,
+                      "error":  "Gateway is operational, but provider execution is unavailable until provider, model and secret are configured.",
+                      "createdAt":  "2026-07-12T16:23:23.343Z",
+                      "startedAt":  "2026-07-12T16:23:23.343Z",
+                      "completedAt":  "2026-07-12T16:23:23.343Z"
+                  },
+    "providerExecutionVerified":  false,
+    "runtimeAfterRestart":  {
+                                "aiGateway":  {
+                                                  "configured":  false,
+                                                  "providerId":  null,
+                                                  "model":  null,
+                                                  "executions":  1,
+                                                  "succeeded":  0,
+                                                  "failed":  0,
+                                                  "unavailable":  1,
+                                                  "lastExecutionAt":  "2026-07-12T16:23:23.343Z"
+                                              },
+                                "runtimeId":  "fe1f0a1f-7c34-401f-9e77-ac0fc9b0a442"
+                            },
+    "persistedState":  {
+                           "version":  1,
+                           "executions":  [
+                                              {
+                                                  "id":  "21274b12-d364-4548-94c3-a0e1fb3243fd",
+                                                  "compositionId":  "5fe31688-4c2e-4b8d-a6dc-b21386fac4e4",
+                                                  "projectId":  "forge-core",
+                                                  "routeProfileId":  "local-private",
+                                                  "providerId":  null,
+                                                  "model":  null,
+                                                  "status":  "unavailable",
+                                                  "inputChars":  3860,
+                                                  "outputText":  null,
+                                                  "usage":  {
+                                                                "inputTokens":  null,
+                                                                "outputTokens":  null,
+                                                                "totalTokens":  null
+                                                            },
+                                                  "providerResponseId":  null,
+                                                  "error":  "Gateway is operational, but provider execution is unavailable until provider, model and secret are configured.",
+                                                  "createdAt":  "2026-07-12T16:23:23.343Z",
+                                                  "startedAt":  "2026-07-12T16:23:23.343Z",
+                                                  "completedAt":  "2026-07-12T16:23:23.343Z"
+                                              }
+                                          ]
+                       },
+    "desktopUrl":  "http://localhost:5000/ai-gateway"
+}
