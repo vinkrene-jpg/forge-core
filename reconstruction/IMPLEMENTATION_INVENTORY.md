@@ -15,7 +15,7 @@
 | Capability Analysis | Implemented | Mission precheck and manual gap analysis verified live |
 | Evolution Engine | Implemented | Approval, verified execution, evidence persistence, capability promotion and negative safety gate verified live |
 | Governance Engine | Implemented | Versioned risk policy, persistent approvals, blocking, approval and rejection verified live |
-| Project Memory | Missing | No source or Git-history evidence |
-| Prompt Composer | Missing | No source or Git-history evidence |
-| Model Router | Missing | No source or Git-history evidence |
+| Project Memory | Implemented | Persistent project memory and default Forge Core project verified live |
+| Prompt Composer | Implemented | Grounded prompt composition from project memory and protected source files verified live |
+| Model Router | Implemented | Deterministic routing-policy selection implemented; provider execution intentionally unbound |
 | Forge Desktop runtime binding | Implemented | Production Desktop consumes authoritative runtime APIs and is served by the API container |

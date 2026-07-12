@@ -16,6 +16,7 @@ import Approvals from "@/pages/approvals";
 import Capabilities from "@/pages/capabilities-live";
 import Evolution from "@/pages/evolution-live";
 import Events from "@/pages/events-live";
+import OperatorCorePage from "@/pages/operator-core";
 import Projects from "@/pages/projects";
 import Tasks from "@/pages/tasks";
 import Modules from "@/pages/modules";
@@ -48,6 +49,7 @@ function Router() {
         <Route path="/capabilities" component={Capabilities} />
         <Route path="/evolution" component={Evolution} />
         <Route path="/events" component={Events} />
+        <Route path="/operator" component={OperatorCorePage} />
 
         <Route path="/projects" component={Projects} />
         <Route path="/tasks" component={Tasks} />

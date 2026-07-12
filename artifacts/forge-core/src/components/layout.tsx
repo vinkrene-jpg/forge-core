@@ -2,6 +2,7 @@ import type { ReactNode } from "react";
 import { Link, useLocation } from "wouter";
 import {
   Activity,
+  BookOpenCheck,
   Boxes,
   BrainCircuit,
   CheckSquare,
@@ -27,6 +28,7 @@ const LIVE_NAV_ITEMS = [
   { href: "/capabilities", label: "Capabilities", icon: Boxes },
   { href: "/evolution", label: "Evolution", icon: TrendingUp },
   { href: "/events", label: "Live Events", icon: Radio },
+  { href: "/operator", label: "Operator Core", icon: BookOpenCheck },
 ];
 
 const LEGACY_NAV_ITEMS = [

@@ -243,6 +243,46 @@ function defaultCapabilities(): readonly CapabilityRecord[] {
       confidence: 1,
       source: "evolution-engine-bootstrap",
     },
+    {
+      id: "project.memory.persist",
+      name: "Persistent Project Memory",
+      description:
+        "Persist project decisions, architecture, requirements, tasks and evidence.",
+      status: "operational",
+      version: "1.0.0",
+      confidence: 1,
+      source: "operator-core-bootstrap",
+    },
+    {
+      id: "prompt.context.compose",
+      name: "Prompt Context Composition",
+      description:
+        "Compose grounded project prompts from persistent memory and approved source files.",
+      status: "operational",
+      version: "1.0.0",
+      confidence: 1,
+      source: "operator-core-bootstrap",
+    },
+    {
+      id: "model.route.select",
+      name: "AI Model Route Selection",
+      description:
+        "Select an abstract model profile using task, privacy, context, tools and budget constraints.",
+      status: "operational",
+      version: "1.0.0",
+      confidence: 1,
+      source: "operator-core-bootstrap",
+    },
+    {
+      id: "tool.workspace.inspect",
+      name: "Read-only Workspace Connector",
+      description:
+        "Inspect and read allowlisted project files with traversal, secret and size protections.",
+      status: "operational",
+      version: "1.0.0",
+      confidence: 1,
+      source: "operator-core-bootstrap",
+    },
   ];
 
   return defaults.map((capability) =>

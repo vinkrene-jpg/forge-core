@@ -39,7 +39,7 @@ Gecontroleerd:
 - Git object history;
 - reflog;
 - unreachable Git objects;
-- lokale Forge-kopieÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â«n;
+- lokale Forge-kopieÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â«n;
 - lokale backup-archieven;
 - ChatGPT-data-export.
 
@@ -47,7 +47,7 @@ Er is geen herstelbare autonome Forge Core-implementatie aangetroffen.
 
 ## Current phase
 
-R1 ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â governance en canonical architecture herstellen.
+R1 ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡Ãƒâ€šÃ‚Â¬ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€šÃ‚Â governance en canonical architecture herstellen.
 
 Nieuwe runtimecomponenten worden pas gebouwd nadat de bestaande repositorystructuur volledig is geclassificeerd.
 
@@ -111,3 +111,15 @@ Status: implemented and live verified.
 - The API server serves the production Desktop build with SPA fallback.
 - No separate demo or placeholder runtime state is used.
 - Evidence: reconstruction/DESKTOP_BINDING_VERIFICATION.json.
+## Operator Core
+
+Status: implemented and live verified.
+
+- Project Memory persists project decisions, architecture, requirements, tasks, evidence and notes.
+- The read-only Workspace Connector enforces root boundaries and blocks secrets, binaries, dependency trees and oversized files.
+- Prompt Composer grounds objectives in persistent memory and selected repository evidence.
+- AI Model Router selects abstract model profiles using task, privacy, context, tools and budget constraints.
+- Model routing is explicitly routing-only until a provider connector is configured.
+- Operator Core state survives forced runtime replacement.
+- Forge Desktop exposes Project Memory, Workspace Connector, Prompt Composer and Model Router.
+- Evidence: reconstruction/OPERATOR_CORE_VERIFICATION.json.

@@ -1,0 +1,279 @@
+{
+    "verifiedAt":  "2026-07-12T18:13:28.4528110+02:00",
+    "sourceCommit":  "85ec7371786aca87006dc098d0a44241a5c1afeb",
+    "test":  "project-memory-workspace-connector-prompt-composer-model-router-persistence",
+    "project":  {
+                    "id":  "forge-core",
+                    "name":  "Forge Core",
+                    "rootPath":  "/app",
+                    "description":  "Authoritative local Forge Core repository and runtime workspace.",
+                    "createdAt":  "2026-07-12T16:13:19.891Z",
+                    "updatedAt":  "2026-07-12T16:13:19.891Z"
+                },
+    "memory":  {
+                   "id":  "b41dcc56-469f-4572-9019-b251897a42fe",
+                   "projectId":  "forge-core",
+                   "kind":  "decision",
+                   "content":  "GitHub is the source of truth; the active Forge runtime and project memory operate locally.",
+                   "tags":  [
+                                "source-of-truth",
+                                "local-runtime"
+                            ],
+                   "source":  "operator-core-verification",
+                   "createdAt":  "2026-07-12T16:13:20.600Z"
+               },
+    "workspaceConstitution":  {
+                                  "path":  "GOVERNANCE/CONSTITUTION.md",
+                                  "truncated":  false,
+                                  "sizeBytes":  1561
+                              },
+    "modelRoute":  {
+                       "selectedProfile":  {
+                                               "id":  "local-private",
+                                               "label":  "Local Private Route",
+                                               "executionMode":  "routing-only",
+                                               "providerBinding":  null,
+                                               "maxContextChars":  32000,
+                                               "privacyModes":  [
+                                                                    "local-only",
+                                                                    "private",
+                                                                    "standard"
+                                                                ],
+                                               "taskStrengths":  {
+                                                                     "reasoning":  2,
+                                                                     "coding":  2,
+                                                                     "analysis":  3,
+                                                                     "summarization":  3
+                                                                 },
+                                               "costTier":  1,
+                                               "supportsTools":  false
+                                           },
+                       "request":  {
+                                       "contextChars":  12000,
+                                       "taskType":  "coding",
+                                       "privacy":  "local-only",
+                                       "requiresTools":  true,
+                                       "budget":  "low"
+                                   },
+                       "candidates":  [
+                                          {
+                                              "profileId":  "local-private",
+                                              "eligible":  true,
+                                              "score":  11,
+                                              "reasons":  [
+                                                              "tool use unavailable",
+                                                              "task strength 2/5"
+                                                          ]
+                                          },
+                                          {
+                                              "profileId":  "balanced-reasoning",
+                                              "eligible":  false,
+                                              "score":  55,
+                                              "reasons":  [
+                                                              "privacy mode unsupported",
+                                                              "budget tier exceeded"
+                                                          ]
+                                          },
+                                          {
+                                              "profileId":  "coding-specialist",
+                                              "eligible":  false,
+                                              "score":  94,
+                                              "reasons":  [
+                                                              "privacy mode unsupported",
+                                                              "budget tier exceeded"
+                                                          ]
+                                          }
+                                      ],
+                       "rationale":  "Selected local-private: tool use unavailable, task strength 2/5. Provider execution is not yet bound.",
+                       "routedAt":  "2026-07-12T16:13:20.716Z"
+                   },
+    "promptComposition":  {
+                              "id":  "5fe31688-4c2e-4b8d-a6dc-b21386fac4e4",
+                              "projectId":  "forge-core",
+                              "objective":  "Use Forge project memory and repository evidence to identify the next implementation step.",
+                              "route":  {
+                                            "selectedProfile":  {
+                                                                    "id":  "local-private",
+                                                                    "label":  "Local Private Route",
+                                                                    "executionMode":  "routing-only",
+                                                                    "providerBinding":  null,
+                                                                    "maxContextChars":  32000,
+                                                                    "privacyModes":  [
+                                                                                         "local-only",
+                                                                                         "private",
+                                                                                         "standard"
+                                                                                     ],
+                                                                    "taskStrengths":  {
+                                                                                          "reasoning":  2,
+                                                                                          "coding":  2,
+                                                                                          "analysis":  3,
+                                                                                          "summarization":  3
+                                                                                      },
+                                                                    "costTier":  1,
+                                                                    "supportsTools":  false
+                                                                },
+                                            "request":  {
+                                                            "taskType":  "analysis",
+                                                            "privacy":  "local-only",
+                                                            "budget":  "low",
+                                                            "contextChars":  3240,
+                                                            "requiresTools":  true
+                                                        },
+                                            "candidates":  [
+                                                               {
+                                                                   "profileId":  "local-private",
+                                                                   "eligible":  true,
+                                                                   "score":  31,
+                                                                   "reasons":  [
+                                                                                   "tool use unavailable",
+                                                                                   "task strength 3/5"
+                                                                               ]
+                                                               },
+                                                               {
+                                                                   "profileId":  "balanced-reasoning",
+                                                                   "eligible":  false,
+                                                                   "score":  96,
+                                                                   "reasons":  [
+                                                                                   "privacy mode unsupported",
+                                                                                   "budget tier exceeded"
+                                                                               ]
+                                                               },
+                                                               {
+                                                                   "profileId":  "coding-specialist",
+                                                                   "eligible":  false,
+                                                                   "score":  75,
+                                                                   "reasons":  [
+                                                                                   "privacy mode unsupported",
+                                                                                   "budget tier exceeded"
+                                                                               ]
+                                                               }
+                                                           ],
+                                            "rationale":  "Selected local-private: tool use unavailable, task strength 3/5. Provider execution is not yet bound.",
+                                            "routedAt":  "2026-07-12T16:13:20.765Z"
+                                        },
+                              "memoryIds":  [
+                                                "b41dcc56-469f-4572-9019-b251897a42fe"
+                                            ],
+                              "sourceFiles":  [
+                                                  "GOVERNANCE/CONSTITUTION.md",
+                                                  "package.json"
+                                              ],
+                              "content":  "# Objective\nUse Forge project memory and repository evidence to identify the next implementation step.\n\n# Project\nName: Forge Core\nProject ID: forge-core\n\n# Persistent Memory\n- [decision] GitHub is the source of truth; the active Forge runtime and project memory operate locally.\n\n# Source Files\n## File: GOVERNANCE/CONSTITUTION.md\n\n```text\n﻿# Forge Constitution\n\n## Identity\n\nForge is een zelfstandig AI Software Engineering Platform.\n\nForge is geen onderdeel van FPS Connect, FPS One, Sparki of andere FPS-producten.\nProductspecifieke logica mag niet in Forge Core worden opgenomen.\n\n## Operating model\n\nForge bestaat uit twee samenwerkende systemen:\n\n1. Forge Intelligence\n   Onderzoek, architectuur, capability discovery en experimenten.\n\n2. Forge Productivity\n   Ontwerpen, bouwen, testen, verbeteren, onderhouden en gecontroleerd deployen.\n\n## Core doctrine\n\nIedere missie begint met een capability-analyse.\n\nForge bepaalt:\n\n- het gewenste eindresultaat;\n- de aanwezige capabilities;\n- ontbrekende capabilities;\n- de waarde en het risico van zelfverbetering;\n- of directe uitvoering of voorafgaande verbetering nodig is.\n\n## Authority boundaries\n\nForge mag autonoom handelen binnen expliciet toegestane lokale workspaces.\n\nMenselijke goedkeuring blijft verplicht voor:\n\n- productie-ingrepen;\n- destructieve acties;\n- wijzigingen met grote architecturale impact;\n- overschrijding van budget- of resourcegrenzen;\n- wijzigingen aan governance en Constitution;\n- toegang tot niet-toegestane systemen of gegevens.\n\n## Source and execution\n\nGitHub is de broncodebron.\n\nDe primaire Forge-runtime draait lokaal.\n\nReplit is geen operationeel commandokanaal en mag geen Forge-opdrachten uitvoeren.\n\n## Evidence\n\nEen component geldt pas als geïmplementeerd wanneer de repository, tests en runtime dit aantoonbaar bevestigen.\n\nEen opdracht, rapport of mock-up vormt op zichzelf geen implementatiebewijs.\r\n\n```\n\n## File: package.json\n\n```text\n{\r\n    \"name\":  \"workspace\",\r\n    \"version\":  \"0.0.0\",\r\n    \"license\":  \"MIT\",\r\n    \"scripts\":  {\r\n                    \"preinstall\":  \"node ./scripts/enforce-pnpm.mjs\",\r\n                    \"build\":  \"pnpm run typecheck \\u0026\\u0026 pnpm -r --if-present run build\",\r\n                    \"typecheck:libs\":  \"tsc --build\",\r\n                    \"typecheck\":  \"pnpm run typecheck:libs \\u0026\\u0026 pnpm -r --filter \\\"./artifacts/**\\\" --filter \\\"./scripts\\\" --if-present run typecheck\"\r\n                },\r\n    \"private\":  true,\r\n    \"devDependencies\":  {\r\n                            \"prettier\":  \"^3.8.4\",\r\n                            \"typescript\":  \"~5.9.3\"\r\n                        },\r\n    \"optionalDependencies\":  {\r\n                                 \"@rollup/rollup-win32-x64-msvc\":  \"4.62.2\",\r\n                                 \"@tailwindcss/oxide-win32-x64-msvc\":  \"4.3.1\",\r\n                                 \"lightningcss-win32-x64-msvc\":  \"1.32.0\",\r\n                                 \"@rollup/rollup-linux-x64-musl\":  \"4.62.2\",\r\n                                 \"@tailwindcss/oxide-linux-x64-musl\":  \"4.3.1\",\r\n                                 \"lightningcss-linux-x64-musl\":  \"1.32.0\"\r\n                             },\r\n    \"packageManager\":  \"pnpm@11.10.0\",\r\n    \"engines\":  {\r\n                    \"node\":  \"\\u003e=24 \\u003c25\",\r\n                    \"pnpm\":  \"\\u003e=11 \\u003c12\"\r\n                }\r\n}\n\n```\n\n# Model Route\nProfile: local-private\nExecution mode: routing-only\nProvider binding: not configured\nRationale: Selected local-private: tool use unavailable, task strength 3/5. Provider execution is not yet bound.\n\n# Execution Contract\n- Use only the supplied project memory and source files as factual project context.\n- Do not invent repository state, test results or implementation evidence.\n- Respect governance, workspace boundaries and approval requirements.\n- Return explicit assumptions and verification steps.",
+                              "createdAt":  "2026-07-12T16:13:20.765Z"
+                          },
+    "runtimeAfterRestart":  {
+                                "operator":  {
+                                                 "projects":  1,
+                                                 "memories":  1,
+                                                 "compositions":  1,
+                                                 "lastCompositionAt":  "2026-07-12T16:13:20.765Z",
+                                                 "modelProfiles":  3,
+                                                 "workspaceConnector":  "read-only"
+                                             },
+                                "runtimeId":  "fe1f0a1f-7c34-401f-9e77-ac0fc9b0a442"
+                            },
+    "persistedOperatorState":  {
+                                   "version":  1,
+                                   "projects":  [
+                                                    {
+                                                        "id":  "forge-core",
+                                                        "name":  "Forge Core",
+                                                        "rootPath":  "/app",
+                                                        "description":  "Authoritative local Forge Core repository and runtime workspace.",
+                                                        "createdAt":  "2026-07-12T16:13:19.891Z",
+                                                        "updatedAt":  "2026-07-12T16:13:19.891Z"
+                                                    }
+                                                ],
+                                   "memories":  [
+                                                    {
+                                                        "id":  "b41dcc56-469f-4572-9019-b251897a42fe",
+                                                        "projectId":  "forge-core",
+                                                        "kind":  "decision",
+                                                        "content":  "GitHub is the source of truth; the active Forge runtime and project memory operate locally.",
+                                                        "tags":  [
+                                                                     "source-of-truth",
+                                                                     "local-runtime"
+                                                                 ],
+                                                        "source":  "operator-core-verification",
+                                                        "createdAt":  "2026-07-12T16:13:20.600Z"
+                                                    }
+                                                ],
+                                   "compositions":  [
+                                                        {
+                                                            "id":  "5fe31688-4c2e-4b8d-a6dc-b21386fac4e4",
+                                                            "projectId":  "forge-core",
+                                                            "objective":  "Use Forge project memory and repository evidence to identify the next implementation step.",
+                                                            "route":  {
+                                                                          "selectedProfile":  {
+                                                                                                  "id":  "local-private",
+                                                                                                  "label":  "Local Private Route",
+                                                                                                  "executionMode":  "routing-only",
+                                                                                                  "providerBinding":  null,
+                                                                                                  "maxContextChars":  32000,
+                                                                                                  "privacyModes":  [
+                                                                                                                       "local-only",
+                                                                                                                       "private",
+                                                                                                                       "standard"
+                                                                                                                   ],
+                                                                                                  "taskStrengths":  {
+                                                                                                                        "reasoning":  2,
+                                                                                                                        "coding":  2,
+                                                                                                                        "analysis":  3,
+                                                                                                                        "summarization":  3
+                                                                                                                    },
+                                                                                                  "costTier":  1,
+                                                                                                  "supportsTools":  false
+                                                                                              },
+                                                                          "request":  {
+                                                                                          "taskType":  "analysis",
+                                                                                          "privacy":  "local-only",
+                                                                                          "budget":  "low",
+                                                                                          "contextChars":  3240,
+                                                                                          "requiresTools":  true
+                                                                                      },
+                                                                          "candidates":  [
+                                                                                             {
+                                                                                                 "profileId":  "local-private",
+                                                                                                 "eligible":  true,
+                                                                                                 "score":  31,
+                                                                                                 "reasons":  [
+                                                                                                                 "tool use unavailable",
+                                                                                                                 "task strength 3/5"
+                                                                                                             ]
+                                                                                             },
+                                                                                             {
+                                                                                                 "profileId":  "balanced-reasoning",
+                                                                                                 "eligible":  false,
+                                                                                                 "score":  96,
+                                                                                                 "reasons":  [
+                                                                                                                 "privacy mode unsupported",
+                                                                                                                 "budget tier exceeded"
+                                                                                                             ]
+                                                                                             },
+                                                                                             {
+                                                                                                 "profileId":  "coding-specialist",
+                                                                                                 "eligible":  false,
+                                                                                                 "score":  75,
+                                                                                                 "reasons":  [
+                                                                                                                 "privacy mode unsupported",
+                                                                                                                 "budget tier exceeded"
+                                                                                                             ]
+                                                                                             }
+                                                                                         ],
+                                                                          "rationale":  "Selected local-private: tool use unavailable, task strength 3/5. Provider execution is not yet bound.",
+                                                                          "routedAt":  "2026-07-12T16:13:20.765Z"
+                                                                      },
+                                                            "memoryIds":  [
+                                                                              "b41dcc56-469f-4572-9019-b251897a42fe"
+                                                                          ],
+                                                            "sourceFiles":  [
+                                                                                "GOVERNANCE/CONSTITUTION.md",
+                                                                                "package.json"
+                                                                            ],
+                                                            "content":  "# Objective\nUse Forge project memory and repository evidence to identify the next implementation step.\n\n# Project\nName: Forge Core\nProject ID: forge-core\n\n# Persistent Memory\n- [decision] GitHub is the source of truth; the active Forge runtime and project memory operate locally.\n\n# Source Files\n## File: GOVERNANCE/CONSTITUTION.md\n\n```text\n´╗┐# Forge Constitution\n\n## Identity\n\nForge is een zelfstandig AI Software Engineering Platform.\n\nForge is geen onderdeel van FPS Connect, FPS One, Sparki of andere FPS-producten.\nProductspecifieke logica mag niet in Forge Core worden opgenomen.\n\n## Operating model\n\nForge bestaat uit twee samenwerkende systemen:\n\n1. Forge Intelligence\n   Onderzoek, architectuur, capability discovery en experimenten.\n\n2. Forge Productivity\n   Ontwerpen, bouwen, testen, verbeteren, onderhouden en gecontroleerd deployen.\n\n## Core doctrine\n\nIedere missie begint met een capability-analyse.\n\nForge bepaalt:\n\n- het gewenste eindresultaat;\n- de aanwezige capabilities;\n- ontbrekende capabilities;\n- de waarde en het risico van zelfverbetering;\n- of directe uitvoering of voorafgaande verbetering nodig is.\n\n## Authority boundaries\n\nForge mag autonoom handelen binnen expliciet toegestane lokale workspaces.\n\nMenselijke goedkeuring blijft verplicht voor:\n\n- productie-ingrepen;\n- destructieve acties;\n- wijzigingen met grote architecturale impact;\n- overschrijding van budget- of resourcegrenzen;\n- wijzigingen aan governance en Constitution;\n- toegang tot niet-toegestane systemen of gegevens.\n\n## Source and execution\n\nGitHub is de broncodebron.\n\nDe primaire Forge-runtime draait lokaal.\n\nReplit is geen operationeel commandokanaal en mag geen Forge-opdrachten uitvoeren.\n\n## Evidence\n\nEen component geldt pas als ge├»mplementeerd wanneer de repository, tests en runtime dit aantoonbaar bevestigen.\n\nEen opdracht, rapport of mock-up vormt op zichzelf geen implementatiebewijs.\r\n\n```\n\n## File: package.json\n\n```text\n{\r\n    \"name\":  \"workspace\",\r\n    \"version\":  \"0.0.0\",\r\n    \"license\":  \"MIT\",\r\n    \"scripts\":  {\r\n                    \"preinstall\":  \"node ./scripts/enforce-pnpm.mjs\",\r\n                    \"build\":  \"pnpm run typecheck \\u0026\\u0026 pnpm -r --if-present run build\",\r\n                    \"typecheck:libs\":  \"tsc --build\",\r\n                    \"typecheck\":  \"pnpm run typecheck:libs \\u0026\\u0026 pnpm -r --filter \\\"./artifacts/**\\\" --filter \\\"./scripts\\\" --if-present run typecheck\"\r\n                },\r\n    \"private\":  true,\r\n    \"devDependencies\":  {\r\n                            \"prettier\":  \"^3.8.4\",\r\n                            \"typescript\":  \"~5.9.3\"\r\n                        },\r\n    \"optionalDependencies\":  {\r\n                                 \"@rollup/rollup-win32-x64-msvc\":  \"4.62.2\",\r\n                                 \"@tailwindcss/oxide-win32-x64-msvc\":  \"4.3.1\",\r\n                                 \"lightningcss-win32-x64-msvc\":  \"1.32.0\",\r\n                                 \"@rollup/rollup-linux-x64-musl\":  \"4.62.2\",\r\n                                 \"@tailwindcss/oxide-linux-x64-musl\":  \"4.3.1\",\r\n                                 \"lightningcss-linux-x64-musl\":  \"1.32.0\"\r\n                             },\r\n    \"packageManager\":  \"pnpm@11.10.0\",\r\n    \"engines\":  {\r\n                    \"node\":  \"\\u003e=24 \\u003c25\",\r\n                    \"pnpm\":  \"\\u003e=11 \\u003c12\"\r\n                }\r\n}\n\n```\n\n# Model Route\nProfile: local-private\nExecution mode: routing-only\nProvider binding: not configured\nRationale: Selected local-private: tool use unavailable, task strength 3/5. Provider execution is not yet bound.\n\n# Execution Contract\n- Use only the supplied project memory and source files as factual project context.\n- Do not invent repository state, test results or implementation evidence.\n- Respect governance, workspace boundaries and approval requirements.\n- Return explicit assumptions and verification steps.",
+                                                            "createdAt":  "2026-07-12T16:13:20.765Z"
+                                                        }
+                                                    ]
+                               },
+    "desktopUrl":  "http://localhost:5000/operator"
+}
