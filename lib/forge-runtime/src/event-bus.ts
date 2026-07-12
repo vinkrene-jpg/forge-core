@@ -48,6 +48,7 @@ export type RuntimeEventType =
   | "autonomous.cycle.continuation.scheduled"
   | "autonomous.cycle.continuation.failed"
   | "learning.state.loaded"
+  | "learning.evidence.collected"
   | "learning.observation.recorded"
   | "learning.proposal.created"
   | "learning.proposal.scheduled"

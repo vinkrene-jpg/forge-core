@@ -1,0 +1,33 @@
+{
+    "bundle":  "FG-004.110 + FG-004.200",
+    "verifiedAt":  "2026-07-12T22:01:04.5317427+02:00",
+    "sourceParentCommit":  "98b40eb",
+    "patchSha256":  "27ba05fde9a2c07e5635b632bdcd4df9a7651f00f5b6d1a0cd66571c250297dc",
+    "sharedGate":  {
+                       "runtimeTests":  "passed",
+                       "fullTypecheck":  "passed",
+                       "productionBuild":  "passed"
+                   },
+    "matrixChapter":  {
+                          "status":  "passed",
+                          "entries":  3,
+                          "track":  "human-intent",
+                          "maturity":  "experimental",
+                          "operationalAuthority":  false,
+                          "dependencyAware":  true
+                      },
+    "toolChapter":  {
+                        "status":  "succeeded",
+                        "error":  null,
+                        "missionId":  "3e15f883-f395-4170-b5ba-affb92695703",
+                        "proposalId":  "2f7c317f-30b6-4378-bc15-44948b42f344",
+                        "observationId":  "6b3b2b53-b13a-4482-a3f6-0d996a79b133",
+                        "providerExecutionsAdded":  1,
+                        "automaticRetry":  false
+                    },
+    "failureDomains":  {
+                           "sharedBuildFailureBlocksAll":  true,
+                           "providerFailureBlocksMatrix":  false,
+                           "independentEvidencePersisted":  true
+                       }
+}

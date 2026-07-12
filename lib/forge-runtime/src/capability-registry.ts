@@ -323,6 +323,36 @@ function defaultCapabilities(): readonly CapabilityRecord[] {
       confidence: 1,
       source: "learning-engine-foundation",
     },
+    {
+      id: "human-intent.goal-clarification",
+      name: "Experimental Goal Clarification",
+      description:
+        "Research capability for separating goals, wishes, requirements and unresolved questions.",
+      status: "experimental",
+      version: "0.1.0",
+      confidence: 0.2,
+      source: "adaptive-learning-matrix",
+    },
+    {
+      id: "human-intent.ambiguity-detection",
+      name: "Experimental Ambiguity Detection",
+      description:
+        "Research capability for identifying ambiguity and formulating blocking clarification questions.",
+      status: "experimental",
+      version: "0.1.0",
+      confidence: 0.2,
+      source: "adaptive-learning-matrix",
+    },
+    {
+      id: "human-intent.success-criteria",
+      name: "Experimental Success Criteria",
+      description:
+        "Research capability for translating intent into observable, testable outcomes.",
+      status: "experimental",
+      version: "0.1.0",
+      confidence: 0.2,
+      source: "adaptive-learning-matrix",
+    },
   ];
 
   return defaults.map((capability) =>

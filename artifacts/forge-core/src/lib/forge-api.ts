@@ -242,7 +242,22 @@ export interface LearningObservation {
   readonly evaluationId: string;
   readonly evaluationScore: number;
   readonly outcome: "passed" | "failed";
+  readonly sourceProposalId: string | null;
+  readonly targetCapabilityId: string | null;
+  readonly capabilityResult: "pass" | "gap" | null;
+  readonly toolEvidenceMemoryId: string | null;
   readonly observedAt: string;
+}
+
+export interface LearningCapabilityMatrixEntry {
+  readonly capabilityId: string;
+  readonly name: string;
+  readonly track: "human-intent";
+  readonly maturity: "experimental";
+  readonly dependencies: readonly string[];
+  readonly evidenceRequirements: readonly string[];
+  readonly exerciseTypes: readonly string[];
+  readonly operationalAuthority: false;
 }
 
 export interface LearningMissionProposal {
@@ -264,6 +279,7 @@ export interface LearningStateResponse {
   readonly profiles: readonly LearningCapabilityProfile[];
   readonly observations: readonly LearningObservation[];
   readonly proposals: readonly LearningMissionProposal[];
+  readonly matrix: readonly LearningCapabilityMatrixEntry[];
 }
 
 export interface CreateMissionRequest {

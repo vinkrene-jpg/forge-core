@@ -73,8 +73,11 @@ test(
       let providerCalls = 0;
       const connector: AiProviderConnector = {
         id: "openai-responses",
-        async execute() {
+        async execute(composition) {
           providerCalls += 1;
+          const evidenceId = /Required evidence ID:\s*([a-f0-9-]+)/i.exec(
+            composition.content,
+          )?.[1];
 
           if (providerCalls === 3) {
             return Object.freeze({
@@ -84,6 +87,8 @@ test(
                 "This provider-only answer cannot verify that the target capability executed successfully. It records a proposed next step but no concrete runtime evidence.",
                 "The response intentionally omits the required premise declaration so deterministic evaluation must reject it safely.",
                 "Verification must use persisted mission, execution and Project Memory identifiers before any capability score can be accepted.",
+                `EVIDENCE: ${evidenceId}`,
+                "CAPABILITY_RESULT: GAP",
               ].join("\n"),
               usage: Object.freeze({
                 inputTokens: 90,
@@ -104,6 +109,13 @@ test(
               "",
               "## Verification",
               "Record exact evidence identifiers, run typecheck and integration tests, replace the runtime, and verify that learning state is unchanged.",
+              ...(evidenceId
+                ? [
+                    "",
+                    `EVIDENCE: ${evidenceId}`,
+                    "CAPABILITY_RESULT: PASS",
+                  ]
+                : []),
             ].join("\n"),
             usage: Object.freeze({
               inputTokens: 100,
@@ -159,6 +171,7 @@ test(
         runtime.getCapability("learning.evidence.assess")?.status,
         "operational",
       );
+      assert.equal(runtime.listLearningMatrix().length, 3);
 
       await runtime.stop();
 
@@ -282,6 +295,8 @@ test(
       assert.equal(completed?.status, "completed");
       assert.equal(completed?.resultObservationId, feedback?.id);
       assert.equal(feedback?.sourceProposalId, reconciledProposal.id);
+      assert.equal(feedback?.capabilityResult, "pass");
+      assert.ok(feedback?.toolEvidenceMemoryId);
       assert.equal(
         feedback?.targetCapabilityId,
         reconciledProposal.targetCapabilityId,

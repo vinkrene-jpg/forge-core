@@ -72,3 +72,7 @@ Status: parallel research only; may not block or destabilize production work.
 ### Verified negative learning feedback
 
 FG-004.100 proves that rejected provider output becomes bounded negative learning evidence rather than false success or an automatic retry. The successful feedback path remains deterministically covered; live success awaits an exercise with real execution tools.
+
+### Accelerated independent learning chapters
+
+The read-only evidence-tool path and the adaptive Human Intent capability matrix share a build gate but have separate live outcomes. Provider or exercise failure blocks only its dependent branch; deterministic matrix work continues and retains separate evidence.

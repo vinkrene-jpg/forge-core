@@ -17,6 +17,7 @@ import type {
   ObserveAutonomousLearningRequest,
   RecordFailedLearningExerciseRequest,
 } from "./learning";
+import { getLearningMatrixEntry } from "./learning-matrix";
 
 export interface LearningEngineOptions {
   readonly events: RuntimeEventBus;
@@ -38,6 +39,8 @@ function cloneObservation(
     ...observation,
     sourceProposalId: observation.sourceProposalId ?? null,
     targetCapabilityId: observation.targetCapabilityId ?? null,
+    capabilityResult: observation.capabilityResult ?? null,
+    toolEvidenceMemoryId: observation.toolEvidenceMemoryId ?? null,
     signals: Object.freeze(
       observation.signals.map((signal) => Object.freeze({ ...signal })),
     ),
@@ -79,6 +82,29 @@ function boundedScore(value: number, field: string): number {
   }
 
   return Math.round(value);
+}
+
+function rankedEligibleProfiles(
+  profiles: ReadonlyMap<string, LearningCapabilityProfile>,
+): readonly LearningCapabilityProfile[] {
+  const all = [...profiles.values()];
+  const eligible = all.filter((profile) => {
+    const matrixEntry = getLearningMatrixEntry(profile.capabilityId);
+
+    return (
+      !matrixEntry ||
+      matrixEntry.dependencies.every(
+        (dependency) => (profiles.get(dependency)?.score ?? 0) >= 70,
+      )
+    );
+  });
+
+  return (eligible.length > 0 ? eligible : all).sort(
+    (left, right) =>
+      left.score - right.score ||
+      left.confidence - right.confidence ||
+      left.capabilityId.localeCompare(right.capabilityId),
+  );
 }
 
 export class LearningEngine {
@@ -243,9 +269,13 @@ export class LearningEngine {
             ? "The bounded cycle produced accepted continuation evidence."
             : "The cycle did not produce accepted continuation evidence.";
         } else if (capabilityId === targetCapabilityId) {
-          score = accepted ? evaluationScore : 0;
+          score =
+            accepted && request.capabilityResult === "pass"
+              ? evaluationScore
+              : 0;
           rationale = accepted
-            ? `Governed learning proposal ${sourceProposalId} produced accepted evidence scoring ${evaluationScore}.`
+            ? `Governed learning proposal ${sourceProposalId} produced accepted ` +
+              `${request.capabilityResult ?? "unclassified"} evidence scoring ${evaluationScore}.`
             : `Governed learning proposal ${sourceProposalId} did not produce accepted evidence.`;
         }
 
@@ -267,6 +297,8 @@ export class LearningEngine {
       evidenceMemoryId: request.evidenceMemoryId,
       sourceProposalId,
       targetCapabilityId,
+      capabilityResult: request.capabilityResult ?? null,
+      toolEvidenceMemoryId: request.toolEvidenceMemoryId ?? null,
       evaluationScore,
       outcome: accepted ? "passed" : "failed",
       signals: Object.freeze(signals),
@@ -281,6 +313,14 @@ export class LearningEngine {
           type: "project-memory" as const,
           id: request.evidenceMemoryId,
         }),
+        ...(request.toolEvidenceMemoryId
+          ? [
+              Object.freeze({
+                type: "project-memory" as const,
+                id: request.toolEvidenceMemoryId,
+              }),
+            ]
+          : []),
         ...uniqueCapabilityIds.map((id) =>
           Object.freeze({ type: "capability" as const, id }),
         ),
@@ -352,12 +392,7 @@ export class LearningEngine {
       );
     }
 
-    const rankedProfiles = [...profiles.values()].sort(
-      (left, right) =>
-        left.score - right.score ||
-        left.confidence - right.confidence ||
-        left.capabilityId.localeCompare(right.capabilityId),
-    );
+    const rankedProfiles = rankedEligibleProfiles(profiles);
     const target = rankedProfiles[0];
 
     if (!target) {
@@ -367,6 +402,7 @@ export class LearningEngine {
     const targetCapability = this.#getCapabilities().find(
       (capability) => capability.id === target.capabilityId,
     );
+    const matrixEntry = getLearningMatrixEntry(target.capabilityId);
     const proposal: LearningMissionProposal = Object.freeze({
       id: randomUUID(),
       sourceObservationId: observation.id,
@@ -380,10 +416,14 @@ export class LearningEngine {
         title: `Learning evidence for ${target.capabilityId}`,
         input: Object.freeze({
           projectId: request.projectId,
-          objective:
-            `Propose the smallest reversible verification exercise for ` +
-            `capability ${target.capabilityId} (${targetCapability?.name ?? "unregistered"}). ` +
-            `Use current repository evidence, state assumptions, acceptance criteria and exact tests.`,
+          objective: matrixEntry
+            ? `Run an isolated ${matrixEntry.exerciseTypes[0]} research exercise for ` +
+              `${target.capabilityId}. Required evidence: ` +
+              `${matrixEntry.evidenceRequirements.join("; ")}. ` +
+              `This experimental track grants no operational authority.`
+            : `Propose the smallest reversible verification exercise for ` +
+              `capability ${target.capabilityId} (${targetCapability?.name ?? "unregistered"}). ` +
+              `Use current repository evidence, state assumptions, acceptance criteria and exact tests.`,
           cycleIndex: 1 as const,
           maxCycles: 1 as const,
           continuationAuthorized: false as const,
@@ -432,6 +472,8 @@ export class LearningEngine {
     this.#events.publish("learning.proposal.created", {
       proposalId: proposal.id,
       targetCapabilityId: proposal.targetCapabilityId,
+      capabilityResult: null,
+      toolEvidenceMemoryId: null,
       priority: proposal.priority,
     });
 
@@ -551,6 +593,8 @@ export class LearningEngine {
       evidenceMemoryId: request.evidenceMemoryId,
       sourceProposalId: proposal.id,
       targetCapabilityId: proposal.targetCapabilityId,
+      capabilityResult: null,
+      toolEvidenceMemoryId: null,
       evaluationScore,
       outcome: "failed",
       signals: Object.freeze([signal]),
@@ -620,12 +664,7 @@ export class LearningEngine {
       resultObservationId: observation.id,
       completedAt: observedAt,
     });
-    const rankedProfiles = [...profiles.values()].sort(
-      (left, right) =>
-        left.score - right.score ||
-        left.confidence - right.confidence ||
-        left.capabilityId.localeCompare(right.capabilityId),
-    );
+    const rankedProfiles = rankedEligibleProfiles(profiles);
     const target = rankedProfiles[0];
 
     if (!target) {
@@ -635,6 +674,7 @@ export class LearningEngine {
     const targetCapability = this.#getCapabilities().find(
       (capability) => capability.id === target.capabilityId,
     );
+    const matrixEntry = getLearningMatrixEntry(target.capabilityId);
     const nextProposal: LearningMissionProposal = Object.freeze({
       id: randomUUID(),
       sourceObservationId: observation.id,
@@ -648,11 +688,14 @@ export class LearningEngine {
         title: `Recovery learning evidence for ${target.capabilityId}`,
         input: Object.freeze({
           projectId: request.projectId,
-          objective:
-            `Design a different, executable and reversible evidence exercise for ` +
-            `capability ${target.capabilityId} (${targetCapability?.name ?? "unregistered"}). ` +
-            `Address failed checks ${failedCheckIds.join(", ")} and do not repeat ` +
-            `the provider-only exercise that failed to produce verified evidence.`,
+          objective: matrixEntry
+            ? `Design a different isolated ${matrixEntry.exerciseTypes[0]} exercise for ` +
+              `${target.capabilityId}. Preserve experimental status and collect: ` +
+              `${matrixEntry.evidenceRequirements.join("; ")}.`
+            : `Design a different, executable and reversible evidence exercise for ` +
+              `capability ${target.capabilityId} (${targetCapability?.name ?? "unregistered"}). ` +
+              `Address failed checks ${failedCheckIds.join(", ")} and do not repeat ` +
+              `the provider-only exercise that failed to produce verified evidence.`,
           cycleIndex: 1 as const,
           maxCycles: 1 as const,
           continuationAuthorized: false as const,

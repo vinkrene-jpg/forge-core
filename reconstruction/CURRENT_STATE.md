@@ -65,3 +65,7 @@ FG-004.000 is live verified at 2026-07-12T20:59:33.0567566+02:00. The canonical 
 ## Governed learning failure feedback
 
 FG-004.100 verified the negative path at 2026-07-12T21:43:37.7087171+02:00. One approved provider execution returned safe but incomplete and explicitly unverified output. Deterministic evaluation rejected it at 83 because assumptions-explicit failed. Forge preserved the failed mission and execution, converted them exactly once into negative capability evidence, closed the proposal as failed, created an inert recovery proposal and survived restart without another provider call. Evidence: reconstruction/LEARNING_FAILURE_FEEDBACK_VERIFICATION.json.
+
+## Learning accelerator bundle
+
+FG-004.110 and FG-004.200 were processed as independent chapters at 2026-07-12T22:01:04.5317427+02:00. Shared tests, typecheck and build passed. The dependency-aware Human Intent matrix contains three experimental capabilities with no operational authority. The read-only evidence-tool chapter ended as succeeded and used 1 provider execution(s); its result did not invalidate the independent matrix chapter. Evidence: reconstruction/LEARNING_ACCELERATOR_VERIFICATION.json.
