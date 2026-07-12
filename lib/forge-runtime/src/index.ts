@@ -30,6 +30,7 @@ export {
   type EvolutionPlanStep,
   type EvolutionPlanSummary,
   type EvolutionStepAction,
+  type EvolutionVerificationEvidence,
   type UpsertCapabilityRequest,
 } from "./capability";
 
@@ -39,6 +40,11 @@ export {
   type RuntimeEventListener,
   type RuntimeEventType,
 } from "./event-bus";
+
+export {
+  EvolutionEngine,
+  type EvolutionEngineOptions,
+} from "./evolution-engine";
 
 export {
   EvolutionPlanner,

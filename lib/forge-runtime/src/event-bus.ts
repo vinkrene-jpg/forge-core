@@ -27,7 +27,12 @@ export type RuntimeEventType =
   | "capability.registered"
   | "capability.updated"
   | "capability.analysis.completed"
-  | "evolution.plan.created";
+  | "evolution.plan.created"
+  | "evolution.plan.approved"
+  | "evolution.plan.started"
+  | "evolution.step.verified"
+  | "evolution.plan.completed"
+  | "evolution.plan.failed";
 
 export interface RuntimeEvent {
   readonly sequence: number;
@@ -44,7 +49,7 @@ export class RuntimeEventBus {
   readonly #history: RuntimeEvent[] = [];
   #sequence = 0;
 
-  constructor(historyLimit = 400) {
+  constructor(historyLimit = 500) {
     if (!Number.isInteger(historyLimit) || historyLimit < 1) {
       throw new Error("historyLimit must be a positive integer");
     }

@@ -99,6 +99,12 @@ export class EvolutionPlanner {
         analysis.missionCriticality,
       ),
       steps: Object.freeze(steps),
+      approvedAt: null,
+      approvedBy: null,
+      startedAt: null,
+      completedAt: null,
+      lastError: null,
+      evidence: Object.freeze([]),
       createdAt: timestamp,
       updatedAt: timestamp,
     });

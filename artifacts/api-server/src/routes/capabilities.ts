@@ -99,6 +99,48 @@ router.post(
   },
 );
 
+router.post(
+  "/evolution-plans/:planId/approve",
+  async (req, res): Promise<void> => {
+    try {
+      const actor = String(req.body?.actor ?? "").trim();
+
+      if (actor.length === 0) {
+        throw new Error("actor is required");
+      }
+
+      const plan =
+        await forgeRuntime.approveEvolutionPlan(
+          req.params.planId,
+          actor,
+        );
+
+      res.json(plan);
+    } catch (error) {
+      res.status(400).json({
+        error: message(error),
+      });
+    }
+  },
+);
+
+router.post(
+  "/evolution-plans/:planId/execute",
+  async (req, res): Promise<void> => {
+    try {
+      const plan =
+        await forgeRuntime.executeEvolutionPlan(
+          req.params.planId,
+        );
+
+      res.json(plan);
+    } catch (error) {
+      res.status(400).json({
+        error: message(error),
+      });
+    }
+  },
+);
 router.get("/evolution-plans", (_req, res): void => {
   res.json({
     plans: forgeRuntime.listEvolutionPlans(),

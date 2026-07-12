@@ -13,7 +13,7 @@
 | Learning Engine | Missing | No source or Git-history evidence |
 | Capability Registry | Implemented | Persistent registry with baseline reconciliation and live API verification |
 | Capability Analysis | Implemented | Mission precheck and manual gap analysis verified live |
-| Evolution Engine | Partial | Persistent deterministic evolution planning implemented; execution engine not yet implemented |
+| Evolution Engine | Implemented | Approval, verified execution, evidence persistence, capability promotion and negative safety gate verified live |
 | Governance Engine | Implemented | Versioned risk policy, persistent approvals, blocking, approval and rejection verified live |
 | Project Memory | Missing | No source or Git-history evidence |
 | Prompt Composer | Missing | No source or Git-history evidence |

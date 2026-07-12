@@ -1,0 +1,853 @@
+{
+    "verifiedAt":  "2026-07-12T16:50:02.7452749+02:00",
+    "sourceCommit":  "7d28284da597adb6a0afcf41d9a18df83ff97942",
+    "test":  "approved-evolution-execution-verification-promotion-and-negative-gate",
+    "planBeforeApproval":  {
+                               "id":  "63fc3553-3980-4228-98da-3bbd24a11738",
+                               "analysisId":  "078ba309-35aa-44b4-a81f-1038418b54cb",
+                               "objective":  "Promote runtime event history inspection after concrete lifecycle verification",
+                               "status":  "proposed",
+                               "roiScore":  100,
+                               "steps":  [
+                                             {
+                                                 "order":  1,
+                                                 "capabilityId":  "runtime.event.history.inspect",
+                                                 "action":  "validate",
+                                                 "fromStatus":  "experimental",
+                                                 "toStatus":  "operational",
+                                                 "acceptanceCriteria":  [
+                                                                            "Capability runtime.event.history.inspect is implemented in the Forge runtime.",
+                                                                            "Automated verification proves status operational.",
+                                                                            "Verification evidence is persisted and linked to the capability record."
+                                                                        ]
+                                             }
+                                         ],
+                               "approvedAt":  null,
+                               "approvedBy":  null,
+                               "startedAt":  null,
+                               "completedAt":  null,
+                               "lastError":  null,
+                               "evidence":  [
+
+                                            ],
+                               "createdAt":  "2026-07-12T14:49:54.892Z",
+                               "updatedAt":  "2026-07-12T14:49:54.892Z"
+                           },
+    "planAfterRestart":  {
+                             "id":  "63fc3553-3980-4228-98da-3bbd24a11738",
+                             "analysisId":  "078ba309-35aa-44b4-a81f-1038418b54cb",
+                             "objective":  "Promote runtime event history inspection after concrete lifecycle verification",
+                             "status":  "approved",
+                             "roiScore":  100,
+                             "steps":  [
+                                           {
+                                               "order":  1,
+                                               "capabilityId":  "runtime.event.history.inspect",
+                                               "action":  "validate",
+                                               "fromStatus":  "experimental",
+                                               "toStatus":  "operational",
+                                               "acceptanceCriteria":  [
+                                                                          "Capability runtime.event.history.inspect is implemented in the Forge runtime.",
+                                                                          "Automated verification proves status operational.",
+                                                                          "Verification evidence is persisted and linked to the capability record."
+                                                                      ]
+                                           }
+                                       ],
+                             "approvedAt":  "2026-07-12T14:49:54.992Z",
+                             "approvedBy":  "forge-reconstruction-verifier",
+                             "startedAt":  null,
+                             "completedAt":  null,
+                             "lastError":  null,
+                             "evidence":  [
+
+                                          ],
+                             "createdAt":  "2026-07-12T14:49:54.892Z",
+                             "updatedAt":  "2026-07-12T14:49:54.992Z"
+                         },
+    "completedPlan":  {
+                          "id":  "63fc3553-3980-4228-98da-3bbd24a11738",
+                          "analysisId":  "078ba309-35aa-44b4-a81f-1038418b54cb",
+                          "objective":  "Promote runtime event history inspection after concrete lifecycle verification",
+                          "status":  "completed",
+                          "roiScore":  100,
+                          "steps":  [
+                                        {
+                                            "order":  1,
+                                            "capabilityId":  "runtime.event.history.inspect",
+                                            "action":  "validate",
+                                            "fromStatus":  "experimental",
+                                            "toStatus":  "operational",
+                                            "acceptanceCriteria":  [
+                                                                       "Capability runtime.event.history.inspect is implemented in the Forge runtime.",
+                                                                       "Automated verification proves status operational.",
+                                                                       "Verification evidence is persisted and linked to the capability record."
+                                                                   ]
+                                        }
+                                    ],
+                          "approvedAt":  "2026-07-12T14:49:54.992Z",
+                          "approvedBy":  "forge-reconstruction-verifier",
+                          "startedAt":  "2026-07-12T14:50:01.921Z",
+                          "completedAt":  "2026-07-12T14:50:01.925Z",
+                          "lastError":  null,
+                          "evidence":  [
+                                           {
+                                               "capabilityId":  "runtime.event.history.inspect",
+                                               "verifierId":  "runtime.event-history.lifecycle-evidence.v1",
+                                               "verifiedAt":  "2026-07-12T14:50:01.923Z",
+                                               "passed":  true,
+                                               "details":  {
+                                                               "eventCount":  8,
+                                                               "hasKernelStarted":  true,
+                                                               "hasCapabilityRegistryLoaded":  true
+                                                           }
+                                           }
+                                       ],
+                          "createdAt":  "2026-07-12T14:49:54.892Z",
+                          "updatedAt":  "2026-07-12T14:50:01.925Z"
+                      },
+    "promotedCapability":  {
+                               "id":  "runtime.event.history.inspect",
+                               "name":  "Runtime Event History Inspection",
+                               "description":  "Inspect the bounded runtime event history and verify lifecycle evidence.",
+                               "status":  "operational",
+                               "version":  "0.1.0",
+                               "confidence":  1,
+                               "source":  "evolution-engine:63fc3553-3980-4228-98da-3bbd24a11738",
+                               "createdAt":  "2026-07-12T14:49:54.053Z",
+                               "updatedAt":  "2026-07-12T14:50:01.923Z"
+                           },
+    "analysisAfterPromotion":  {
+                                   "id":  "a435d7ed-28c5-4db8-bb72-9e6b2159112d",
+                                   "objective":  "Promote runtime event history inspection after concrete lifecycle verification",
+                                   "sourceType":  "manual",
+                                   "sourceMissionKind":  null,
+                                   "requirements":  [
+                                                        {
+                                                            "capabilityId":  "runtime.event.history.inspect",
+                                                            "minimumStatus":  "operational",
+                                                            "reason":  "Event history inspection must prove lifecycle evidence before operational use."
+                                                        }
+                                                    ],
+                                   "gaps":  [
+
+                                            ],
+                                   "decision":  "execute_directly",
+                                   "expectedReuse":  5,
+                                   "missionCriticality":  4,
+                                   "createdAt":  "2026-07-12T14:50:01.977Z"
+                               },
+    "unsupportedPlan":  {
+                            "id":  "8500b73f-f9bb-484c-91b3-30f7af3f9768",
+                            "analysisId":  "319e0115-f2aa-40e9-abc8-9ee7386ffce2",
+                            "objective":  "Attempt unsupported autonomous software promotion",
+                            "status":  "cancelled",
+                            "roiScore":  100,
+                            "steps":  [
+                                          {
+                                              "order":  1,
+                                              "capabilityId":  "software.unverified.autonomy",
+                                              "action":  "validate",
+                                              "fromStatus":  "experimental",
+                                              "toStatus":  "operational",
+                                              "acceptanceCriteria":  [
+                                                                         "Capability software.unverified.autonomy is implemented in the Forge runtime.",
+                                                                         "Automated verification proves status operational.",
+                                                                         "Verification evidence is persisted and linked to the capability record."
+                                                                     ]
+                                          }
+                                      ],
+                            "approvedAt":  "2026-07-12T14:50:02.196Z",
+                            "approvedBy":  "forge-reconstruction-verifier",
+                            "startedAt":  "2026-07-12T14:50:02.244Z",
+                            "completedAt":  "2026-07-12T14:50:02.250Z",
+                            "lastError":  "No verifier registered for capability software.unverified.autonomy",
+                            "evidence":  [
+
+                                         ],
+                            "createdAt":  "2026-07-12T14:50:02.139Z",
+                            "updatedAt":  "2026-07-12T14:50:02.250Z"
+                        },
+    "unsupportedCapability":  {
+                                  "id":  "software.unverified.autonomy",
+                                  "name":  "Unverified Software Autonomy",
+                                  "description":  "Synthetic capability used to prove that unsupported evolution cannot promote itself.",
+                                  "status":  "experimental",
+                                  "version":  "0.1.0",
+                                  "confidence":  0.2,
+                                  "source":  "final-evolution-negative-test",
+                                  "createdAt":  "2026-07-12T14:50:02.033Z",
+                                  "updatedAt":  "2026-07-12T14:50:02.033Z"
+                              },
+    "runtimeAfterVerification":  {
+                                     "kernel":  {
+                                                    "status":  "running",
+                                                    "revision":  2,
+                                                    "startedAt":  "2026-07-12T14:50:01.076Z",
+                                                    "updatedAt":  "2026-07-12T14:50:01.076Z",
+                                                    "lastError":  null
+                                                },
+                                     "health":  {
+                                                    "status":  "ok",
+                                                    "kernelStatus":  "running",
+                                                    "checkedAt":  "2026-07-12T14:50:02.737Z",
+                                                    "startedAt":  "2026-07-12T14:50:01.076Z",
+                                                    "uptimeMs":  1661,
+                                                    "eventCount":  18
+                                                },
+                                     "persistence":  {
+                                                         "version":  1,
+                                                         "runtimeId":  "fe1f0a1f-7c34-401f-9e77-ac0fc9b0a442",
+                                                         "sessionId":  "ab39f56b-22c1-4c08-b7e0-412cabadb23b",
+                                                         "restartCount":  10,
+                                                         "recoveryCount":  9,
+                                                         "lastKnownKernelStatus":  "running",
+                                                         "lastStartedAt":  "2026-07-12T14:50:01.076Z",
+                                                         "lastStoppedAt":  null,
+                                                         "updatedAt":  "2026-07-12T14:50:01.076Z",
+                                                         "lastShutdownClean":  false,
+                                                         "recoveredFromStatus":  "running",
+                                                         "lastError":  null
+                                                     },
+                                     "missionLoop":  {
+                                                         "status":  "running",
+                                                         "currentMissionId":  null,
+                                                         "pollIntervalMs":  500
+                                                     },
+                                     "missions":  {
+                                                      "total":  6,
+                                                      "awaitingApproval":  0,
+                                                      "queued":  0,
+                                                      "running":  0,
+                                                      "succeeded":  5,
+                                                      "failed":  0,
+                                                      "cancelled":  1,
+                                                      "currentMissionId":  null
+                                                  },
+                                     "governance":  {
+                                                        "policyVersion":  "1.0.0",
+                                                        "total":  2,
+                                                        "pending":  0,
+                                                        "approved":  1,
+                                                        "rejected":  1
+                                                    },
+                                     "capabilities":  {
+                                                          "total":  14,
+                                                          "unavailable":  0,
+                                                          "experimental":  2,
+                                                          "validated":  0,
+                                                          "operational":  12,
+                                                          "analyses":  6
+                                                      },
+                                     "evolution":  {
+                                                       "total":  3,
+                                                       "proposed":  1,
+                                                       "approved":  0,
+                                                       "executing":  0,
+                                                       "completed":  1,
+                                                       "cancelled":  1
+                                                   },
+                                     "events":  [
+                                                    {
+                                                        "sequence":  1,
+                                                        "type":  "runtime.state.loaded",
+                                                        "occurredAt":  "2026-07-12T14:50:01.074Z",
+                                                        "payload":  {
+                                                                        "runtimeId":  "fe1f0a1f-7c34-401f-9e77-ac0fc9b0a442",
+                                                                        "restartCount":  9,
+                                                                        "recoveryCount":  8
+                                                                    }
+                                                    },
+                                                    {
+                                                        "sequence":  2,
+                                                        "type":  "runtime.recovery.detected",
+                                                        "occurredAt":  "2026-07-12T14:50:01.074Z",
+                                                        "payload":  {
+                                                                        "runtimeId":  "fe1f0a1f-7c34-401f-9e77-ac0fc9b0a442",
+                                                                        "previousSessionId":  "80d767d7-9077-4eed-b51e-6de33ef4deea",
+                                                                        "recoveredFromStatus":  "running"
+                                                                    }
+                                                    },
+                                                    {
+                                                        "sequence":  3,
+                                                        "type":  "kernel.starting",
+                                                        "occurredAt":  "2026-07-12T14:50:01.076Z",
+                                                        "payload":  {
+
+                                                                    }
+                                                    },
+                                                    {
+                                                        "sequence":  4,
+                                                        "type":  "kernel.started",
+                                                        "occurredAt":  "2026-07-12T14:50:01.076Z",
+                                                        "payload":  {
+                                                                        "startedAt":  "2026-07-12T14:50:01.076Z"
+                                                                    }
+                                                    },
+                                                    {
+                                                        "sequence":  5,
+                                                        "type":  "governance.state.loaded",
+                                                        "occurredAt":  "2026-07-12T14:50:01.085Z",
+                                                        "payload":  {
+                                                                        "policyVersion":  "1.0.0",
+                                                                        "approvalCount":  2
+                                                                    }
+                                                    },
+                                                    {
+                                                        "sequence":  6,
+                                                        "type":  "capability.registry.loaded",
+                                                        "occurredAt":  "2026-07-12T14:50:01.087Z",
+                                                        "payload":  {
+                                                                        "capabilityCount":  13,
+                                                                        "analysisCount":  4,
+                                                                        "planCount":  2
+                                                                    }
+                                                    },
+                                                    {
+                                                        "sequence":  7,
+                                                        "type":  "mission.loop.started",
+                                                        "occurredAt":  "2026-07-12T14:50:01.087Z",
+                                                        "payload":  {
+                                                                        "pollIntervalMs":  500
+                                                                    }
+                                                    },
+                                                    {
+                                                        "sequence":  8,
+                                                        "type":  "evolution.plan.started",
+                                                        "occurredAt":  "2026-07-12T14:50:01.922Z",
+                                                        "payload":  {
+                                                                        "planId":  "63fc3553-3980-4228-98da-3bbd24a11738",
+                                                                        "status":  "executing",
+                                                                        "error":  null
+                                                                    }
+                                                    },
+                                                    {
+                                                        "sequence":  9,
+                                                        "type":  "capability.updated",
+                                                        "occurredAt":  "2026-07-12T14:50:01.924Z",
+                                                        "payload":  {
+                                                                        "capabilityId":  "runtime.event.history.inspect",
+                                                                        "status":  "operational",
+                                                                        "confidence":  1
+                                                                    }
+                                                    },
+                                                    {
+                                                        "sequence":  10,
+                                                        "type":  "evolution.step.verified",
+                                                        "occurredAt":  "2026-07-12T14:50:01.924Z",
+                                                        "payload":  {
+                                                                        "planId":  "63fc3553-3980-4228-98da-3bbd24a11738",
+                                                                        "capabilityId":  "runtime.event.history.inspect",
+                                                                        "verifierId":  "runtime.event-history.lifecycle-evidence.v1",
+                                                                        "targetStatus":  "operational"
+                                                                    }
+                                                    },
+                                                    {
+                                                        "sequence":  11,
+                                                        "type":  "evolution.plan.completed",
+                                                        "occurredAt":  "2026-07-12T14:50:01.926Z",
+                                                        "payload":  {
+                                                                        "planId":  "63fc3553-3980-4228-98da-3bbd24a11738",
+                                                                        "status":  "completed",
+                                                                        "error":  null
+                                                                    }
+                                                    },
+                                                    {
+                                                        "sequence":  12,
+                                                        "type":  "capability.analysis.completed",
+                                                        "occurredAt":  "2026-07-12T14:50:01.980Z",
+                                                        "payload":  {
+                                                                        "analysisId":  "a435d7ed-28c5-4db8-bb72-9e6b2159112d",
+                                                                        "decision":  "execute_directly",
+                                                                        "gapCount":  0
+                                                                    }
+                                                    },
+                                                    {
+                                                        "sequence":  13,
+                                                        "type":  "capability.registered",
+                                                        "occurredAt":  "2026-07-12T14:50:02.037Z",
+                                                        "payload":  {
+                                                                        "capabilityId":  "software.unverified.autonomy",
+                                                                        "status":  "experimental",
+                                                                        "confidence":  0.2
+                                                                    }
+                                                    },
+                                                    {
+                                                        "sequence":  14,
+                                                        "type":  "capability.analysis.completed",
+                                                        "occurredAt":  "2026-07-12T14:50:02.088Z",
+                                                        "payload":  {
+                                                                        "analysisId":  "319e0115-f2aa-40e9-abc8-9ee7386ffce2",
+                                                                        "decision":  "improve_then_execute",
+                                                                        "gapCount":  1
+                                                                    }
+                                                    },
+                                                    {
+                                                        "sequence":  15,
+                                                        "type":  "evolution.plan.created",
+                                                        "occurredAt":  "2026-07-12T14:50:02.146Z",
+                                                        "payload":  {
+                                                                        "planId":  "8500b73f-f9bb-484c-91b3-30f7af3f9768",
+                                                                        "analysisId":  "319e0115-f2aa-40e9-abc8-9ee7386ffce2",
+                                                                        "roiScore":  100,
+                                                                        "stepCount":  1
+                                                                    }
+                                                    },
+                                                    {
+                                                        "sequence":  16,
+                                                        "type":  "evolution.plan.approved",
+                                                        "occurredAt":  "2026-07-12T14:50:02.197Z",
+                                                        "payload":  {
+                                                                        "planId":  "8500b73f-f9bb-484c-91b3-30f7af3f9768",
+                                                                        "status":  "approved",
+                                                                        "error":  null
+                                                                    }
+                                                    },
+                                                    {
+                                                        "sequence":  17,
+                                                        "type":  "evolution.plan.started",
+                                                        "occurredAt":  "2026-07-12T14:50:02.249Z",
+                                                        "payload":  {
+                                                                        "planId":  "8500b73f-f9bb-484c-91b3-30f7af3f9768",
+                                                                        "status":  "executing",
+                                                                        "error":  null
+                                                                    }
+                                                    },
+                                                    {
+                                                        "sequence":  18,
+                                                        "type":  "evolution.plan.failed",
+                                                        "occurredAt":  "2026-07-12T14:50:02.254Z",
+                                                        "payload":  {
+                                                                        "planId":  "8500b73f-f9bb-484c-91b3-30f7af3f9768",
+                                                                        "status":  "cancelled",
+                                                                        "error":  "No verifier registered for capability software.unverified.autonomy"
+                                                                    }
+                                                    }
+                                                ]
+                                 },
+    "persistedCapabilityState":  {
+                                     "version":  1,
+                                     "capabilities":  [
+                                                          {
+                                                              "id":  "runtime.health.inspect",
+                                                              "name":  "Runtime Health Inspection",
+                                                              "description":  "Inspect kernel status, uptime, events and infrastructure health.",
+                                                              "status":  "operational",
+                                                              "version":  "1.0.0",
+                                                              "confidence":  1,
+                                                              "source":  "verified-runtime",
+                                                              "createdAt":  "2026-07-12T14:40:05.460Z",
+                                                              "updatedAt":  "2026-07-12T14:40:05.460Z"
+                                                          },
+                                                          {
+                                                              "id":  "runtime.stability.observe",
+                                                              "name":  "Runtime Stability Observation",
+                                                              "description":  "Observe runtime health continuously over a bounded time window.",
+                                                              "status":  "operational",
+                                                              "version":  "1.0.0",
+                                                              "confidence":  1,
+                                                              "source":  "verified-mission-executor",
+                                                              "createdAt":  "2026-07-12T14:40:05.460Z",
+                                                              "updatedAt":  "2026-07-12T14:40:05.460Z"
+                                                          },
+                                                          {
+                                                              "id":  "mission.queue.persist",
+                                                              "name":  "Persistent Mission Queue",
+                                                              "description":  "Persist queued and interrupted missions across runtime replacement.",
+                                                              "status":  "operational",
+                                                              "version":  "1.0.0",
+                                                              "confidence":  1,
+                                                              "source":  "verified-mission-recovery",
+                                                              "createdAt":  "2026-07-12T14:40:05.460Z",
+                                                              "updatedAt":  "2026-07-12T14:40:05.460Z"
+                                                          },
+                                                          {
+                                                              "id":  "mission.loop.execute",
+                                                              "name":  "MissionLoop Execution",
+                                                              "description":  "Execute one governed mission at a time and record the outcome.",
+                                                              "status":  "operational",
+                                                              "version":  "1.0.0",
+                                                              "confidence":  1,
+                                                              "source":  "verified-mission-loop",
+                                                              "createdAt":  "2026-07-12T14:40:05.460Z",
+                                                              "updatedAt":  "2026-07-12T14:40:05.460Z"
+                                                          },
+                                                          {
+                                                              "id":  "mission.recovery",
+                                                              "name":  "Mission Recovery",
+                                                              "description":  "Recover a running mission after unclean runtime shutdown.",
+                                                              "status":  "operational",
+                                                              "version":  "1.0.0",
+                                                              "confidence":  1,
+                                                              "source":  "verified-sigkill-recovery",
+                                                              "createdAt":  "2026-07-12T14:40:05.460Z",
+                                                              "updatedAt":  "2026-07-12T14:40:05.460Z"
+                                                          },
+                                                          {
+                                                              "id":  "governance.risk.assess",
+                                                              "name":  "Governance Risk Assessment",
+                                                              "description":  "Classify mission risk using a deterministic versioned policy.",
+                                                              "status":  "operational",
+                                                              "version":  "1.0.0",
+                                                              "confidence":  1,
+                                                              "source":  "verified-governance-policy",
+                                                              "createdAt":  "2026-07-12T14:40:05.460Z",
+                                                              "updatedAt":  "2026-07-12T14:40:05.460Z"
+                                                          },
+                                                          {
+                                                              "id":  "governance.approval.persist",
+                                                              "name":  "Persistent Approval Gate",
+                                                              "description":  "Persist approval decisions and block missions until authorized.",
+                                                              "status":  "operational",
+                                                              "version":  "1.0.0",
+                                                              "confidence":  1,
+                                                              "source":  "verified-governance-engine",
+                                                              "createdAt":  "2026-07-12T14:40:05.460Z",
+                                                              "updatedAt":  "2026-07-12T14:40:05.460Z"
+                                                          },
+                                                          {
+                                                              "id":  "capability.registry.read",
+                                                              "name":  "Capability Registry",
+                                                              "description":  "Maintain and query a persistent registry of Forge capabilities.",
+                                                              "status":  "operational",
+                                                              "version":  "1.0.0",
+                                                              "confidence":  1,
+                                                              "source":  "capability-system-bootstrap",
+                                                              "createdAt":  "2026-07-12T14:40:05.460Z",
+                                                              "updatedAt":  "2026-07-12T14:40:05.460Z"
+                                                          },
+                                                          {
+                                                              "id":  "capability.analysis.perform",
+                                                              "name":  "Capability Analysis",
+                                                              "description":  "Compare required capabilities with the current Forge capability state.",
+                                                              "status":  "operational",
+                                                              "version":  "1.0.0",
+                                                              "confidence":  1,
+                                                              "source":  "capability-system-bootstrap",
+                                                              "createdAt":  "2026-07-12T14:40:05.460Z",
+                                                              "updatedAt":  "2026-07-12T14:40:05.460Z"
+                                                          },
+                                                          {
+                                                              "id":  "evolution.plan.create",
+                                                              "name":  "Evolution Planning",
+                                                              "description":  "Create a deterministic improvement plan for capability gaps.",
+                                                              "status":  "operational",
+                                                              "version":  "1.0.0",
+                                                              "confidence":  1,
+                                                              "source":  "capability-system-bootstrap",
+                                                              "createdAt":  "2026-07-12T14:40:05.460Z",
+                                                              "updatedAt":  "2026-07-12T14:40:05.460Z"
+                                                          },
+                                                          {
+                                                              "id":  "software.refactor.apply",
+                                                              "name":  "Software Refactoring",
+                                                              "description":  "Apply controlled source-code refactoring inside an approved workspace.",
+                                                              "status":  "experimental",
+                                                              "version":  "0.1.0",
+                                                              "confidence":  0.4,
+                                                              "source":  "reconstruction-verification",
+                                                              "createdAt":  "2026-07-12T14:40:06.362Z",
+                                                              "updatedAt":  "2026-07-12T14:40:06.362Z"
+                                                          },
+                                                          {
+                                                              "id":  "runtime.event.history.inspect",
+                                                              "name":  "Runtime Event History Inspection",
+                                                              "description":  "Inspect the bounded runtime event history and verify lifecycle evidence.",
+                                                              "status":  "operational",
+                                                              "version":  "0.1.0",
+                                                              "confidence":  1,
+                                                              "source":  "evolution-engine:63fc3553-3980-4228-98da-3bbd24a11738",
+                                                              "createdAt":  "2026-07-12T14:49:54.053Z",
+                                                              "updatedAt":  "2026-07-12T14:50:01.923Z"
+                                                          },
+                                                          {
+                                                              "id":  "evolution.plan.execute",
+                                                              "name":  "Controlled Evolution Execution",
+                                                              "description":  "Approve, verify and execute supported evolution plans without unverified promotion.",
+                                                              "status":  "operational",
+                                                              "version":  "1.0.0",
+                                                              "confidence":  1,
+                                                              "source":  "evolution-engine-bootstrap",
+                                                              "createdAt":  "2026-07-12T14:49:54.053Z",
+                                                              "updatedAt":  "2026-07-12T14:49:54.053Z"
+                                                          },
+                                                          {
+                                                              "id":  "software.unverified.autonomy",
+                                                              "name":  "Unverified Software Autonomy",
+                                                              "description":  "Synthetic capability used to prove that unsupported evolution cannot promote itself.",
+                                                              "status":  "experimental",
+                                                              "version":  "0.1.0",
+                                                              "confidence":  0.2,
+                                                              "source":  "final-evolution-negative-test",
+                                                              "createdAt":  "2026-07-12T14:50:02.033Z",
+                                                              "updatedAt":  "2026-07-12T14:50:02.033Z"
+                                                          }
+                                                      ],
+                                     "analyses":  [
+                                                      {
+                                                          "id":  "1c3863ad-5bba-4354-bfd5-d5e6e66a2bfc",
+                                                          "objective":  "Execute a governed runtime self-check",
+                                                          "sourceType":  "manual",
+                                                          "sourceMissionKind":  null,
+                                                          "requirements":  [
+                                                                               {
+                                                                                   "capabilityId":  "runtime.health.inspect",
+                                                                                   "minimumStatus":  "operational",
+                                                                                   "reason":  "Inspect live runtime health."
+                                                                               },
+                                                                               {
+                                                                                   "capabilityId":  "mission.loop.execute",
+                                                                                   "minimumStatus":  "operational",
+                                                                                   "reason":  "Execute the mission through MissionLoop."
+                                                                               },
+                                                                               {
+                                                                                   "capabilityId":  "governance.risk.assess",
+                                                                                   "minimumStatus":  "operational",
+                                                                                   "reason":  "Assess mission risk before execution."
+                                                                               }
+                                                                           ],
+                                                          "gaps":  [
+
+                                                                   ],
+                                                          "decision":  "execute_directly",
+                                                          "expectedReuse":  5,
+                                                          "missionCriticality":  3,
+                                                          "createdAt":  "2026-07-12T14:40:06.259Z"
+                                                      },
+                                                      {
+                                                          "id":  "31dca882-c462-41ef-8427-339bfd20a13e",
+                                                          "objective":  "Execute mission \"Capability precheck mission\"",
+                                                          "sourceType":  "mission",
+                                                          "sourceMissionKind":  "runtime.self-check",
+                                                          "requirements":  [
+                                                                               {
+                                                                                   "capabilityId":  "mission.loop.execute",
+                                                                                   "minimumStatus":  "operational",
+                                                                                   "reason":  "Mission must be executable by the live MissionLoop."
+                                                                               },
+                                                                               {
+                                                                                   "capabilityId":  "governance.risk.assess",
+                                                                                   "minimumStatus":  "operational",
+                                                                                   "reason":  "Mission must pass deterministic governance assessment."
+                                                                               },
+                                                                               {
+                                                                                   "capabilityId":  "runtime.health.inspect",
+                                                                                   "minimumStatus":  "operational",
+                                                                                   "reason":  "Mission inspects live runtime health."
+                                                                               }
+                                                                           ],
+                                                          "gaps":  [
+
+                                                                   ],
+                                                          "decision":  "execute_directly",
+                                                          "expectedReuse":  5,
+                                                          "missionCriticality":  2,
+                                                          "createdAt":  "2026-07-12T14:40:06.306Z"
+                                                      },
+                                                      {
+                                                          "id":  "2daa8aed-c5ea-4705-8336-2d1bde990786",
+                                                          "objective":  "Apply autonomous repository refactoring",
+                                                          "sourceType":  "manual",
+                                                          "sourceMissionKind":  null,
+                                                          "requirements":  [
+                                                                               {
+                                                                                   "capabilityId":  "software.refactor.apply",
+                                                                                   "minimumStatus":  "operational",
+                                                                                   "reason":  "Refactoring must be validated before autonomous source changes."
+                                                                               },
+                                                                               {
+                                                                                   "capabilityId":  "mission.loop.execute",
+                                                                                   "minimumStatus":  "operational",
+                                                                                   "reason":  "The resulting work must execute through MissionLoop."
+                                                                               }
+                                                                           ],
+                                                          "gaps":  [
+                                                                       {
+                                                                           "capabilityId":  "software.refactor.apply",
+                                                                           "requiredStatus":  "operational",
+                                                                           "actualStatus":  "experimental",
+                                                                           "reason":  "Refactoring must be validated before autonomous source changes."
+                                                                       }
+                                                                   ],
+                                                          "decision":  "improve_then_execute",
+                                                          "expectedReuse":  5,
+                                                          "missionCriticality":  4,
+                                                          "createdAt":  "2026-07-12T14:40:06.410Z"
+                                                      },
+                                                      {
+                                                          "id":  "078ba309-35aa-44b4-a81f-1038418b54cb",
+                                                          "objective":  "Promote runtime event history inspection after concrete lifecycle verification",
+                                                          "sourceType":  "manual",
+                                                          "sourceMissionKind":  null,
+                                                          "requirements":  [
+                                                                               {
+                                                                                   "capabilityId":  "runtime.event.history.inspect",
+                                                                                   "minimumStatus":  "operational",
+                                                                                   "reason":  "Event history inspection must prove lifecycle evidence before operational use."
+                                                                               }
+                                                                           ],
+                                                          "gaps":  [
+                                                                       {
+                                                                           "capabilityId":  "runtime.event.history.inspect",
+                                                                           "requiredStatus":  "operational",
+                                                                           "actualStatus":  "experimental",
+                                                                           "reason":  "Event history inspection must prove lifecycle evidence before operational use."
+                                                                       }
+                                                                   ],
+                                                          "decision":  "improve_then_execute",
+                                                          "expectedReuse":  5,
+                                                          "missionCriticality":  4,
+                                                          "createdAt":  "2026-07-12T14:49:54.848Z"
+                                                      },
+                                                      {
+                                                          "id":  "a435d7ed-28c5-4db8-bb72-9e6b2159112d",
+                                                          "objective":  "Promote runtime event history inspection after concrete lifecycle verification",
+                                                          "sourceType":  "manual",
+                                                          "sourceMissionKind":  null,
+                                                          "requirements":  [
+                                                                               {
+                                                                                   "capabilityId":  "runtime.event.history.inspect",
+                                                                                   "minimumStatus":  "operational",
+                                                                                   "reason":  "Event history inspection must prove lifecycle evidence before operational use."
+                                                                               }
+                                                                           ],
+                                                          "gaps":  [
+
+                                                                   ],
+                                                          "decision":  "execute_directly",
+                                                          "expectedReuse":  5,
+                                                          "missionCriticality":  4,
+                                                          "createdAt":  "2026-07-12T14:50:01.977Z"
+                                                      },
+                                                      {
+                                                          "id":  "319e0115-f2aa-40e9-abc8-9ee7386ffce2",
+                                                          "objective":  "Attempt unsupported autonomous software promotion",
+                                                          "sourceType":  "manual",
+                                                          "sourceMissionKind":  null,
+                                                          "requirements":  [
+                                                                               {
+                                                                                   "capabilityId":  "software.unverified.autonomy",
+                                                                                   "minimumStatus":  "operational",
+                                                                                   "reason":  "Synthetic negative test must not pass without a registered verifier."
+                                                                               }
+                                                                           ],
+                                                          "gaps":  [
+                                                                       {
+                                                                           "capabilityId":  "software.unverified.autonomy",
+                                                                           "requiredStatus":  "operational",
+                                                                           "actualStatus":  "experimental",
+                                                                           "reason":  "Synthetic negative test must not pass without a registered verifier."
+                                                                       }
+                                                                   ],
+                                                          "decision":  "improve_then_execute",
+                                                          "expectedReuse":  5,
+                                                          "missionCriticality":  5,
+                                                          "createdAt":  "2026-07-12T14:50:02.085Z"
+                                                      }
+                                                  ],
+                                     "plans":  [
+                                                   {
+                                                       "id":  "cd9702a8-888c-410d-8cb2-ac366499540f",
+                                                       "analysisId":  "2daa8aed-c5ea-4705-8336-2d1bde990786",
+                                                       "objective":  "Apply autonomous repository refactoring",
+                                                       "status":  "proposed",
+                                                       "roiScore":  100,
+                                                       "steps":  [
+                                                                     {
+                                                                         "order":  1,
+                                                                         "capabilityId":  "software.refactor.apply",
+                                                                         "action":  "validate",
+                                                                         "fromStatus":  "experimental",
+                                                                         "toStatus":  "operational",
+                                                                         "acceptanceCriteria":  [
+                                                                                                    "Capability software.refactor.apply is implemented in the Forge runtime.",
+                                                                                                    "Automated verification proves status operational.",
+                                                                                                    "Verification evidence is persisted and linked to the capability record."
+                                                                                                ]
+                                                                     }
+                                                                 ],
+                                                       "createdAt":  "2026-07-12T14:40:06.465Z",
+                                                       "updatedAt":  "2026-07-12T14:40:06.465Z",
+                                                       "approvedAt":  null,
+                                                       "approvedBy":  null,
+                                                       "startedAt":  null,
+                                                       "completedAt":  null,
+                                                       "lastError":  null,
+                                                       "evidence":  [
+
+                                                                    ]
+                                                   },
+                                                   {
+                                                       "id":  "63fc3553-3980-4228-98da-3bbd24a11738",
+                                                       "analysisId":  "078ba309-35aa-44b4-a81f-1038418b54cb",
+                                                       "objective":  "Promote runtime event history inspection after concrete lifecycle verification",
+                                                       "status":  "completed",
+                                                       "roiScore":  100,
+                                                       "steps":  [
+                                                                     {
+                                                                         "order":  1,
+                                                                         "capabilityId":  "runtime.event.history.inspect",
+                                                                         "action":  "validate",
+                                                                         "fromStatus":  "experimental",
+                                                                         "toStatus":  "operational",
+                                                                         "acceptanceCriteria":  [
+                                                                                                    "Capability runtime.event.history.inspect is implemented in the Forge runtime.",
+                                                                                                    "Automated verification proves status operational.",
+                                                                                                    "Verification evidence is persisted and linked to the capability record."
+                                                                                                ]
+                                                                     }
+                                                                 ],
+                                                       "approvedAt":  "2026-07-12T14:49:54.992Z",
+                                                       "approvedBy":  "forge-reconstruction-verifier",
+                                                       "startedAt":  "2026-07-12T14:50:01.921Z",
+                                                       "completedAt":  "2026-07-12T14:50:01.925Z",
+                                                       "lastError":  null,
+                                                       "evidence":  [
+                                                                        {
+                                                                            "capabilityId":  "runtime.event.history.inspect",
+                                                                            "verifierId":  "runtime.event-history.lifecycle-evidence.v1",
+                                                                            "verifiedAt":  "2026-07-12T14:50:01.923Z",
+                                                                            "passed":  true,
+                                                                            "details":  {
+                                                                                            "eventCount":  8,
+                                                                                            "hasKernelStarted":  true,
+                                                                                            "hasCapabilityRegistryLoaded":  true
+                                                                                        }
+                                                                        }
+                                                                    ],
+                                                       "createdAt":  "2026-07-12T14:49:54.892Z",
+                                                       "updatedAt":  "2026-07-12T14:50:01.925Z"
+                                                   },
+                                                   {
+                                                       "id":  "8500b73f-f9bb-484c-91b3-30f7af3f9768",
+                                                       "analysisId":  "319e0115-f2aa-40e9-abc8-9ee7386ffce2",
+                                                       "objective":  "Attempt unsupported autonomous software promotion",
+                                                       "status":  "cancelled",
+                                                       "roiScore":  100,
+                                                       "steps":  [
+                                                                     {
+                                                                         "order":  1,
+                                                                         "capabilityId":  "software.unverified.autonomy",
+                                                                         "action":  "validate",
+                                                                         "fromStatus":  "experimental",
+                                                                         "toStatus":  "operational",
+                                                                         "acceptanceCriteria":  [
+                                                                                                    "Capability software.unverified.autonomy is implemented in the Forge runtime.",
+                                                                                                    "Automated verification proves status operational.",
+                                                                                                    "Verification evidence is persisted and linked to the capability record."
+                                                                                                ]
+                                                                     }
+                                                                 ],
+                                                       "approvedAt":  "2026-07-12T14:50:02.196Z",
+                                                       "approvedBy":  "forge-reconstruction-verifier",
+                                                       "startedAt":  "2026-07-12T14:50:02.244Z",
+                                                       "completedAt":  "2026-07-12T14:50:02.250Z",
+                                                       "lastError":  "No verifier registered for capability software.unverified.autonomy",
+                                                       "evidence":  [
+
+                                                                    ],
+                                                       "createdAt":  "2026-07-12T14:50:02.139Z",
+                                                       "updatedAt":  "2026-07-12T14:50:02.250Z"
+                                                   }
+                                               ]
+                                 }
+}
