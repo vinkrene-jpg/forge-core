@@ -30,6 +30,7 @@ const missionKinds = new Set<MissionKind>([
 ]);
 
 const missionStatuses = new Set<MissionStatus>([
+  "awaiting_approval",
   "queued",
   "running",
   "succeeded",

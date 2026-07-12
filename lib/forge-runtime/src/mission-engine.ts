@@ -11,6 +11,7 @@ import type {
   CreateMissionRequest,
   MissionKind,
   MissionRecord,
+  MissionStatus,
   MissionSummary,
 } from "./mission";
 
@@ -26,6 +27,11 @@ export interface MissionEngineOptions {
   readonly getRuntimeHealth: () => RuntimeHealthSnapshot;
   readonly stateStore?: MissionStateStore;
 }
+
+type InitialMissionStatus = Extract<
+  MissionStatus,
+  "queued" | "awaiting_approval"
+>;
 
 function cloneMission(mission: MissionRecord): MissionRecord {
   return Object.freeze({
@@ -215,6 +221,7 @@ export class MissionEngine {
     this.#ensureInitialized();
 
     const counts = {
+      awaiting_approval: 0,
       queued: 0,
       running: 0,
       succeeded: 0,
@@ -228,13 +235,19 @@ export class MissionEngine {
 
     return Object.freeze({
       total: this.#state.missions.length,
-      ...counts,
+      awaitingApproval: counts.awaiting_approval,
+      queued: counts.queued,
+      running: counts.running,
+      succeeded: counts.succeeded,
+      failed: counts.failed,
+      cancelled: counts.cancelled,
       currentMissionId,
     });
   }
 
   async enqueue(
     request: CreateMissionRequest,
+    initialStatus: InitialMissionStatus = "queued",
   ): Promise<MissionRecord> {
     this.#ensureInitialized();
     assertSupportedKind(request.kind);
@@ -253,7 +266,7 @@ export class MissionEngine {
         id: randomUUID(),
         kind: request.kind,
         title,
-        status: "queued",
+        status: initialStatus,
         createdAt: now,
         updatedAt: now,
         startedAt: null,
@@ -275,9 +288,107 @@ export class MissionEngine {
 
       await this.#stateStore.save(this.#state);
 
-      this.#events.publish("mission.enqueued", {
-        missionId: mission.id,
-        kind: mission.kind,
+      this.#events.publish(
+        initialStatus === "queued"
+          ? "mission.enqueued"
+          : "mission.awaiting_approval",
+        {
+          missionId: mission.id,
+          kind: mission.kind,
+        },
+      );
+
+      return cloneMission(mission);
+    });
+  }
+
+  async approve(missionId: string): Promise<MissionRecord> {
+    this.#ensureInitialized();
+
+    return this.#mutate(async () => {
+      const index = this.#state.missions.findIndex(
+        (mission) => mission.id === missionId,
+      );
+
+      if (index < 0) {
+        throw new Error(`Mission not found: ${missionId}`);
+      }
+
+      const current = this.#state.missions[index];
+
+      if (current.status !== "awaiting_approval") {
+        return cloneMission(current);
+      }
+
+      const mission = cloneMission({
+        ...current,
+        status: "queued",
+        updatedAt: new Date().toISOString(),
+        lastError: null,
+      });
+
+      const missions = [...this.#state.missions];
+      missions[index] = mission;
+
+      this.#state = Object.freeze({
+        version: MISSION_STORE_VERSION,
+        missions: Object.freeze(missions),
+      });
+
+      await this.#stateStore.save(this.#state);
+
+      this.#events.publish("mission.approved", {
+        missionId,
+      });
+
+      return cloneMission(mission);
+    });
+  }
+
+  async reject(
+    missionId: string,
+    reason: string,
+  ): Promise<MissionRecord> {
+    this.#ensureInitialized();
+
+    return this.#mutate(async () => {
+      const index = this.#state.missions.findIndex(
+        (mission) => mission.id === missionId,
+      );
+
+      if (index < 0) {
+        throw new Error(`Mission not found: ${missionId}`);
+      }
+
+      const current = this.#state.missions[index];
+
+      if (current.status !== "awaiting_approval") {
+        return cloneMission(current);
+      }
+
+      const now = new Date().toISOString();
+
+      const mission = cloneMission({
+        ...current,
+        status: "cancelled",
+        updatedAt: now,
+        completedAt: now,
+        lastError: reason,
+      });
+
+      const missions = [...this.#state.missions];
+      missions[index] = mission;
+
+      this.#state = Object.freeze({
+        version: MISSION_STORE_VERSION,
+        missions: Object.freeze(missions),
+      });
+
+      await this.#stateStore.save(this.#state);
+
+      this.#events.publish("mission.rejected", {
+        missionId,
+        reason,
       });
 
       return cloneMission(mission);

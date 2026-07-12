@@ -14,7 +14,7 @@
 | Capability Registry | Missing | No source or Git-history evidence |
 | Capability Analysis | Missing | No source or Git-history evidence |
 | Evolution Engine | Missing | No source or Git-history evidence |
-| Governance Engine | Partial | Routes, schema and documentation only |
+| Governance Engine | Implemented | Versioned risk policy, persistent approvals, blocking, approval and rejection verified live |
 | Project Memory | Missing | No source or Git-history evidence |
 | Prompt Composer | Missing | No source or Git-history evidence |
 | Model Router | Missing | No source or Git-history evidence |

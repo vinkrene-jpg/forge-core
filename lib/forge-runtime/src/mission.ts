@@ -3,6 +3,7 @@ export type MissionKind =
   | "runtime.stability-window";
 
 export type MissionStatus =
+  | "awaiting_approval"
   | "queued"
   | "running"
   | "succeeded"
@@ -33,6 +34,7 @@ export interface CreateMissionRequest {
 
 export interface MissionSummary {
   readonly total: number;
+  readonly awaitingApproval: number;
   readonly queued: number;
   readonly running: number;
   readonly succeeded: number;

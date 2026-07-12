@@ -8,13 +8,21 @@ export type RuntimeEventType =
   | "kernel.stopped"
   | "kernel.failed"
   | "mission.enqueued"
+  | "mission.awaiting_approval"
+  | "mission.approved"
+  | "mission.rejected"
   | "mission.started"
   | "mission.succeeded"
   | "mission.failed"
   | "mission.requeued"
   | "mission.recovered"
   | "mission.loop.started"
-  | "mission.loop.stopped";
+  | "mission.loop.stopped"
+  | "governance.state.loaded"
+  | "governance.assessed"
+  | "governance.approval.requested"
+  | "governance.approval.approved"
+  | "governance.approval.rejected";
 
 export interface RuntimeEvent {
   readonly sequence: number;
@@ -31,7 +39,7 @@ export class RuntimeEventBus {
   readonly #history: RuntimeEvent[] = [];
   #sequence = 0;
 
-  constructor(historyLimit = 200) {
+  constructor(historyLimit = 300) {
     if (!Number.isInteger(historyLimit) || historyLimit < 1) {
       throw new Error("historyLimit must be a positive integer");
     }

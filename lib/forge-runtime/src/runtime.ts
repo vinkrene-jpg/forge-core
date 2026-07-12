@@ -5,6 +5,22 @@ import {
   type RuntimeEventListener,
 } from "./event-bus";
 import {
+  GovernanceEngine,
+  type GovernanceEngineOptions,
+} from "./governance-engine";
+import type {
+  ApprovalDecisionResult,
+  ApprovalRecord,
+  ApprovalStatus,
+  GovernanceAssessment,
+  GovernanceSummary,
+  MissionCreationResult,
+} from "./governance";
+import {
+  FileGovernanceStateStore,
+  type GovernanceStateStore,
+} from "./governance-store";
+import {
   ForgeKernel,
   type RuntimeHealthSnapshot,
 } from "./kernel";
@@ -40,12 +56,14 @@ export interface ForgeRuntimeSnapshot {
   readonly persistence: PersistedRuntimeState;
   readonly missionLoop: MissionLoopSnapshot;
   readonly missions: MissionSummary;
+  readonly governance: GovernanceSummary;
   readonly events: readonly RuntimeEvent[];
 }
 
 export interface ForgeRuntimeOptions {
   readonly stateStore?: RuntimeStateStore;
   readonly missionStateStore?: MissionStateStore;
+  readonly governanceStateStore?: GovernanceStateStore;
   readonly missionLoopPollIntervalMs?: number;
 }
 
@@ -60,6 +78,7 @@ export class ForgeRuntime {
   readonly #kernel = new ForgeKernel(this.#events);
   readonly #stateStore: RuntimeStateStore;
   readonly #missionEngine: MissionEngine;
+  readonly #governanceEngine: GovernanceEngine;
   readonly #missionLoop: MissionLoop;
   #persistence = createInitialRuntimeState();
 
@@ -76,6 +95,16 @@ export class ForgeRuntime {
     };
 
     this.#missionEngine = new MissionEngine(missionOptions);
+
+    const governanceOptions: GovernanceEngineOptions = {
+      events: this.#events,
+      stateStore:
+        options.governanceStateStore ??
+        new FileGovernanceStateStore(),
+    };
+
+    this.#governanceEngine =
+      new GovernanceEngine(governanceOptions);
 
     this.#missionLoop = new MissionLoop({
       engine: this.#missionEngine,
@@ -94,6 +123,43 @@ export class ForgeRuntime {
     this.#persistence = frozen;
 
     return frozen;
+  }
+
+  async #reconcileGovernanceState(): Promise<void> {
+    const awaiting = this.#missionEngine
+      .list()
+      .filter(
+        (mission) =>
+          mission.status === "awaiting_approval",
+      );
+
+    for (const mission of awaiting) {
+      let approval =
+        this.#governanceEngine.findByMissionId(mission.id);
+
+      if (approval === null) {
+        const assessment = this.#governanceEngine.assess({
+          kind: mission.kind,
+          title: mission.title,
+          input: mission.input,
+        });
+
+        approval =
+          await this.#governanceEngine.requestApproval(
+            mission.id,
+            assessment,
+          );
+      }
+
+      if (approval.status === "approved") {
+        await this.#missionEngine.approve(mission.id);
+      } else if (approval.status === "rejected") {
+        await this.#missionEngine.reject(
+          mission.id,
+          approval.note ?? "Rejected by governance",
+        );
+      }
+    }
   }
 
   async start(): Promise<KernelStateSnapshot> {
@@ -160,6 +226,9 @@ export class ForgeRuntime {
       });
 
       await this.#missionEngine.initialize();
+      await this.#governanceEngine.initialize();
+      await this.#reconcileGovernanceState();
+
       this.#missionLoop.start();
 
       return running;
@@ -201,12 +270,63 @@ export class ForgeRuntime {
 
   async createMission(
     request: CreateMissionRequest,
-  ): Promise<MissionRecord> {
-    const mission = await this.#missionEngine.enqueue(request);
+  ): Promise<MissionCreationResult> {
+    const assessment =
+      this.#governanceEngine.assess(request);
 
-    this.#missionLoop.wake();
+    if (assessment.decision === "allow") {
+      const mission =
+        await this.#missionEngine.enqueue(
+          request,
+          "queued",
+        );
 
-    return mission;
+      this.#missionLoop.wake();
+
+      return Object.freeze({
+        mission,
+        assessment,
+        approval: null,
+      });
+    }
+
+    if (assessment.decision === "require_approval") {
+      const mission =
+        await this.#missionEngine.enqueue(
+          request,
+          "awaiting_approval",
+        );
+
+      const approval =
+        await this.#governanceEngine.requestApproval(
+          mission.id,
+          assessment,
+        );
+
+      return Object.freeze({
+        mission,
+        assessment,
+        approval,
+      });
+    }
+
+    const mission =
+      await this.#missionEngine.enqueue(
+        request,
+        "awaiting_approval",
+      );
+
+    const rejected =
+      await this.#missionEngine.reject(
+        mission.id,
+        assessment.reason,
+      );
+
+    return Object.freeze({
+      mission: rejected,
+      assessment,
+      approval: null,
+    });
   }
 
   listMissions(): readonly MissionRecord[] {
@@ -215,6 +335,71 @@ export class ForgeRuntime {
 
   getMission(missionId: string): MissionRecord | null {
     return this.#missionEngine.get(missionId);
+  }
+
+  listApprovals(
+    status?: ApprovalStatus,
+  ): readonly ApprovalRecord[] {
+    return this.#governanceEngine.listApprovals(status);
+  }
+
+  getApproval(
+    approvalId: string,
+  ): ApprovalRecord | null {
+    return this.#governanceEngine.getApproval(approvalId);
+  }
+
+  governanceSummary(): GovernanceSummary {
+    return this.#governanceEngine.summary();
+  }
+
+  async approveApproval(
+    approvalId: string,
+    actor: string,
+    note?: string,
+  ): Promise<ApprovalDecisionResult> {
+    const approval =
+      await this.#governanceEngine.approve(
+        approvalId,
+        actor,
+        note,
+      );
+
+    const mission =
+      await this.#missionEngine.approve(
+        approval.missionId,
+      );
+
+    this.#missionLoop.wake();
+
+    return Object.freeze({
+      approval,
+      mission,
+    });
+  }
+
+  async rejectApproval(
+    approvalId: string,
+    actor: string,
+    note?: string,
+  ): Promise<ApprovalDecisionResult> {
+    const approval =
+      await this.#governanceEngine.reject(
+        approvalId,
+        actor,
+        note,
+      );
+
+    const mission =
+      await this.#missionEngine.reject(
+        approval.missionId,
+        approval.note ?? "Rejected by governance",
+      );
+
+    return Object.freeze({
+      approval,
+      mission,
+    });
   }
 
   snapshot(): ForgeRuntimeSnapshot {
@@ -230,6 +415,7 @@ export class ForgeRuntime {
       missions: this.#missionEngine.summary(
         missionLoop.currentMissionId,
       ),
+      governance: this.#governanceEngine.summary(),
       events: this.#events.snapshot(),
     });
   }
