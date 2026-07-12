@@ -1,4 +1,4 @@
-﻿export {
+export {
   RuntimeEventBus,
   type RuntimeEvent,
   type RuntimeEventListener,
@@ -11,6 +11,15 @@ export {
 } from "./kernel";
 
 export {
+  createInitialRuntimeState,
+  FileRuntimeStateStore,
+  resolveRuntimeStatePath,
+  RUNTIME_STATE_VERSION,
+  type PersistedRuntimeState,
+  type RuntimeStateStore,
+} from "./persistence";
+
+export {
   KernelRuntimeState,
   type KernelStateSnapshot,
   type KernelStatus,
@@ -19,5 +28,6 @@ export {
 export {
   ForgeRuntime,
   forgeRuntime,
+  type ForgeRuntimeOptions,
   type ForgeRuntimeSnapshot,
 } from "./runtime";
