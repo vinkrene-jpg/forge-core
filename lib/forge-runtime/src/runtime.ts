@@ -30,6 +30,27 @@ import {
 } from "./evolution-engine";
 import { EvolutionPlanner } from "./evolution-planner";
 import {
+  OperatorCore,
+  type OperatorCoreOptions,
+} from "./operator-core";
+import type {
+  CreateProjectMemoryRequest,
+  ModelRouteDecision,
+  ModelRouteRequest,
+  OperatorCoreSummary,
+  ProjectMemoryEntry,
+  ProjectMemoryKind,
+  ProjectRecord,
+  PromptComposeRequest,
+  PromptComposition,
+  WorkspaceFileContent,
+  WorkspaceFileSummary,
+} from "./operator";
+import {
+  FileOperatorStateStore,
+  type OperatorStateStore,
+} from "./operator-store";
+import {
   GovernanceEngine,
   type GovernanceEngineOptions,
 } from "./governance-engine";
@@ -89,6 +110,7 @@ export interface ForgeRuntimeSnapshot {
   readonly governance: GovernanceSummary;
   readonly capabilities: CapabilitySummary;
   readonly evolution: EvolutionPlanSummary;
+  readonly operator: OperatorCoreSummary;
   readonly events: readonly RuntimeEvent[];
 }
 
@@ -97,6 +119,7 @@ export interface ForgeRuntimeOptions {
   readonly missionStateStore?: MissionStateStore;
   readonly governanceStateStore?: GovernanceStateStore;
   readonly capabilityStateStore?: CapabilityStateStore;
+  readonly operatorStateStore?: OperatorStateStore;
   readonly missionLoopPollIntervalMs?: number;
 }
 
@@ -116,6 +139,7 @@ export class ForgeRuntime {
   readonly #capabilityAnalyzer: CapabilityAnalyzer;
   readonly #evolutionPlanner: EvolutionPlanner;
   readonly #evolutionEngine: EvolutionEngine;
+  readonly #operatorCore: OperatorCore;
   readonly #missionLoop: MissionLoop;
   #persistence = createInitialRuntimeState();
 
@@ -167,6 +191,16 @@ export class ForgeRuntime {
 
     this.#evolutionEngine =
       new EvolutionEngine(evolutionOptions);
+
+    const operatorOptions: OperatorCoreOptions = {
+      events: this.#events,
+      stateStore:
+        options.operatorStateStore ??
+        new FileOperatorStateStore(),
+    };
+
+    this.#operatorCore =
+      new OperatorCore(operatorOptions);
 
     this.#missionLoop = new MissionLoop({
       engine: this.#missionEngine,
@@ -290,6 +324,7 @@ export class ForgeRuntime {
       await this.#missionEngine.initialize();
       await this.#governanceEngine.initialize();
       await this.#capabilityRegistry.initialize();
+      await this.#operatorCore.initialize();
       await this.#reconcileGovernanceState();
 
       this.#missionLoop.start();
@@ -546,6 +581,92 @@ export class ForgeRuntime {
     return this.#capabilityRegistry.getPlan(planId);
   }
 
+  operatorSummary(): OperatorCoreSummary {
+    return this.#operatorCore.summary();
+  }
+
+  listOperatorProjects(): readonly ProjectRecord[] {
+    return this.#operatorCore.listProjects();
+  }
+
+  getOperatorProject(
+    projectId: string,
+  ): ProjectRecord | null {
+    return this.#operatorCore.getProject(projectId);
+  }
+
+  listProjectMemories(
+    projectId: string,
+    kind?: ProjectMemoryKind,
+  ): readonly ProjectMemoryEntry[] {
+    return this.#operatorCore.listMemories(
+      projectId,
+      kind,
+    );
+  }
+
+  addProjectMemory(
+    projectId: string,
+    request: CreateProjectMemoryRequest,
+  ): Promise<ProjectMemoryEntry> {
+    return this.#operatorCore.addMemory(
+      projectId,
+      request,
+    );
+  }
+
+  inspectProjectWorkspace(
+    projectId: string,
+    relativePath?: string,
+    depth?: number,
+  ): Promise<readonly WorkspaceFileSummary[]> {
+    return this.#operatorCore.inspectWorkspace(
+      projectId,
+      relativePath,
+      depth,
+    );
+  }
+
+  readProjectWorkspaceFile(
+    projectId: string,
+    relativePath: string,
+    maxChars?: number,
+  ): Promise<WorkspaceFileContent> {
+    return this.#operatorCore.readWorkspaceFile(
+      projectId,
+      relativePath,
+      maxChars,
+    );
+  }
+
+  routeModel(
+    request: ModelRouteRequest,
+  ): ModelRouteDecision {
+    return this.#operatorCore.routeModel(request);
+  }
+
+  composeProjectPrompt(
+    request: PromptComposeRequest,
+  ): Promise<PromptComposition> {
+    return this.#operatorCore.composePrompt(request);
+  }
+
+  listPromptCompositions(
+    projectId?: string,
+  ): readonly PromptComposition[] {
+    return this.#operatorCore.listCompositions(
+      projectId,
+    );
+  }
+
+  getPromptComposition(
+    compositionId: string,
+  ): PromptComposition | null {
+    return this.#operatorCore.getComposition(
+      compositionId,
+    );
+  }
+
   snapshot(): ForgeRuntimeSnapshot {
     const missionLoop = this.#missionLoop.snapshot();
 
@@ -562,6 +683,7 @@ export class ForgeRuntime {
       governance: this.#governanceEngine.summary(),
       capabilities: this.#capabilityRegistry.summary(),
       evolution: this.#capabilityRegistry.evolutionSummary(),
+      operator: this.#operatorCore.summary(),
       events: this.#events.snapshot(),
     });
   }

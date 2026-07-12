@@ -1,4 +1,44 @@
 export {
+  ModelRouter,
+} from "./model-router";
+
+export {
+  OperatorCore,
+  type OperatorCoreOptions,
+} from "./operator-core";
+
+export {
+  createInitialOperatorState,
+  FileOperatorStateStore,
+  resolveOperatorStatePath,
+  OPERATOR_STORE_VERSION,
+  type OperatorStateStore,
+  type PersistedOperatorState,
+} from "./operator-store";
+
+export {
+  type CreateProjectMemoryRequest,
+  type ModelBudget,
+  type ModelPrivacy,
+  type ModelProfile,
+  type ModelRouteCandidate,
+  type ModelRouteDecision,
+  type ModelRouteRequest,
+  type ModelTaskType,
+  type OperatorCoreSummary,
+  type ProjectMemoryEntry,
+  type ProjectMemoryKind,
+  type ProjectRecord,
+  type PromptComposeRequest,
+  type PromptComposition,
+  type WorkspaceFileContent,
+  type WorkspaceFileSummary,
+} from "./operator";
+
+export {
+  WorkspaceConnector,
+} from "./workspace-connector";
+export {
   CapabilityAnalyzer,
 } from "./capability-analysis";
 

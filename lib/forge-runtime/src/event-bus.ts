@@ -32,7 +32,13 @@ export type RuntimeEventType =
   | "evolution.plan.started"
   | "evolution.step.verified"
   | "evolution.plan.completed"
-  | "evolution.plan.failed";
+  | "evolution.plan.failed"
+  | "operator.state.loaded"
+  | "operator.project.registered"
+  | "operator.memory.added"
+  | "operator.workspace.inspected"
+  | "operator.model.routed"
+  | "operator.prompt.composed";
 
 export interface RuntimeEvent {
   readonly sequence: number;
