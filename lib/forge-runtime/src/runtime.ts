@@ -24,6 +24,10 @@ import {
   type RuntimeEvent,
   type RuntimeEventListener,
 } from "./event-bus";
+import {
+  EvolutionEngine,
+  type EvolutionEngineOptions,
+} from "./evolution-engine";
 import { EvolutionPlanner } from "./evolution-planner";
 import {
   GovernanceEngine,
@@ -111,6 +115,7 @@ export class ForgeRuntime {
   readonly #capabilityRegistry: CapabilityRegistry;
   readonly #capabilityAnalyzer: CapabilityAnalyzer;
   readonly #evolutionPlanner: EvolutionPlanner;
+  readonly #evolutionEngine: EvolutionEngine;
   readonly #missionLoop: MissionLoop;
   #persistence = createInitialRuntimeState();
 
@@ -153,6 +158,15 @@ export class ForgeRuntime {
 
     this.#evolutionPlanner =
       new EvolutionPlanner(this.#capabilityRegistry);
+
+    const evolutionOptions: EvolutionEngineOptions = {
+      registry: this.#capabilityRegistry,
+      events: this.#events,
+      getEventHistory: () => this.#events.snapshot(),
+    };
+
+    this.#evolutionEngine =
+      new EvolutionEngine(evolutionOptions);
 
     this.#missionLoop = new MissionLoop({
       engine: this.#missionEngine,
@@ -508,6 +522,22 @@ export class ForgeRuntime {
 
   listEvolutionPlans(): readonly EvolutionPlanRecord[] {
     return this.#capabilityRegistry.listPlans();
+  }
+
+  approveEvolutionPlan(
+    planId: string,
+    actor: string,
+  ): Promise<EvolutionPlanRecord> {
+    return this.#evolutionEngine.approvePlan(
+      planId,
+      actor,
+    );
+  }
+
+  executeEvolutionPlan(
+    planId: string,
+  ): Promise<EvolutionPlanRecord> {
+    return this.#evolutionEngine.executePlan(planId);
   }
 
   getEvolutionPlan(

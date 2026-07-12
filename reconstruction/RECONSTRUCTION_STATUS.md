@@ -39,7 +39,7 @@ Gecontroleerd:
 - Git object history;
 - reflog;
 - unreachable Git objects;
-- lokale Forge-kopieÃƒÂ«n;
+- lokale Forge-kopieÃƒÆ’Ã‚Â«n;
 - lokale backup-archieven;
 - ChatGPT-data-export.
 
@@ -47,7 +47,7 @@ Er is geen herstelbare autonome Forge Core-implementatie aangetroffen.
 
 ## Current phase
 
-R1 Ã¢â‚¬â€ governance en canonical architecture herstellen.
+R1 ÃƒÂ¢Ã¢â€šÂ¬Ã¢â‚¬Â governance en canonical architecture herstellen.
 
 Nieuwe runtimecomponenten worden pas gebouwd nadat de bestaande repositorystructuur volledig is geclassificeerd.
 
@@ -91,3 +91,13 @@ Status: implemented and live verified.
 - Evolution plans contain deterministic steps, target maturity and acceptance criteria.
 - Registry, analyses and plans survive a forced container restart.
 - Evidence: reconstruction/CAPABILITY_EVOLUTION_VERIFICATION.json.
+## Evolution Engine Execution
+
+Status: implemented and live verified.
+
+- Proposed evolution plans cannot execute without explicit approval.
+- Plan approval persists across forced runtime replacement.
+- Supported capabilities are promoted only after concrete automated verification.
+- Verification evidence is persisted on the completed evolution plan.
+- Unsupported capabilities remain unpromoted and their plans are cancelled safely.
+- Evidence: reconstruction/EVOLUTION_ENGINE_VERIFICATION.json.

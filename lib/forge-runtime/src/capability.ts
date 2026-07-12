@@ -95,6 +95,14 @@ export interface EvolutionPlanStep {
   readonly acceptanceCriteria: readonly string[];
 }
 
+export interface EvolutionVerificationEvidence {
+  readonly capabilityId: string;
+  readonly verifierId: string;
+  readonly verifiedAt: string;
+  readonly passed: boolean;
+  readonly details: Readonly<Record<string, unknown>>;
+}
+
 export interface EvolutionPlanRecord {
   readonly id: string;
   readonly analysisId: string;
@@ -102,6 +110,12 @@ export interface EvolutionPlanRecord {
   readonly status: EvolutionPlanStatus;
   readonly roiScore: number;
   readonly steps: readonly EvolutionPlanStep[];
+  readonly approvedAt: string | null;
+  readonly approvedBy: string | null;
+  readonly startedAt: string | null;
+  readonly completedAt: string | null;
+  readonly lastError: string | null;
+  readonly evidence: readonly EvolutionVerificationEvidence[];
   readonly createdAt: string;
   readonly updatedAt: string;
 }

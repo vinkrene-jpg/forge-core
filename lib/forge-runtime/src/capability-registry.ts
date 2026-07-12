@@ -12,6 +12,7 @@ import type {
   CapabilitySummary,
   EvolutionPlanRecord,
   EvolutionPlanSummary,
+  EvolutionVerificationEvidence,
   UpsertCapabilityRequest,
 } from "./capability";
 
@@ -81,11 +82,28 @@ function cloneAnalysis(
   });
 }
 
+function cloneEvidence(
+  evidence: EvolutionVerificationEvidence,
+): EvolutionVerificationEvidence {
+  return Object.freeze({
+    ...evidence,
+    details: Object.freeze({ ...evidence.details }),
+  });
+}
+
 function clonePlan(
   plan: EvolutionPlanRecord,
 ): EvolutionPlanRecord {
   return Object.freeze({
     ...plan,
+    approvedAt: plan.approvedAt ?? null,
+    approvedBy: plan.approvedBy ?? null,
+    startedAt: plan.startedAt ?? null,
+    completedAt: plan.completedAt ?? null,
+    lastError: plan.lastError ?? null,
+    evidence: Object.freeze(
+      (plan.evidence ?? []).map(cloneEvidence),
+    ),
     steps: Object.freeze(
       plan.steps.map((step) =>
         Object.freeze({
@@ -124,6 +142,16 @@ function defaultCapabilities(): readonly CapabilityRecord[] {
       version: "1.0.0",
       confidence: 1,
       source: "verified-mission-executor",
+    },
+    {
+      id: "runtime.event.history.inspect",
+      name: "Runtime Event History Inspection",
+      description:
+        "Inspect the bounded runtime event history and verify lifecycle evidence.",
+      status: "experimental",
+      version: "0.1.0",
+      confidence: 0.5,
+      source: "evolution-engine-candidate",
     },
     {
       id: "mission.queue.persist",
@@ -205,6 +233,16 @@ function defaultCapabilities(): readonly CapabilityRecord[] {
       confidence: 1,
       source: "capability-system-bootstrap",
     },
+    {
+      id: "evolution.plan.execute",
+      name: "Controlled Evolution Execution",
+      description:
+        "Approve, verify and execute supported evolution plans without unverified promotion.",
+      status: "operational",
+      version: "1.0.0",
+      confidence: 1,
+      source: "evolution-engine-bootstrap",
+    },
   ];
 
   return defaults.map((capability) =>
@@ -259,6 +297,25 @@ export class CapabilityRegistry {
     }
   }
 
+  async #saveState(
+    next: PersistedCapabilityState,
+  ): Promise<void> {
+    this.#state = Object.freeze({
+      version: CAPABILITY_STORE_VERSION,
+      capabilities: Object.freeze(
+        next.capabilities.map(cloneCapability),
+      ),
+      analyses: Object.freeze(
+        next.analyses.map(cloneAnalysis),
+      ),
+      plans: Object.freeze(
+        next.plans.map(clonePlan),
+      ),
+    });
+
+    await this.#stateStore.save(this.#state);
+  }
+
   async initialize(): Promise<void> {
     await this.#mutate(async () => {
       if (this.#initialized) {
@@ -273,23 +330,15 @@ export class CapabilityRegistry {
         (capability) => !existingIds.has(capability.id),
       );
 
-      this.#state = Object.freeze({
+      await this.#saveState({
         version: CAPABILITY_STORE_VERSION,
-        capabilities: Object.freeze([
-          ...loaded.capabilities.map(cloneCapability),
+        capabilities: [
+          ...loaded.capabilities,
           ...additions,
-        ]),
-        analyses: Object.freeze(
-          loaded.analyses.map(cloneAnalysis),
-        ),
-        plans: Object.freeze(
-          loaded.plans.map(clonePlan),
-        ),
+        ],
+        analyses: loaded.analyses,
+        plans: loaded.plans,
       });
-
-      if (additions.length > 0) {
-        await this.#stateStore.save(this.#state);
-      }
 
       this.#initialized = true;
 
@@ -404,12 +453,10 @@ export class CapabilityRegistry {
         capabilities[index] = capability;
       }
 
-      this.#state = Object.freeze({
+      await this.#saveState({
         ...this.#state,
-        capabilities: Object.freeze(capabilities),
+        capabilities,
       });
-
-      await this.#stateStore.save(this.#state);
 
       this.#events.publish(
         existing === null
@@ -423,6 +470,28 @@ export class CapabilityRegistry {
       );
 
       return cloneCapability(capability);
+    });
+  }
+
+  async promoteCapability(
+    capabilityId: string,
+    targetStatus: CapabilityStatus,
+    source: string,
+  ): Promise<CapabilityRecord> {
+    const current = this.getCapability(capabilityId);
+
+    if (current === null) {
+      throw new Error(`Capability not found: ${capabilityId}`);
+    }
+
+    return this.upsert({
+      id: current.id,
+      name: current.name,
+      description: current.description,
+      status: targetStatus,
+      version: current.version,
+      confidence: 1,
+      source,
     });
   }
 
@@ -451,15 +520,13 @@ export class CapabilityRegistry {
     return this.#mutate(async () => {
       const stored = cloneAnalysis(analysis);
 
-      this.#state = Object.freeze({
+      await this.#saveState({
         ...this.#state,
-        analyses: Object.freeze([
+        analyses: [
           ...this.#state.analyses,
           stored,
-        ]),
+        ],
       });
-
-      await this.#stateStore.save(this.#state);
 
       this.#events.publish(
         "capability.analysis.completed",
@@ -499,15 +566,13 @@ export class CapabilityRegistry {
     return this.#mutate(async () => {
       const stored = clonePlan(plan);
 
-      this.#state = Object.freeze({
+      await this.#saveState({
         ...this.#state,
-        plans: Object.freeze([
+        plans: [
           ...this.#state.plans,
           stored,
-        ]),
+        ],
       });
-
-      await this.#stateStore.save(this.#state);
 
       this.#events.publish("evolution.plan.created", {
         planId: stored.id,
@@ -517,6 +582,142 @@ export class CapabilityRegistry {
       });
 
       return clonePlan(stored);
+    });
+  }
+
+  approvePlan(
+    planId: string,
+    actor: string,
+  ): Promise<EvolutionPlanRecord> {
+    return this.#updatePlan(planId, (current) => {
+      if (current.status === "approved") {
+        return current;
+      }
+
+      if (current.status !== "proposed") {
+        throw new Error(
+          `Evolution plan ${planId} cannot be approved from ${current.status}`,
+        );
+      }
+
+      const timestamp = now();
+
+      return {
+        ...current,
+        status: "approved",
+        approvedAt: timestamp,
+        approvedBy: requiredText(actor, "actor"),
+        updatedAt: timestamp,
+        lastError: null,
+      };
+    }, "evolution.plan.approved");
+  }
+
+  beginPlanExecution(
+    planId: string,
+  ): Promise<EvolutionPlanRecord> {
+    return this.#updatePlan(planId, (current) => {
+      if (current.status !== "approved") {
+        throw new Error(
+          `Evolution plan ${planId} requires approval before execution`,
+        );
+      }
+
+      const timestamp = now();
+
+      return {
+        ...current,
+        status: "executing",
+        startedAt: timestamp,
+        completedAt: null,
+        updatedAt: timestamp,
+        lastError: null,
+        evidence: [],
+      };
+    }, "evolution.plan.started");
+  }
+
+  completePlan(
+    planId: string,
+    evidence: readonly EvolutionVerificationEvidence[],
+  ): Promise<EvolutionPlanRecord> {
+    return this.#updatePlan(planId, (current) => {
+      if (current.status !== "executing") {
+        throw new Error(
+          `Evolution plan ${planId} is not executing`,
+        );
+      }
+
+      const timestamp = now();
+
+      return {
+        ...current,
+        status: "completed",
+        completedAt: timestamp,
+        updatedAt: timestamp,
+        lastError: null,
+        evidence: evidence.map(cloneEvidence),
+      };
+    }, "evolution.plan.completed");
+  }
+
+  failPlan(
+    planId: string,
+    error: string,
+  ): Promise<EvolutionPlanRecord> {
+    return this.#updatePlan(planId, (current) => {
+      const timestamp = now();
+
+      return {
+        ...current,
+        status: "cancelled",
+        completedAt: timestamp,
+        updatedAt: timestamp,
+        lastError: error,
+      };
+    }, "evolution.plan.failed");
+  }
+
+  async #updatePlan(
+    planId: string,
+    update: (
+      current: EvolutionPlanRecord,
+    ) => EvolutionPlanRecord,
+    eventType:
+      | "evolution.plan.approved"
+      | "evolution.plan.started"
+      | "evolution.plan.completed"
+      | "evolution.plan.failed",
+  ): Promise<EvolutionPlanRecord> {
+    this.#ensureInitialized();
+
+    return this.#mutate(async () => {
+      const index = this.#state.plans.findIndex(
+        (plan) => plan.id === planId,
+      );
+
+      if (index < 0) {
+        throw new Error(`Evolution plan not found: ${planId}`);
+      }
+
+      const updated = clonePlan(
+        update(clonePlan(this.#state.plans[index])),
+      );
+      const plans = [...this.#state.plans];
+      plans[index] = updated;
+
+      await this.#saveState({
+        ...this.#state,
+        plans,
+      });
+
+      this.#events.publish(eventType, {
+        planId,
+        status: updated.status,
+        error: updated.lastError,
+      });
+
+      return clonePlan(updated);
     });
   }
 }
