@@ -1,4 +1,4 @@
-﻿{
+{
   "name": "@workspace/forge-runtime",
   "version": "0.1.0",
   "private": true,
@@ -9,5 +9,8 @@
   "types": "./src/index.ts",
   "scripts": {
     "typecheck": "tsc -p tsconfig.json --noEmit"
+  },
+  "devDependencies": {
+    "@types/node": "^24.13.3"
   }
 }
