@@ -1,0 +1,385 @@
+{
+    "verifiedAt":  "2026-07-12T16:29:34.9370093+02:00",
+    "sourceCommit":  "d3d9ac565a04834d5824d8b466bfb28f16c33bfa",
+    "policyVersion":  "1.0.0",
+    "test":  "risk-classification-approval-persistence-approve-reject",
+    "lowRiskMission":  {
+                           "id":  "b5364677-7bc9-4948-aa72-b76dd512b2db",
+                           "kind":  "runtime.self-check",
+                           "title":  "Governance low-risk auto-allow verification",
+                           "status":  "succeeded",
+                           "createdAt":  "2026-07-12T14:29:14.268Z",
+                           "updatedAt":  "2026-07-12T14:29:14.277Z",
+                           "startedAt":  "2026-07-12T14:29:14.271Z",
+                           "completedAt":  "2026-07-12T14:29:14.277Z",
+                           "attempts":  1,
+                           "interruptedCount":  0,
+                           "input":  {
+
+                                     },
+                           "output":  {
+                                          "checkedAt":  "2026-07-12T14:29:14.277Z",
+                                          "kernelStatus":  "running",
+                                          "uptimeMs":  803,
+                                          "eventCount":  9
+                                      },
+                           "lastError":  null
+                       },
+    "blockedMissionBeforeRestart":  {
+                                        "id":  "1cf0e5f7-b30f-495e-aa80-2e35631791fa",
+                                        "kind":  "runtime.stability-window",
+                                        "title":  "Governance approval persistence verification",
+                                        "status":  "awaiting_approval",
+                                        "createdAt":  "2026-07-12T14:29:14.327Z",
+                                        "updatedAt":  "2026-07-12T14:29:14.327Z",
+                                        "startedAt":  null,
+                                        "completedAt":  null,
+                                        "attempts":  0,
+                                        "interruptedCount":  0,
+                                        "input":  {
+                                                      "durationMs":  8000,
+                                                      "sampleIntervalMs":  500
+                                                  },
+                                        "output":  null,
+                                        "lastError":  null
+                                    },
+    "approvalAfterRestart":  {
+                                 "id":  "c3644d40-da67-401a-a76e-8144df09e6e7",
+                                 "missionId":  "1cf0e5f7-b30f-495e-aa80-2e35631791fa",
+                                 "status":  "pending",
+                                 "assessment":  {
+                                                    "policyVersion":  "1.0.0",
+                                                    "action":  "mission.execute",
+                                                    "missionKind":  "runtime.stability-window",
+                                                    "riskLevel":  "medium",
+                                                    "decision":  "require_approval",
+                                                    "reason":  "Operational stability mission consumes runtime resources and requires explicit approval.",
+                                                    "assessedAt":  "2026-07-12T14:29:14.327Z"
+                                                },
+                                 "createdAt":  "2026-07-12T14:29:14.328Z",
+                                 "updatedAt":  "2026-07-12T14:29:14.328Z",
+                                 "decidedAt":  null,
+                                 "decidedBy":  null,
+                                 "note":  null
+                             },
+    "approvedMission":  {
+                            "id":  "1cf0e5f7-b30f-495e-aa80-2e35631791fa",
+                            "kind":  "runtime.stability-window",
+                            "title":  "Governance approval persistence verification",
+                            "status":  "succeeded",
+                            "createdAt":  "2026-07-12T14:29:14.327Z",
+                            "updatedAt":  "2026-07-12T14:29:34.364Z",
+                            "startedAt":  "2026-07-12T14:29:26.359Z",
+                            "completedAt":  "2026-07-12T14:29:34.364Z",
+                            "attempts":  1,
+                            "interruptedCount":  0,
+                            "input":  {
+                                          "durationMs":  8000,
+                                          "sampleIntervalMs":  500
+                                      },
+                            "output":  {
+                                           "durationMs":  8000,
+                                           "sampleIntervalMs":  500,
+                                           "samples":  16,
+                                           "completedAt":  "2026-07-12T14:29:34.362Z",
+                                           "finalKernelStatus":  "running",
+                                           "finalHealthStatus":  "ok"
+                                       },
+                            "lastError":  null
+                        },
+    "rejectedMission":  {
+                            "id":  "2683ca6d-e64b-4b4f-b8ab-94603c110dc6",
+                            "kind":  "runtime.stability-window",
+                            "title":  "Governance rejection verification",
+                            "status":  "cancelled",
+                            "createdAt":  "2026-07-12T14:29:34.462Z",
+                            "updatedAt":  "2026-07-12T14:29:34.532Z",
+                            "startedAt":  null,
+                            "completedAt":  "2026-07-12T14:29:34.532Z",
+                            "attempts":  0,
+                            "interruptedCount":  0,
+                            "input":  {
+                                          "durationMs":  5000,
+                                          "sampleIntervalMs":  500
+                                      },
+                            "output":  null,
+                            "lastError":  "Rejected during governance verification."
+                        },
+    "approvedApproval":  {
+                             "id":  "c3644d40-da67-401a-a76e-8144df09e6e7",
+                             "missionId":  "1cf0e5f7-b30f-495e-aa80-2e35631791fa",
+                             "status":  "approved",
+                             "assessment":  {
+                                                "policyVersion":  "1.0.0",
+                                                "action":  "mission.execute",
+                                                "missionKind":  "runtime.stability-window",
+                                                "riskLevel":  "medium",
+                                                "decision":  "require_approval",
+                                                "reason":  "Operational stability mission consumes runtime resources and requires explicit approval.",
+                                                "assessedAt":  "2026-07-12T14:29:14.327Z"
+                                            },
+                             "createdAt":  "2026-07-12T14:29:14.328Z",
+                             "updatedAt":  "2026-07-12T14:29:26.356Z",
+                             "decidedAt":  "2026-07-12T14:29:26.356Z",
+                             "decidedBy":  "forge-reconstruction-verifier",
+                             "note":  "Approved during live governance verification."
+                         },
+    "rejectedApproval":  {
+                             "id":  "ce1259e1-51a9-4314-af18-e8f0046f365e",
+                             "missionId":  "2683ca6d-e64b-4b4f-b8ab-94603c110dc6",
+                             "status":  "rejected",
+                             "assessment":  {
+                                                "policyVersion":  "1.0.0",
+                                                "action":  "mission.execute",
+                                                "missionKind":  "runtime.stability-window",
+                                                "riskLevel":  "medium",
+                                                "decision":  "require_approval",
+                                                "reason":  "Operational stability mission consumes runtime resources and requires explicit approval.",
+                                                "assessedAt":  "2026-07-12T14:29:34.458Z"
+                                            },
+                             "createdAt":  "2026-07-12T14:29:34.467Z",
+                             "updatedAt":  "2026-07-12T14:29:34.531Z",
+                             "decidedAt":  "2026-07-12T14:29:34.531Z",
+                             "decidedBy":  "forge-reconstruction-verifier",
+                             "note":  "Rejected during governance verification."
+                         },
+    "runtimeAfterVerification":  {
+                                     "kernel":  {
+                                                    "status":  "running",
+                                                    "revision":  2,
+                                                    "startedAt":  "2026-07-12T14:29:25.455Z",
+                                                    "updatedAt":  "2026-07-12T14:29:25.455Z",
+                                                    "lastError":  null
+                                                },
+                                     "health":  {
+                                                    "status":  "ok",
+                                                    "kernelStatus":  "running",
+                                                    "checkedAt":  "2026-07-12T14:29:34.934Z",
+                                                    "startedAt":  "2026-07-12T14:29:25.455Z",
+                                                    "uptimeMs":  9479,
+                                                    "eventCount":  15
+                                                },
+                                     "persistence":  {
+                                                         "version":  1,
+                                                         "runtimeId":  "fe1f0a1f-7c34-401f-9e77-ac0fc9b0a442",
+                                                         "sessionId":  "70cb1fc4-0d01-42b5-b201-f9e10c76053a",
+                                                         "restartCount":  6,
+                                                         "recoveryCount":  5,
+                                                         "lastKnownKernelStatus":  "running",
+                                                         "lastStartedAt":  "2026-07-12T14:29:25.455Z",
+                                                         "lastStoppedAt":  null,
+                                                         "updatedAt":  "2026-07-12T14:29:25.455Z",
+                                                         "lastShutdownClean":  false,
+                                                         "recoveredFromStatus":  "running",
+                                                         "lastError":  null
+                                                     },
+                                     "missionLoop":  {
+                                                         "status":  "running",
+                                                         "currentMissionId":  null,
+                                                         "pollIntervalMs":  500
+                                                     },
+                                     "missions":  {
+                                                      "total":  5,
+                                                      "awaitingApproval":  0,
+                                                      "queued":  0,
+                                                      "running":  0,
+                                                      "succeeded":  4,
+                                                      "failed":  0,
+                                                      "cancelled":  1,
+                                                      "currentMissionId":  null
+                                                  },
+                                     "governance":  {
+                                                        "policyVersion":  "1.0.0",
+                                                        "total":  2,
+                                                        "pending":  0,
+                                                        "approved":  1,
+                                                        "rejected":  1
+                                                    },
+                                     "events":  [
+                                                    {
+                                                        "sequence":  1,
+                                                        "type":  "runtime.state.loaded",
+                                                        "occurredAt":  "2026-07-12T14:29:25.453Z",
+                                                        "payload":  {
+                                                                        "runtimeId":  "fe1f0a1f-7c34-401f-9e77-ac0fc9b0a442",
+                                                                        "restartCount":  5,
+                                                                        "recoveryCount":  4
+                                                                    }
+                                                    },
+                                                    {
+                                                        "sequence":  2,
+                                                        "type":  "runtime.recovery.detected",
+                                                        "occurredAt":  "2026-07-12T14:29:25.453Z",
+                                                        "payload":  {
+                                                                        "runtimeId":  "fe1f0a1f-7c34-401f-9e77-ac0fc9b0a442",
+                                                                        "previousSessionId":  "7a6505f6-9e56-46bc-acb6-67ea1f222ad6",
+                                                                        "recoveredFromStatus":  "running"
+                                                                    }
+                                                    },
+                                                    {
+                                                        "sequence":  3,
+                                                        "type":  "kernel.starting",
+                                                        "occurredAt":  "2026-07-12T14:29:25.455Z",
+                                                        "payload":  {
+
+                                                                    }
+                                                    },
+                                                    {
+                                                        "sequence":  4,
+                                                        "type":  "kernel.started",
+                                                        "occurredAt":  "2026-07-12T14:29:25.455Z",
+                                                        "payload":  {
+                                                                        "startedAt":  "2026-07-12T14:29:25.455Z"
+                                                                    }
+                                                    },
+                                                    {
+                                                        "sequence":  5,
+                                                        "type":  "governance.state.loaded",
+                                                        "occurredAt":  "2026-07-12T14:29:25.458Z",
+                                                        "payload":  {
+                                                                        "policyVersion":  "1.0.0",
+                                                                        "approvalCount":  1
+                                                                    }
+                                                    },
+                                                    {
+                                                        "sequence":  6,
+                                                        "type":  "mission.loop.started",
+                                                        "occurredAt":  "2026-07-12T14:29:25.458Z",
+                                                        "payload":  {
+                                                                        "pollIntervalMs":  500
+                                                                    }
+                                                    },
+                                                    {
+                                                        "sequence":  7,
+                                                        "type":  "governance.approval.approved",
+                                                        "occurredAt":  "2026-07-12T14:29:26.357Z",
+                                                        "payload":  {
+                                                                        "approvalId":  "c3644d40-da67-401a-a76e-8144df09e6e7",
+                                                                        "missionId":  "1cf0e5f7-b30f-495e-aa80-2e35631791fa",
+                                                                        "actor":  "forge-reconstruction-verifier"
+                                                                    }
+                                                    },
+                                                    {
+                                                        "sequence":  8,
+                                                        "type":  "mission.approved",
+                                                        "occurredAt":  "2026-07-12T14:29:26.358Z",
+                                                        "payload":  {
+                                                                        "missionId":  "1cf0e5f7-b30f-495e-aa80-2e35631791fa"
+                                                                    }
+                                                    },
+                                                    {
+                                                        "sequence":  9,
+                                                        "type":  "mission.started",
+                                                        "occurredAt":  "2026-07-12T14:29:26.361Z",
+                                                        "payload":  {
+                                                                        "missionId":  "1cf0e5f7-b30f-495e-aa80-2e35631791fa",
+                                                                        "kind":  "runtime.stability-window",
+                                                                        "attempt":  1
+                                                                    }
+                                                    },
+                                                    {
+                                                        "sequence":  10,
+                                                        "type":  "mission.succeeded",
+                                                        "occurredAt":  "2026-07-12T14:29:34.367Z",
+                                                        "payload":  {
+                                                                        "missionId":  "1cf0e5f7-b30f-495e-aa80-2e35631791fa",
+                                                                        "kind":  "runtime.stability-window",
+                                                                        "attempt":  1,
+                                                                        "error":  null
+                                                                    }
+                                                    },
+                                                    {
+                                                        "sequence":  11,
+                                                        "type":  "governance.assessed",
+                                                        "occurredAt":  "2026-07-12T14:29:34.458Z",
+                                                        "payload":  {
+                                                                        "missionKind":  "runtime.stability-window",
+                                                                        "riskLevel":  "medium",
+                                                                        "decision":  "require_approval",
+                                                                        "policyVersion":  "1.0.0"
+                                                                    }
+                                                    },
+                                                    {
+                                                        "sequence":  12,
+                                                        "type":  "mission.awaiting_approval",
+                                                        "occurredAt":  "2026-07-12T14:29:34.466Z",
+                                                        "payload":  {
+                                                                        "missionId":  "2683ca6d-e64b-4b4f-b8ab-94603c110dc6",
+                                                                        "kind":  "runtime.stability-window"
+                                                                    }
+                                                    },
+                                                    {
+                                                        "sequence":  13,
+                                                        "type":  "governance.approval.requested",
+                                                        "occurredAt":  "2026-07-12T14:29:34.470Z",
+                                                        "payload":  {
+                                                                        "approvalId":  "ce1259e1-51a9-4314-af18-e8f0046f365e",
+                                                                        "missionId":  "2683ca6d-e64b-4b4f-b8ab-94603c110dc6",
+                                                                        "riskLevel":  "medium"
+                                                                    }
+                                                    },
+                                                    {
+                                                        "sequence":  14,
+                                                        "type":  "governance.approval.rejected",
+                                                        "occurredAt":  "2026-07-12T14:29:34.532Z",
+                                                        "payload":  {
+                                                                        "approvalId":  "ce1259e1-51a9-4314-af18-e8f0046f365e",
+                                                                        "missionId":  "2683ca6d-e64b-4b4f-b8ab-94603c110dc6",
+                                                                        "actor":  "forge-reconstruction-verifier"
+                                                                    }
+                                                    },
+                                                    {
+                                                        "sequence":  15,
+                                                        "type":  "mission.rejected",
+                                                        "occurredAt":  "2026-07-12T14:29:34.533Z",
+                                                        "payload":  {
+                                                                        "missionId":  "2683ca6d-e64b-4b4f-b8ab-94603c110dc6",
+                                                                        "reason":  "Rejected during governance verification."
+                                                                    }
+                                                    }
+                                                ]
+                                 },
+    "persistedGovernance":  {
+                                "version":  1,
+                                "approvals":  [
+                                                  {
+                                                      "id":  "c3644d40-da67-401a-a76e-8144df09e6e7",
+                                                      "missionId":  "1cf0e5f7-b30f-495e-aa80-2e35631791fa",
+                                                      "status":  "approved",
+                                                      "assessment":  {
+                                                                         "policyVersion":  "1.0.0",
+                                                                         "action":  "mission.execute",
+                                                                         "missionKind":  "runtime.stability-window",
+                                                                         "riskLevel":  "medium",
+                                                                         "decision":  "require_approval",
+                                                                         "reason":  "Operational stability mission consumes runtime resources and requires explicit approval.",
+                                                                         "assessedAt":  "2026-07-12T14:29:14.327Z"
+                                                                     },
+                                                      "createdAt":  "2026-07-12T14:29:14.328Z",
+                                                      "updatedAt":  "2026-07-12T14:29:26.356Z",
+                                                      "decidedAt":  "2026-07-12T14:29:26.356Z",
+                                                      "decidedBy":  "forge-reconstruction-verifier",
+                                                      "note":  "Approved during live governance verification."
+                                                  },
+                                                  {
+                                                      "id":  "ce1259e1-51a9-4314-af18-e8f0046f365e",
+                                                      "missionId":  "2683ca6d-e64b-4b4f-b8ab-94603c110dc6",
+                                                      "status":  "rejected",
+                                                      "assessment":  {
+                                                                         "policyVersion":  "1.0.0",
+                                                                         "action":  "mission.execute",
+                                                                         "missionKind":  "runtime.stability-window",
+                                                                         "riskLevel":  "medium",
+                                                                         "decision":  "require_approval",
+                                                                         "reason":  "Operational stability mission consumes runtime resources and requires explicit approval.",
+                                                                         "assessedAt":  "2026-07-12T14:29:34.458Z"
+                                                                     },
+                                                      "createdAt":  "2026-07-12T14:29:34.467Z",
+                                                      "updatedAt":  "2026-07-12T14:29:34.531Z",
+                                                      "decidedAt":  "2026-07-12T14:29:34.531Z",
+                                                      "decidedBy":  "forge-reconstruction-verifier",
+                                                      "note":  "Rejected during governance verification."
+                                                  }
+                                              ]
+                            }
+}

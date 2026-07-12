@@ -39,7 +39,7 @@ Gecontroleerd:
 - Git object history;
 - reflog;
 - unreachable Git objects;
-- lokale Forge-kopieën;
+- lokale Forge-kopieÃ«n;
 - lokale backup-archieven;
 - ChatGPT-data-export.
 
@@ -47,7 +47,7 @@ Er is geen herstelbare autonome Forge Core-implementatie aangetroffen.
 
 ## Current phase
 
-R1 — governance en canonical architecture herstellen.
+R1 â€” governance en canonical architecture herstellen.
 
 Nieuwe runtimecomponenten worden pas gebouwd nadat de bestaande repositorystructuur volledig is geclassificeerd.
 
@@ -69,3 +69,14 @@ Status: implemented and live verified.
 - runtime.self-check and runtime.stability-window are real operational executors.
 - A running mission survives a forced container SIGKILL and resumes as a new attempt.
 - Evidence: reconstruction/MISSION_ENGINE_VERIFICATION.json.
+## Governance Engine
+
+Status: implemented and live verified.
+
+- Mission risk is classified by a deterministic versioned policy.
+- Low-risk missions execute without approval.
+- Operational missions remain blocked until explicit approval.
+- Pending approvals persist across a forced container restart.
+- Approved missions resume through MissionLoop.
+- Rejected missions are cancelled without execution.
+- Evidence: reconstruction/GOVERNANCE_ENGINE_VERIFICATION.json.

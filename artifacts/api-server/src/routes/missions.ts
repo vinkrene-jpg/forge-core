@@ -36,9 +36,13 @@ router.get("/missions/:missionId", (req, res): void => {
 router.post("/missions", async (req, res): Promise<void> => {
   try {
     const request = req.body as CreateMissionRequest;
-    const mission = await forgeRuntime.createMission(request);
+    const result = await forgeRuntime.createMission(request);
 
-    res.status(202).json(mission);
+    res.status(202).json({
+      ...result.mission,
+      governance: result.assessment,
+      approval: result.approval,
+    });
   } catch (error) {
     res.status(400).json({
       error: message(error),

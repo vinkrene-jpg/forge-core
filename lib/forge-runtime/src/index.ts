@@ -6,6 +6,33 @@ export {
 } from "./event-bus";
 
 export {
+  GovernanceEngine,
+  type GovernanceEngineOptions,
+} from "./governance-engine";
+
+export {
+  createInitialGovernanceState,
+  FileGovernanceStateStore,
+  resolveGovernanceStatePath,
+  GOVERNANCE_STORE_VERSION,
+  type GovernanceStateStore,
+  type PersistedGovernanceState,
+} from "./governance-store";
+
+export {
+  assessMissionRequest,
+  GOVERNANCE_POLICY_VERSION,
+  type ApprovalDecisionResult,
+  type ApprovalRecord,
+  type ApprovalStatus,
+  type GovernanceAssessment,
+  type GovernanceDecision,
+  type GovernanceRiskLevel,
+  type GovernanceSummary,
+  type MissionCreationResult,
+} from "./governance";
+
+export {
   ForgeKernel,
   type RuntimeHealthSnapshot,
 } from "./kernel";
