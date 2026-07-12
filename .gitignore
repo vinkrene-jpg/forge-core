@@ -49,3 +49,5 @@ Thumbs.db
 .local/
 .pnpm-store/
 .env
+.env.*
+!.env.example
