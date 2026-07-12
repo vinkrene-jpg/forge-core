@@ -169,6 +169,39 @@ export default function Learning() {
           </div>
         </CardContent>
       </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2 text-lg">
+            <Target className="h-5 w-5 text-primary" />
+            Experimental capability matrix
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="grid gap-3 lg:grid-cols-3">
+          {(data?.matrix ?? []).map((entry) => (
+            <div
+              key={entry.capabilityId}
+              className="rounded-md border border-border/60 bg-background/40 p-4"
+            >
+              <div className="flex items-start justify-between gap-3">
+                <div>
+                  <div className="font-medium">{entry.name}</div>
+                  <div className="mt-1 font-mono text-[11px] text-muted-foreground">
+                    {entry.capabilityId}
+                  </div>
+                </div>
+                <Badge variant="secondary">{entry.maturity}</Badge>
+              </div>
+              <div className="mt-3 text-xs text-muted-foreground">
+                {entry.exerciseTypes.join(", ")}
+              </div>
+              <div className="mt-2 text-xs text-muted-foreground">
+                Authority: none - dependencies {entry.dependencies.length}
+              </div>
+            </div>
+          ))}
+        </CardContent>
+      </Card>
     </div>
   );
 }

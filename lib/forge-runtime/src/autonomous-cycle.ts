@@ -131,6 +131,9 @@ export class AutonomousOutputEvaluator {
   evaluate(
     missionId: string,
     execution: AiExecutionRecord,
+    options: {
+      readonly requiredEvidenceId?: string | null;
+    } = {},
   ): AutonomousEvaluation {
     const output = execution.outputText ?? "";
     const checks: AutonomousEvaluationCheck[] = [
@@ -166,6 +169,21 @@ export class AutonomousOutputEvaluator {
       },
     ];
 
+    if (options.requiredEvidenceId) {
+      checks.push(
+        {
+          id: "tool-evidence-cited",
+          passed: output.includes(options.requiredEvidenceId),
+          detail: `Output must cite evidence ${options.requiredEvidenceId}.`,
+        },
+        {
+          id: "capability-result-explicit",
+          passed: /CAPABILITY_RESULT:\s*(?:PASS|GAP)\b/i.test(output),
+          detail: "Output must declare CAPABILITY_RESULT: PASS or GAP.",
+        },
+      );
+    }
+
     const passed = checks.filter((check) => check.passed).length;
     const score = Math.round((passed / checks.length) * 100);
 
@@ -179,4 +197,16 @@ export class AutonomousOutputEvaluator {
       evaluatedAt: new Date().toISOString(),
     });
   }
+}
+
+export function parseCapabilityResult(
+  output: string,
+): "pass" | "gap" | null {
+  const match = /CAPABILITY_RESULT:\s*(PASS|GAP)\b/i.exec(output);
+
+  if (!match) {
+    return null;
+  }
+
+  return match[1].toUpperCase() === "PASS" ? "pass" : "gap";
 }

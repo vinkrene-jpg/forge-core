@@ -57,3 +57,7 @@ The Learning Engine derives capability scores only from persisted mission, execu
 ## AD-014 - Rejected exercises become negative evidence
 
 A governed learning exercise that fails deterministic evaluation is never promoted to success. If its persisted execution is secret-free and uniquely linked, Forge may record it once as negative capability evidence, close the proposal as failed and create an inert recovery proposal. Recovery may not repeat the provider call automatically.
+
+## AD-015 - Dependency-scoped failure domains
+
+Batch execution uses explicit dependencies. Shared source, typecheck or build failure blocks every dependent chapter. A provider, exercise or research failure blocks only its own branch; unrelated verified chapters continue and persist separate evidence. No failed branch is reported as complete.

@@ -28,6 +28,8 @@ export interface LearningObservation {
   readonly evidenceMemoryId: string;
   readonly sourceProposalId: string | null;
   readonly targetCapabilityId: string | null;
+  readonly capabilityResult: "pass" | "gap" | null;
+  readonly toolEvidenceMemoryId: string | null;
   readonly evaluationScore: number;
   readonly outcome: LearningOutcome;
   readonly signals: readonly LearningSignal[];
@@ -98,6 +100,8 @@ export interface ObserveAutonomousLearningRequest {
   readonly capabilityIds: readonly string[];
   readonly sourceProposalId?: string | null;
   readonly targetCapabilityId?: string | null;
+  readonly capabilityResult?: "pass" | "gap" | null;
+  readonly toolEvidenceMemoryId?: string | null;
 }
 
 export interface RecordFailedLearningExerciseRequest {

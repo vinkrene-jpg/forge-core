@@ -15,6 +15,7 @@ router.get("/learning", (_req, res): void => {
     profiles: forgeRuntime.listLearningProfiles(),
     observations: forgeRuntime.listLearningObservations(),
     proposals: forgeRuntime.listLearningProposals(),
+    matrix: forgeRuntime.listLearningMatrix(),
   });
 });
 

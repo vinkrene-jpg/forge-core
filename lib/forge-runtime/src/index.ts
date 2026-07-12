@@ -28,11 +28,25 @@ export {
 } from "./openai-responses-connector";
 export {
   AutonomousOutputEvaluator,
+  parseCapabilityResult,
   parseAutonomousCycleInput,
   type AutonomousCycleInput,
   type AutonomousEvaluation,
   type AutonomousEvaluationCheck,
 } from "./autonomous-cycle";
+
+export {
+  LearningEvidenceTool,
+  type LearningEvidenceBundle,
+  type LearningEvidenceToolOptions,
+} from "./learning-evidence-tool";
+
+export {
+  getLearningMatrixEntry,
+  listLearningMatrixEntries,
+  type LearningCapabilityMatrixEntry,
+  type LearningExerciseType,
+} from "./learning-matrix";
 export {
   ModelRouter,
 } from "./model-router";

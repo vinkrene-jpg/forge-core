@@ -15,6 +15,7 @@ import {
 import { createHash, randomUUID } from "node:crypto";
 import {
   AutonomousOutputEvaluator,
+  parseCapabilityResult,
   parseAutonomousCycleInput,
   type AutonomousEvaluation,
 } from "./autonomous-cycle";
@@ -127,6 +128,12 @@ import {
   FileLearningStateStore,
   type LearningStateStore,
 } from "./learning-store";
+import { LearningEvidenceTool } from "./learning-evidence-tool";
+import {
+  getLearningMatrixEntry,
+  listLearningMatrixEntries,
+  type LearningCapabilityMatrixEntry,
+} from "./learning-matrix";
 
 export interface RuntimeMissionCreationResult {
   readonly mission: MissionRecord;
@@ -181,6 +188,7 @@ export class ForgeRuntime {
   readonly #operatorCore: OperatorCore;
   readonly #aiGateway: AiGatewayEngine;
   readonly #learningEngine: LearningEngine;
+  readonly #learningEvidenceTool: LearningEvidenceTool;
   readonly #autonomousEvaluator = new AutonomousOutputEvaluator();
   readonly #missionLoop: MissionLoop;
   #persistence = createInitialRuntimeState();
@@ -273,6 +281,16 @@ export class ForgeRuntime {
     this.#learningEngine =
       new LearningEngine(learningOptions);
 
+    this.#learningEvidenceTool = new LearningEvidenceTool({
+      getCapability: (capabilityId) =>
+        this.#capabilityRegistry.getCapability(capabilityId),
+      getProfile: (capabilityId) =>
+        this.#learningEngine.getProfile(capabilityId),
+      getMatrixEntry: getLearningMatrixEntry,
+      getObservations: () => this.#learningEngine.listObservations(),
+      getEvents: () => this.#events.snapshot(),
+    });
+
     this.#missionLoop = new MissionLoop({
       engine: this.#missionEngine,
       events: this.#events,
@@ -302,6 +320,46 @@ export class ForgeRuntime {
       throw new MissionAbortError();
     }
 
+    const learningProposalId =
+      typeof mission.input.learningProposalId === "string"
+        ? mission.input.learningProposalId
+        : null;
+    const targetCapabilityId =
+      typeof mission.input.targetCapabilityId === "string"
+        ? mission.input.targetCapabilityId
+        : null;
+    let toolEvidenceMemory: ProjectMemoryEntry | null = null;
+
+    if (learningProposalId && targetCapabilityId) {
+      const bundle = this.#learningEvidenceTool.collect({
+        proposalId: learningProposalId,
+        missionId: mission.id,
+        targetCapabilityId,
+      });
+
+      toolEvidenceMemory = await this.#operatorCore.addMemory(
+        input.projectId,
+        {
+          kind: "evidence",
+          source: `learning-evidence-tool:${mission.id}`,
+          tags: [
+            "learning-tool-evidence",
+            targetCapabilityId,
+            "read-only",
+          ],
+          content: JSON.stringify(bundle, null, 2),
+        },
+      );
+      this.#events.publish("learning.evidence.collected", {
+        missionId: mission.id,
+        proposalId: learningProposalId,
+        targetCapabilityId,
+        evidenceMemoryId: toolEvidenceMemory.id,
+        bundleId: bundle.id,
+        sha256: bundle.sha256,
+      });
+    }
+
     const composition = await this.#operatorCore.composePrompt({
       projectId: input.projectId,
       objective: [
@@ -312,6 +370,14 @@ export class ForgeRuntime {
         "Return the single next evidence-backed implementation step.",
         "State assumptions and concrete verification steps explicitly.",
         "Do not claim that code, tests or runtime changes occurred unless the supplied evidence proves it.",
+        ...(toolEvidenceMemory
+          ? [
+              `Required evidence ID: ${toolEvidenceMemory.id}`,
+              `Cite exactly: EVIDENCE: ${toolEvidenceMemory.id}`,
+              "Declare exactly one: CAPABILITY_RESULT: PASS or CAPABILITY_RESULT: GAP.",
+              "PASS requires the read-only bundle to prove the target capability. GAP is correct when evidence is missing or insufficient.",
+            ]
+          : []),
       ].join("\n"),
       taskType: "analysis",
       privacy: "standard",
@@ -335,8 +401,11 @@ export class ForgeRuntime {
       mission.id,
     );
     const evaluation: AutonomousEvaluation =
-      this.#autonomousEvaluator.evaluate(mission.id, execution);
+      this.#autonomousEvaluator.evaluate(mission.id, execution, {
+        requiredEvidenceId: toolEvidenceMemory?.id ?? null,
+      });
     const outputText = execution.outputText ?? "";
+    const capabilityResult = parseCapabilityResult(outputText);
     const outputSha256 = createHash("sha256")
       .update(outputText, "utf8")
       .digest("hex");
@@ -409,6 +478,8 @@ export class ForgeRuntime {
         typeof mission.input.targetCapabilityId === "string"
           ? mission.input.targetCapabilityId
           : null,
+      capabilityResult,
+      toolEvidenceMemoryId: toolEvidenceMemory?.id ?? null,
     });
 
     let nextMissionId: string | null = null;
@@ -464,6 +535,8 @@ export class ForgeRuntime {
       executionId: execution.id,
       evaluation,
       evidenceMemoryId: evidenceMemory.id,
+      toolEvidenceMemoryId: toolEvidenceMemory?.id ?? null,
+      capabilityResult,
       learningObservationId: learning.observation.id,
       learningProposalId: learning.proposal.id,
       outputSha256,
@@ -560,6 +633,15 @@ export class ForgeRuntime {
         targetCapabilityId:
           typeof mission.input.targetCapabilityId === "string"
             ? mission.input.targetCapabilityId
+            : null,
+        capabilityResult:
+          output?.capabilityResult === "pass" ||
+          output?.capabilityResult === "gap"
+            ? output.capabilityResult
+            : null,
+        toolEvidenceMemoryId:
+          typeof output?.toolEvidenceMemoryId === "string"
+            ? output.toolEvidenceMemoryId
             : null,
       });
     }
@@ -1059,6 +1141,10 @@ export class ForgeRuntime {
 
   listLearningProposals(): readonly LearningMissionProposal[] {
     return this.#learningEngine.listProposals();
+  }
+
+  listLearningMatrix(): readonly LearningCapabilityMatrixEntry[] {
+    return listLearningMatrixEntries();
   }
 
   async scheduleLearningProposal(
