@@ -1,0 +1,22 @@
+{
+    "verifiedAt":  "2026-07-12T17:51:22.6962169+02:00",
+    "sourceCommit":  "521af3e465c9b81706ac5c2f1bf0d67153352328",
+    "test":  "forge-desktop-static-serving-spa-fallback-and-live-runtime-binding",
+    "desktopUrl":  "http://localhost:5000",
+    "homeStatus":  200,
+    "missionsRouteStatus":  200,
+    "assetUrl":  "http://localhost:5000/assets/index-ByJkAwGG.js",
+    "assetStatus":  200,
+    "runtime":  {
+                    "kernelStatus":  "running",
+                    "missionLoopStatus":  "running",
+                    "healthStatus":  "ok",
+                    "runtimeId":  "fe1f0a1f-7c34-401f-9e77-ac0fc9b0a442"
+                },
+    "boundData":  {
+                      "approvals":  2,
+                      "evolutionPlans":  3,
+                      "missions":  6,
+                      "capabilities":  14
+                  }
+}

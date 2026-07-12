@@ -1,39 +1,62 @@
-import { Switch, Route, Router as WouterRouter } from "wouter";
-import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { Toaster } from "@/components/ui/toaster";
-import { TooltipProvider } from "@/components/ui/tooltip";
+import {
+  QueryClient,
+  QueryClientProvider,
+} from "@tanstack/react-query";
+import {
+  Route,
+  Router as WouterRouter,
+  Switch,
+} from "wouter";
 import { Layout } from "@/components/layout";
+import { TooltipProvider } from "@/components/ui/tooltip";
+import { Toaster } from "@/components/ui/toaster";
 import Dashboard from "@/pages/dashboard";
-import NotFound from "@/pages/not-found";
+import Missions from "@/pages/missions-live";
+import Approvals from "@/pages/approvals";
+import Capabilities from "@/pages/capabilities-live";
+import Evolution from "@/pages/evolution-live";
+import Events from "@/pages/events-live";
 import Projects from "@/pages/projects";
 import Tasks from "@/pages/tasks";
 import Modules from "@/pages/modules";
 import Sandboxes from "@/pages/sandboxes";
 import Tests from "@/pages/tests";
-import Approvals from "@/pages/approvals";
 import AiGateway from "@/pages/ai-gateway";
 import Memory from "@/pages/memory";
-import Improvements from "@/pages/improvements";
 import DailyLoop from "@/pages/daily-loop";
 import CoreComponents from "@/pages/core-components";
 import AuditLogs from "@/pages/audit-logs";
+import NotFound from "@/pages/not-found";
 
-const queryClient = new QueryClient();
+const queryClient = new QueryClient({
+  defaultOptions: {
+    queries: {
+      staleTime: 1_000,
+      retry: 1,
+      refetchOnWindowFocus: true,
+    },
+  },
+});
 
 function Router() {
   return (
     <Layout>
       <Switch>
         <Route path="/" component={Dashboard} />
+        <Route path="/missions" component={Missions} />
+        <Route path="/approvals" component={Approvals} />
+        <Route path="/capabilities" component={Capabilities} />
+        <Route path="/evolution" component={Evolution} />
+        <Route path="/events" component={Events} />
+
         <Route path="/projects" component={Projects} />
         <Route path="/tasks" component={Tasks} />
         <Route path="/modules" component={Modules} />
         <Route path="/sandboxes" component={Sandboxes} />
         <Route path="/tests" component={Tests} />
-        <Route path="/approvals" component={Approvals} />
         <Route path="/ai-gateway" component={AiGateway} />
         <Route path="/memory" component={Memory} />
-        <Route path="/improvements" component={Improvements} />
+        <Route path="/improvements" component={Evolution} />
         <Route path="/daily-loop" component={DailyLoop} />
         <Route path="/core" component={CoreComponents} />
         <Route path="/audit" component={AuditLogs} />
@@ -43,11 +66,13 @@ function Router() {
   );
 }
 
-function App() {
+export default function App() {
   return (
     <QueryClientProvider client={queryClient}>
       <TooltipProvider>
-        <WouterRouter base={import.meta.env.BASE_URL.replace(/\/$/, "")}>
+        <WouterRouter
+          base={import.meta.env.BASE_URL.replace(/\/$/, "")}
+        >
           <Router />
         </WouterRouter>
         <Toaster />
@@ -55,5 +80,3 @@ function App() {
     </QueryClientProvider>
   );
 }
-
-export default App;

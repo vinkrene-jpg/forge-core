@@ -1,10 +1,12 @@
-﻿import { defineConfig } from "vite";
+import { defineConfig } from "vite";
 import react from "@vitejs/plugin-react";
 import tailwindcss from "@tailwindcss/vite";
 import path from "path";
 import runtimeErrorOverlay from "@replit/vite-plugin-runtime-error-modal";
 
-function resolveOptionalPort(rawPort: string | undefined): number | undefined {
+function resolveOptionalPort(
+  rawPort: string | undefined,
+): number | undefined {
   if (!rawPort) {
     return undefined;
   }
@@ -25,10 +27,18 @@ export default defineConfig(async ({ command }) => {
   const replitPlugins =
     command === "serve" && process.env.REPL_ID
       ? [
-          (await import("@replit/vite-plugin-cartographer")).cartographer({
+          (
+            await import(
+              "@replit/vite-plugin-cartographer"
+            )
+          ).cartographer({
             root: path.resolve(import.meta.dirname, "../"),
           }),
-          (await import("@replit/vite-plugin-dev-banner")).devBanner(),
+          (
+            await import(
+              "@replit/vite-plugin-dev-banner"
+            )
+          ).devBanner(),
         ]
       : [];
 
@@ -54,7 +64,10 @@ export default defineConfig(async ({ command }) => {
     },
     root: path.resolve(import.meta.dirname),
     build: {
-      outDir: path.resolve(import.meta.dirname, "dist/public"),
+      outDir: path.resolve(
+        import.meta.dirname,
+        "dist/public",
+      ),
       emptyOutDir: true,
     },
     server: {
@@ -62,6 +75,14 @@ export default defineConfig(async ({ command }) => {
       strictPort: port !== undefined,
       host: "0.0.0.0",
       allowedHosts: true,
+      proxy: {
+        "/api": {
+          target:
+            process.env.FORGE_API_URL ??
+            "http://localhost:5000",
+          changeOrigin: true,
+        },
+      },
       fs: {
         strict: true,
       },

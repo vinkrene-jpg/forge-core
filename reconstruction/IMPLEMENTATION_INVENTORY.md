@@ -18,4 +18,4 @@
 | Project Memory | Missing | No source or Git-history evidence |
 | Prompt Composer | Missing | No source or Git-history evidence |
 | Model Router | Missing | No source or Git-history evidence |
-| Forge Desktop runtime binding | Missing | Frontend exists, live runtime binding unproven |
+| Forge Desktop runtime binding | Implemented | Production Desktop consumes authoritative runtime APIs and is served by the API container |
