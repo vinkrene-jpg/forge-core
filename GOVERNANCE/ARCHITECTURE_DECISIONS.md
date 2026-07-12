@@ -49,3 +49,7 @@ Low-risk reversible work proceeds directly; medium-risk work receives one decisi
 ## AD-012 — Bounded autonomous provider cycles
 
 An operator starts and approves an external provider-backed autonomous loop once. Forge may then schedule only the explicitly bounded number of continuation cycles. Every execution is linked to a mission and grounded composition, deterministically evaluated before acceptance, persisted as project evidence and visible through the authoritative runtime and Desktop. Provider failure stops continuation without degrading the runtime.
+
+## AD-013 - Evidence-backed deterministic learning
+
+The Learning Engine derives capability scores only from persisted mission, execution, evaluation, Project Memory and registry evidence. Scoring and proposal priority remain deterministic and explainable. A learning proposal is not execution authority: scheduling always enters the normal capability analysis and governance path.

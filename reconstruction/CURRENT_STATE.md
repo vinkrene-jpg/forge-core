@@ -57,3 +57,7 @@ Implementation status: complete with deterministic integration coverage.
 - Automated tests prove two consecutive cycles, restart persistence and contained provider/quota failure.
 
 Live provider loop verification: VERIFIED at 2026-07-12T20:26:06.7455656+02:00. Evidence: `reconstruction/AUTONOMOUS_PROVIDER_LOOP_VERIFICATION.json`.
+
+## Learning Engine foundation
+
+FG-004.000 is live verified at 2026-07-12T20:59:33.0567566+02:00. The canonical Learning Engine imports persisted mission, provider execution, deterministic evaluation, Project Memory and capability evidence without repeating provider calls. It maintains transparent deterministic capability profiles and proposes adaptive one-cycle learning missions. Proposals remain inert until submitted through the existing capability analysis and governance path. Restart persistence is verified in reconstruction/LEARNING_ENGINE_VERIFICATION.json.

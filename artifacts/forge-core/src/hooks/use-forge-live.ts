@@ -15,6 +15,7 @@ export const forgeKeys = {
   capabilities: ["forge", "capabilities"] as const,
   analyses: ["forge", "analyses"] as const,
   evolution: ["forge", "evolution"] as const,
+  learning: ["forge", "learning"] as const,
 };
 
 export function useRuntimeQuery() {
@@ -65,6 +66,14 @@ export function useEvolutionPlansQuery() {
   });
 }
 
+export function useLearningQuery() {
+  return useQuery({
+    queryKey: forgeKeys.learning,
+    queryFn: forgeApi.learning,
+    refetchInterval: 4_000,
+  });
+}
+
 function useRefreshForge() {
   const queryClient = useQueryClient();
 
@@ -87,6 +96,9 @@ function useRefreshForge() {
       }),
       queryClient.invalidateQueries({
         queryKey: forgeKeys.evolution,
+      }),
+      queryClient.invalidateQueries({
+        queryKey: forgeKeys.learning,
       }),
     ]);
   };
@@ -160,6 +172,16 @@ export function useExecuteEvolutionPlan() {
   return useMutation({
     mutationFn: (planId: string) =>
       forgeApi.executeEvolutionPlan(planId),
+    onSuccess: refresh,
+  });
+}
+
+export function useScheduleLearningProposal() {
+  const refresh = useRefreshForge();
+
+  return useMutation({
+    mutationFn: (proposalId: string) =>
+      forgeApi.scheduleLearningProposal(proposalId),
     onSuccess: refresh,
   });
 }

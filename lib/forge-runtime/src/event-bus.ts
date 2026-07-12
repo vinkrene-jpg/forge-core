@@ -46,7 +46,11 @@ export type RuntimeEventType =
   | "ai.execution.unavailable"
   | "autonomous.cycle.evaluated"
   | "autonomous.cycle.continuation.scheduled"
-  | "autonomous.cycle.continuation.failed";
+  | "autonomous.cycle.continuation.failed"
+  | "learning.state.loaded"
+  | "learning.observation.recorded"
+  | "learning.proposal.created"
+  | "learning.proposal.scheduled";
 
 export interface RuntimeEvent {
   readonly sequence: number;
