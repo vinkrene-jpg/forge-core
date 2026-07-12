@@ -37,7 +37,7 @@ Implementation includes a governed `operator.autonomous-cycle` mission, mission-
 
 ## Phase R4 â€” Learning and adaptive capability development
 
-Status: planned after R3.
+Status: in progress; canonical Learning Engine foundation live verified.
 
 - Implement the canonical Learning Engine.
 - Maintain capability scores and learning history.

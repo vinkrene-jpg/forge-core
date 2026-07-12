@@ -208,3 +208,30 @@ export {
   type ForgeRuntimeSnapshot,
   type RuntimeMissionCreationResult,
 } from "./runtime";
+
+export {
+  LearningEngine,
+  type LearningEngineOptions,
+} from "./learning-engine";
+
+export {
+  createInitialLearningState,
+  FileLearningStateStore,
+  resolveLearningStatePath,
+  LEARNING_STORE_VERSION,
+  type LearningStateStore,
+  type PersistedLearningState,
+} from "./learning-store";
+
+export {
+  type LearningCapabilityProfile,
+  type LearningEvidenceReference,
+  type LearningMissionProposal,
+  type LearningMissionTemplate,
+  type LearningObservation,
+  type LearningOutcome,
+  type LearningProposalStatus,
+  type LearningSignal,
+  type LearningSummary,
+  type ObserveAutonomousLearningRequest,
+} from "./learning";

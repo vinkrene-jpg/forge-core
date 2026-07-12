@@ -113,6 +113,20 @@ import type {
   KernelStateSnapshot,
   KernelStatus,
 } from "./runtime-state";
+import {
+  LearningEngine,
+  type LearningEngineOptions,
+} from "./learning-engine";
+import type {
+  LearningCapabilityProfile,
+  LearningMissionProposal,
+  LearningObservation,
+  LearningSummary,
+} from "./learning";
+import {
+  FileLearningStateStore,
+  type LearningStateStore,
+} from "./learning-store";
 
 export interface RuntimeMissionCreationResult {
   readonly mission: MissionRecord;
@@ -132,6 +146,7 @@ export interface ForgeRuntimeSnapshot {
   readonly evolution: EvolutionPlanSummary;
   readonly operator: OperatorCoreSummary;
   readonly aiGateway: AiGatewaySummary;
+  readonly learning: LearningSummary;
   readonly events: readonly RuntimeEvent[];
 }
 
@@ -142,6 +157,7 @@ export interface ForgeRuntimeOptions {
   readonly capabilityStateStore?: CapabilityStateStore;
   readonly operatorStateStore?: OperatorStateStore;
   readonly aiGatewayStateStore?: AiGatewayStateStore;
+  readonly learningStateStore?: LearningStateStore;
   readonly aiProviderConnectors?: readonly AiProviderConnector[];
   readonly missionLoopPollIntervalMs?: number;
 }
@@ -164,6 +180,7 @@ export class ForgeRuntime {
   readonly #evolutionEngine: EvolutionEngine;
   readonly #operatorCore: OperatorCore;
   readonly #aiGateway: AiGatewayEngine;
+  readonly #learningEngine: LearningEngine;
   readonly #autonomousEvaluator = new AutonomousOutputEvaluator();
   readonly #missionLoop: MissionLoop;
   #persistence = createInitialRuntimeState();
@@ -243,6 +260,18 @@ export class ForgeRuntime {
 
     this.#aiGateway =
       new AiGatewayEngine(aiGatewayOptions);
+
+    const learningOptions: LearningEngineOptions = {
+      events: this.#events,
+      stateStore:
+        options.learningStateStore ??
+        new FileLearningStateStore(),
+      getCapabilities: () =>
+        this.#capabilityRegistry.listCapabilities(),
+    };
+
+    this.#learningEngine =
+      new LearningEngine(learningOptions);
 
     this.#missionLoop = new MissionLoop({
       engine: this.#missionEngine,
@@ -353,6 +382,27 @@ export class ForgeRuntime {
       );
     }
 
+    const learning = await this.#learningEngine.observeAutonomousCycle({
+      missionId: mission.id,
+      missionKind: "operator.autonomous-cycle",
+      executionId: execution.id,
+      executionStatus: execution.status,
+      evaluationId: evaluation.id,
+      evaluationScore: evaluation.score,
+      evaluationDecision: evaluation.decision,
+      evaluationChecks: evaluation.checks.map((check) => ({
+        id: check.id,
+        passed: check.passed,
+      })),
+      evidenceMemoryId: evidenceMemory.id,
+      projectId: input.projectId,
+      capabilityIds: [
+        "ai.provider.execute",
+        "evaluation.output.assess",
+        "mission.autonomous.continue",
+      ],
+    });
+
     let nextMissionId: string | null = null;
 
     if (input.cycleIndex < input.maxCycles) {
@@ -406,10 +456,97 @@ export class ForgeRuntime {
       executionId: execution.id,
       evaluation,
       evidenceMemoryId: evidenceMemory.id,
+      learningObservationId: learning.observation.id,
+      learningProposalId: learning.proposal.id,
       outputSha256,
       usage: execution.usage,
       nextMissionId,
     });
+  }
+
+  async #reconcileLearningEvidence(): Promise<void> {
+    const completed = this.#missionEngine
+      .list()
+      .filter(
+        (mission) =>
+          mission.kind === "operator.autonomous-cycle" &&
+          mission.status === "succeeded",
+      )
+      .sort((left, right) => left.createdAt.localeCompare(right.createdAt));
+
+    for (const mission of completed) {
+      const output = mission.output;
+      const executionId = output?.executionId;
+      const evidenceMemoryId = output?.evidenceMemoryId;
+      const rawEvaluation = output?.evaluation;
+
+      if (
+        typeof executionId !== "string" ||
+        typeof evidenceMemoryId !== "string" ||
+        typeof rawEvaluation !== "object" ||
+        rawEvaluation === null ||
+        Array.isArray(rawEvaluation)
+      ) {
+        continue;
+      }
+
+      const evaluation = rawEvaluation as Readonly<Record<string, unknown>>;
+      const evaluationId = evaluation.id;
+      const evaluationScore = evaluation.score;
+      const evaluationDecision = evaluation.decision;
+      const rawChecks = evaluation.checks;
+      const execution = this.#aiGateway.getExecution(executionId);
+
+      if (
+        !execution ||
+        typeof evaluationId !== "string" ||
+        typeof evaluationScore !== "number" ||
+        (evaluationDecision !== "accepted" &&
+          evaluationDecision !== "rejected") ||
+        !Array.isArray(rawChecks)
+      ) {
+        continue;
+      }
+
+      const evaluationChecks = rawChecks.flatMap((check) => {
+        if (
+          typeof check !== "object" ||
+          check === null ||
+          Array.isArray(check)
+        ) {
+          return [];
+        }
+
+        const candidate = check as Readonly<Record<string, unknown>>;
+
+        return typeof candidate.id === "string" &&
+          typeof candidate.passed === "boolean"
+          ? [{ id: candidate.id, passed: candidate.passed }]
+          : [];
+      });
+      const projectId =
+        typeof mission.input.projectId === "string"
+          ? mission.input.projectId
+          : "forge-core";
+
+      await this.#learningEngine.observeAutonomousCycle({
+        missionId: mission.id,
+        missionKind: "operator.autonomous-cycle",
+        executionId,
+        executionStatus: execution.status,
+        evaluationId,
+        evaluationScore,
+        evaluationDecision,
+        evaluationChecks,
+        evidenceMemoryId,
+        projectId,
+        capabilityIds: [
+          "ai.provider.execute",
+          "evaluation.output.assess",
+          "mission.autonomous.continue",
+        ],
+      });
+    }
   }
 
   async #reconcileGovernanceState(): Promise<void> {
@@ -517,6 +654,8 @@ export class ForgeRuntime {
       await this.#capabilityRegistry.initialize();
       await this.#operatorCore.initialize();
       await this.#aiGateway.initialize();
+      await this.#learningEngine.initialize();
+      await this.#reconcileLearningEvidence();
       await this.#reconcileGovernanceState();
 
       this.#missionLoop.start();
@@ -890,6 +1029,47 @@ export class ForgeRuntime {
     );
   }
 
+  learningSummary(): LearningSummary {
+    return this.#learningEngine.summary();
+  }
+
+  listLearningObservations(): readonly LearningObservation[] {
+    return this.#learningEngine.listObservations();
+  }
+
+  listLearningProfiles(): readonly LearningCapabilityProfile[] {
+    return this.#learningEngine.listProfiles();
+  }
+
+  listLearningProposals(): readonly LearningMissionProposal[] {
+    return this.#learningEngine.listProposals();
+  }
+
+  async scheduleLearningProposal(
+    proposalId: string,
+  ): Promise<{
+    readonly proposal: LearningMissionProposal;
+    readonly mission: RuntimeMissionCreationResult;
+  }> {
+    const proposal = this.#learningEngine.getProposal(proposalId);
+
+    if (!proposal) {
+      throw new Error("Learning proposal not found");
+    }
+
+    if (proposal.status !== "proposed") {
+      throw new Error("Learning proposal is already scheduled");
+    }
+
+    const mission = await this.createMission(proposal.mission);
+    const scheduled = await this.#learningEngine.markProposalScheduled(
+      proposalId,
+      mission.mission.id,
+    );
+
+    return Object.freeze({ proposal: scheduled, mission });
+  }
+
   snapshot(): ForgeRuntimeSnapshot {
     const missionLoop = this.#missionLoop.snapshot();
 
@@ -908,6 +1088,7 @@ export class ForgeRuntime {
       evolution: this.#capabilityRegistry.evolutionSummary(),
       operator: this.#operatorCore.summary(),
       aiGateway: this.#aiGateway.summary(),
+      learning: this.#learningEngine.summary(),
       events: this.#events.snapshot(),
     });
   }

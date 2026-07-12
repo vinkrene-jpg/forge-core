@@ -27,6 +27,7 @@ import Memory from "@/pages/memory";
 import DailyLoop from "@/pages/daily-loop";
 import CoreComponents from "@/pages/core-components";
 import AuditLogs from "@/pages/audit-logs";
+import Learning from "@/pages/learning-live";
 import NotFound from "@/pages/not-found";
 
 const queryClient = new QueryClient({
@@ -48,6 +49,7 @@ function Router() {
         <Route path="/approvals" component={Approvals} />
         <Route path="/capabilities" component={Capabilities} />
         <Route path="/evolution" component={Evolution} />
+        <Route path="/learning" component={Learning} />
         <Route path="/events" component={Events} />
         <Route path="/operator" component={OperatorCorePage} />
 

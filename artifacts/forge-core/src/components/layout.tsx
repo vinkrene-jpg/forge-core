@@ -27,6 +27,7 @@ const LIVE_NAV_ITEMS = [
   { href: "/approvals", label: "Approvals", icon: ShieldCheck },
   { href: "/capabilities", label: "Capabilities", icon: Boxes },
   { href: "/evolution", label: "Evolution", icon: TrendingUp },
+  { href: "/learning", label: "Learning", icon: BrainCircuit },
   { href: "/events", label: "Live Events", icon: Radio },
   { href: "/operator", label: "Operator Core", icon: BookOpenCheck },
 ];

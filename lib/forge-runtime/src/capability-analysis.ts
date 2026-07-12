@@ -111,6 +111,11 @@ function requirementsForMission(
         minimumStatus: "operational",
         reason: "Accepted output schedules a bounded next mission.",
       },
+      {
+        capabilityId: "learning.evidence.assess",
+        minimumStatus: "operational",
+        reason: "Accepted output must update the evidence-backed learning profile.",
+      },
     ]);
   }
 

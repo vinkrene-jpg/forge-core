@@ -101,6 +101,7 @@ export interface RuntimeSnapshot {
     readonly completed: number;
     readonly cancelled: number;
   };
+  readonly learning: LearningSummary;
   readonly events: readonly RuntimeEvent[];
 }
 
@@ -211,6 +212,56 @@ export interface EvolutionPlanRecord {
   readonly updatedAt: string;
 }
 
+export interface LearningSummary {
+  readonly observations: number;
+  readonly profiles: number;
+  readonly proposals: number;
+  readonly proposed: number;
+  readonly scheduled: number;
+  readonly lastObservedAt: string | null;
+}
+
+export interface LearningCapabilityProfile {
+  readonly capabilityId: string;
+  readonly score: number;
+  readonly confidence: number;
+  readonly observations: number;
+  readonly passed: number;
+  readonly failed: number;
+  readonly rationale: string;
+  readonly evidenceIds: readonly string[];
+  readonly updatedAt: string;
+}
+
+export interface LearningObservation {
+  readonly id: string;
+  readonly missionId: string;
+  readonly executionId: string;
+  readonly evaluationId: string;
+  readonly evaluationScore: number;
+  readonly outcome: "passed" | "failed";
+  readonly observedAt: string;
+}
+
+export interface LearningMissionProposal {
+  readonly id: string;
+  readonly sourceObservationId: string;
+  readonly targetCapabilityId: string;
+  readonly priority: number;
+  readonly reason: string;
+  readonly status: "proposed" | "scheduled";
+  readonly scheduledMissionId: string | null;
+  readonly createdAt: string;
+  readonly scheduledAt: string | null;
+}
+
+export interface LearningStateResponse {
+  readonly summary: LearningSummary;
+  readonly profiles: readonly LearningCapabilityProfile[];
+  readonly observations: readonly LearningObservation[];
+  readonly proposals: readonly LearningMissionProposal[];
+}
+
 export interface CreateMissionRequest {
   readonly kind: MissionRecord["kind"];
   readonly title?: string;
@@ -294,6 +345,20 @@ export const forgeApi = {
     readonly plans: readonly EvolutionPlanRecord[];
   }> {
     return requestJson("/api/evolution-plans");
+  },
+
+  learning(): Promise<LearningStateResponse> {
+    return requestJson("/api/learning");
+  },
+
+  scheduleLearningProposal(proposalId: string): Promise<unknown> {
+    return requestJson(
+      `/api/learning/proposals/${proposalId}/schedule`,
+      {
+        method: "POST",
+        body: "{}",
+      },
+    );
   },
 
   createMission(

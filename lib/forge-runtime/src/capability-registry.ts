@@ -313,6 +313,16 @@ function defaultCapabilities(): readonly CapabilityRecord[] {
       confidence: 1,
       source: "autonomous-provider-loop",
     },
+    {
+      id: "learning.evidence.assess",
+      name: "Evidence-backed Learning Assessment",
+      description:
+        "Derive transparent capability profiles and governed learning proposals from persisted runtime evidence.",
+      status: "operational",
+      version: "1.0.0",
+      confidence: 1,
+      source: "learning-engine-foundation",
+    },
   ];
 
   return defaults.map((capability) =>
