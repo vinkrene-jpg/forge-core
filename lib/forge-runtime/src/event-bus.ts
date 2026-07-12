@@ -50,7 +50,9 @@ export type RuntimeEventType =
   | "learning.state.loaded"
   | "learning.observation.recorded"
   | "learning.proposal.created"
-  | "learning.proposal.scheduled";
+  | "learning.proposal.scheduled"
+  | "learning.proposal.completed"
+  | "learning.proposal.failed";
 
 export interface RuntimeEvent {
   readonly sequence: number;

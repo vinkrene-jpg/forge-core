@@ -234,4 +234,5 @@ export {
   type LearningSignal,
   type LearningSummary,
   type ObserveAutonomousLearningRequest,
+  type RecordFailedLearningExerciseRequest,
 } from "./learning";

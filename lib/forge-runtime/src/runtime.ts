@@ -401,6 +401,14 @@ export class ForgeRuntime {
         "evaluation.output.assess",
         "mission.autonomous.continue",
       ],
+      sourceProposalId:
+        typeof mission.input.learningProposalId === "string"
+          ? mission.input.learningProposalId
+          : null,
+      targetCapabilityId:
+        typeof mission.input.targetCapabilityId === "string"
+          ? mission.input.targetCapabilityId
+          : null,
     });
 
     let nextMissionId: string | null = null;
@@ -545,6 +553,14 @@ export class ForgeRuntime {
           "evaluation.output.assess",
           "mission.autonomous.continue",
         ],
+        sourceProposalId:
+          typeof mission.input.learningProposalId === "string"
+            ? mission.input.learningProposalId
+            : null,
+        targetCapabilityId:
+          typeof mission.input.targetCapabilityId === "string"
+            ? mission.input.targetCapabilityId
+            : null,
       });
     }
   }
@@ -1061,13 +1077,103 @@ export class ForgeRuntime {
       throw new Error("Learning proposal is already scheduled");
     }
 
-    const mission = await this.createMission(proposal.mission);
+    const mission = await this.createMission({
+      ...proposal.mission,
+      title: `Governed learning exercise for ${proposal.targetCapabilityId}`,
+      input: {
+        ...proposal.mission.input,
+        objective:
+          `Execute one bounded evidence exercise for capability ` +
+          `${proposal.targetCapabilityId}. ${proposal.mission.input.objective} ` +
+          `Return a concrete result, explicit assumptions, acceptance criteria and exact verification.`,
+        learningProposalId: proposal.id,
+        targetCapabilityId: proposal.targetCapabilityId,
+      },
+    });
     const scheduled = await this.#learningEngine.markProposalScheduled(
       proposalId,
       mission.mission.id,
     );
 
     return Object.freeze({ proposal: scheduled, mission });
+  }
+
+  async recordFailedLearningExercise(proposalId: string) {
+    const proposal = this.#learningEngine.getProposal(proposalId);
+
+    if (
+      !proposal ||
+      proposal.status !== "scheduled" ||
+      !proposal.scheduledMissionId
+    ) {
+      throw new Error("A scheduled learning proposal is required");
+    }
+
+    const mission = this.#missionEngine.get(proposal.scheduledMissionId);
+
+    if (!mission || mission.status !== "failed") {
+      throw new Error("The scheduled learning mission is not failed");
+    }
+
+    const executions = this.#aiGateway
+      .listExecutions()
+      .filter((execution) => execution.missionId === mission.id);
+
+    if (executions.length !== 1) {
+      throw new Error(
+        "Exactly one persisted provider execution is required for recovery",
+      );
+    }
+
+    const execution = executions[0];
+    const evaluation = this.#autonomousEvaluator.evaluate(
+      mission.id,
+      execution,
+    );
+    const failedCheckIds = evaluation.checks
+      .filter((check) => !check.passed)
+      .map((check) => check.id);
+    const secretCheck = evaluation.checks.find(
+      (check) => check.id === "secret-free",
+    );
+
+    if (
+      evaluation.decision !== "rejected" ||
+      failedCheckIds.length === 0 ||
+      secretCheck?.passed !== true
+    ) {
+      throw new Error(
+        "Persisted provider output is not eligible for safe failure recovery",
+      );
+    }
+
+    const projectId =
+      typeof mission.input.projectId === "string"
+        ? mission.input.projectId
+        : "forge-core";
+    const evidence = this.#operatorCore
+      .listMemories(projectId, "evidence")
+      .filter(
+        (memory) => memory.source === `autonomous-cycle:${mission.id}`,
+      );
+
+    if (evidence.length !== 1) {
+      throw new Error(
+        "Exactly one persisted Project Memory evidence entry is required",
+      );
+    }
+
+    return this.#learningEngine.recordFailedExercise({
+      proposalId,
+      missionId: mission.id,
+      executionId: execution.id,
+      evaluationId: evaluation.id,
+      evaluationScore: evaluation.score,
+      failedCheckIds,
+      evidenceMemoryId: evidence[0].id,
+      projectId,
+      reason: mission.lastError ?? "Provider output failed deterministic evaluation",
+    });
   }
 
   snapshot(): ForgeRuntimeSnapshot {

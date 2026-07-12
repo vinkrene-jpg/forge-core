@@ -3,6 +3,7 @@ import { mkdtemp, rm } from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
 import test from "node:test";
+import { fileURLToPath } from "node:url";
 import { ForgeRuntime, type AiProviderConnector } from "./index.js";
 
 const environmentKeys = [
@@ -39,7 +40,10 @@ async function withEnvironment(
   );
 
   process.env.STORAGE_DIR = storageRoot;
-  process.env.FORGE_WORKSPACE_ROOT = process.cwd();
+  process.env.FORGE_WORKSPACE_ROOT = path.resolve(
+    path.dirname(fileURLToPath(import.meta.url)),
+    "../../..",
+  );
   process.env.FORGE_AI_PROVIDER = "openai-responses";
   process.env.OPENAI_API_KEY = "test-only-not-a-real-secret";
   process.env.OPENAI_MODEL = "test-model";
@@ -71,6 +75,23 @@ test(
         id: "openai-responses",
         async execute() {
           providerCalls += 1;
+
+          if (providerCalls === 3) {
+            return Object.freeze({
+              providerResponseId: "learning-response-rejected",
+              outputText: [
+                "# Incomplete learning result",
+                "This provider-only answer cannot verify that the target capability executed successfully. It records a proposed next step but no concrete runtime evidence.",
+                "The response intentionally omits the required premise declaration so deterministic evaluation must reject it safely.",
+                "Verification must use persisted mission, execution and Project Memory identifiers before any capability score can be accepted.",
+              ].join("\n"),
+              usage: Object.freeze({
+                inputTokens: 90,
+                outputTokens: 60,
+                totalTokens: 150,
+              }),
+            });
+          }
 
           return Object.freeze({
             providerResponseId: `learning-response-${providerCalls}`,
@@ -175,6 +196,13 @@ test(
 
       const reconciledProposal = reconciled.listLearningProposals()[0];
       assert.ok(reconciledProposal);
+      const targetBefore = reconciled
+        .listLearningProfiles()
+        .find(
+          (profile) =>
+            profile.capabilityId === reconciledProposal.targetCapabilityId,
+        );
+      assert.ok(targetBefore);
 
       const scheduled = await reconciled.scheduleLearningProposal(
         reconciledProposal.id,
@@ -186,8 +214,164 @@ test(
       assert.ok(scheduled.mission.approval);
       assert.equal(providerCalls, 1);
       assert.equal(reconciled.learningSummary().scheduled, 1);
+      assert.equal(scheduled.mission.mission.input.maxCycles, 1);
+      assert.equal(
+        scheduled.mission.mission.input.learningProposalId,
+        reconciledProposal.id,
+      );
+      assert.equal(
+        scheduled.mission.mission.input.targetCapabilityId,
+        reconciledProposal.targetCapabilityId,
+      );
+
+      await assert.rejects(
+        reconciled.scheduleLearningProposal(reconciledProposal.id),
+        /already scheduled/,
+      );
+
+      await reconciled.approveApproval(
+        scheduled.mission.approval.id,
+        "learning-feedback-test",
+      );
+
+      await waitFor(
+        () => {
+          const status = reconciled.getMission(
+            scheduled.mission.mission.id,
+          )?.status;
+
+          return status === "succeeded" || status === "failed";
+        },
+      );
+
+      const feedbackMission = reconciled.getMission(
+        scheduled.mission.mission.id,
+      );
+      assert.equal(
+        feedbackMission?.status,
+        "succeeded",
+        feedbackMission?.lastError ?? "Learning feedback mission did not succeed",
+      );
+
+      assert.equal(providerCalls, 2);
+      assert.equal(reconciled.listMissions().length, 2);
+      assert.equal(reconciled.learningSummary().observations, 2);
+      assert.equal(reconciled.learningSummary().scheduled, 0);
+      assert.equal(reconciled.learningSummary().completed, 1);
+      assert.equal(reconciled.learningSummary().proposed, 1);
+
+      const completed = reconciled
+        .listLearningProposals()
+        .find((proposal) => proposal.id === reconciledProposal.id);
+      const nextProposal = reconciled
+        .listLearningProposals()
+        .find((proposal) => proposal.id !== reconciledProposal.id);
+      const feedback = reconciled
+        .listLearningObservations()
+        .find(
+          (observation) =>
+            observation.missionId === scheduled.mission.mission.id,
+        );
+      const targetAfter = reconciled
+        .listLearningProfiles()
+        .find(
+          (profile) =>
+            profile.capabilityId === reconciledProposal.targetCapabilityId,
+        );
+
+      assert.equal(completed?.status, "completed");
+      assert.equal(completed?.resultObservationId, feedback?.id);
+      assert.equal(feedback?.sourceProposalId, reconciledProposal.id);
+      assert.equal(
+        feedback?.targetCapabilityId,
+        reconciledProposal.targetCapabilityId,
+      );
+      assert.ok(targetAfter);
+      assert.equal(targetAfter.observations, targetBefore.observations + 1);
+      assert.notEqual(targetAfter.score, targetBefore.score);
+      assert.ok(nextProposal);
+      assert.equal(nextProposal.status, "proposed");
+      assert.notEqual(
+        nextProposal.targetCapabilityId,
+        reconciledProposal.targetCapabilityId,
+      );
+
+      const failedTargetBefore = reconciled
+        .listLearningProfiles()
+        .find(
+          (profile) =>
+            profile.capabilityId === nextProposal.targetCapabilityId,
+        );
+      assert.ok(failedTargetBefore);
+
+      const failedScheduled = await reconciled.scheduleLearningProposal(
+        nextProposal.id,
+      );
+      assert.ok(failedScheduled.mission.approval);
+      await reconciled.approveApproval(
+        failedScheduled.mission.approval.id,
+        "learning-failure-test",
+      );
+      await waitFor(
+        () =>
+          reconciled.getMission(failedScheduled.mission.mission.id)?.status ===
+          "failed",
+      );
+
+      assert.equal(providerCalls, 3);
+      assert.equal(reconciled.learningSummary().scheduled, 1);
+
+      const recovered = await reconciled.recordFailedLearningExercise(
+        nextProposal.id,
+      );
+      const failedTargetAfter = reconciled
+        .listLearningProfiles()
+        .find(
+          (profile) =>
+            profile.capabilityId === nextProposal.targetCapabilityId,
+        );
+
+      assert.equal(recovered.failedProposal.status, "failed");
+      assert.equal(recovered.observation.outcome, "failed");
+      assert.equal(
+        recovered.observation.sourceProposalId,
+        nextProposal.id,
+      );
+      assert.ok(
+        recovered.observation.signals[0].rationale.includes(
+          "assumptions-explicit",
+        ),
+      );
+      assert.equal(recovered.nextProposal.status, "proposed");
+      assert.ok(failedTargetAfter);
+      assert.equal(
+        failedTargetAfter.observations,
+        failedTargetBefore.observations + 1,
+      );
+      assert.equal(reconciled.learningSummary().scheduled, 0);
+      assert.equal(reconciled.learningSummary().failed, 1);
+      assert.equal(reconciled.learningSummary().completed, 1);
+      assert.equal(reconciled.learningSummary().proposed, 1);
+
+      await assert.rejects(
+        reconciled.recordFailedLearningExercise(nextProposal.id),
+        /scheduled learning proposal/,
+      );
 
       await reconciled.stop();
+
+      const feedbackRestart = new ForgeRuntime({
+        aiProviderConnectors: [connector],
+        missionLoopPollIntervalMs: 100,
+      });
+      await feedbackRestart.start();
+
+      assert.equal(feedbackRestart.learningSummary().completed, 1);
+      assert.equal(feedbackRestart.learningSummary().failed, 1);
+      assert.equal(feedbackRestart.learningSummary().proposed, 1);
+      assert.equal(providerCalls, 3);
+
+      await feedbackRestart.stop();
     });
   },
 );

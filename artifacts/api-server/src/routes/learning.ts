@@ -33,4 +33,19 @@ router.post(
   },
 );
 
+router.post(
+  "/learning/proposals/:proposalId/record-failure",
+  async (req, res): Promise<void> => {
+    try {
+      const result = await forgeRuntime.recordFailedLearningExercise(
+        req.params.proposalId,
+      );
+
+      res.status(201).json(result);
+    } catch (error) {
+      res.status(400).json({ error: message(error) });
+    }
+  },
+);
+
 export default router;
