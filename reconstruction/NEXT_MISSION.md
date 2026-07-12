@@ -1,79 +1,77 @@
-# Forge Next Mission
+﻿# Forge Next Mission
 
-## FG-003.100 — Autonomous Provider Loop Integration
+## FG-004.000 - Learning Engine Evidence Foundation
 
-Status: ready after successful real-provider verification.
+Status: ready after live completion of the autonomous provider loop.
 
 ## Objective
 
-Prove that the existing MissionLoop, Governance Engine, Operator Core, AI Gateway, capability/evolution system and Forge Desktop operate as one controlled autonomous development loop.
+Implement the smallest canonical Learning Engine foundation that consumes persisted mission, execution, evaluation and capability evidence. It must update a transparent capability profile and propose the next learning mission without bypassing governance.
 
-This is an integration-and-evidence mission. It is not permission to rebuild verified components.
+## Evidence from Phase R3
 
-## Mandatory preflight
+- Two consecutive real provider-backed missions completed.
+- The second mission was scheduled automatically within the approved bound.
+- Both outputs were deterministically evaluated before acceptance.
+- Mission, execution, evaluation and Project Memory evidence survived a hard runtime replacement.
+- Verification: `reconstruction/AUTONOMOUS_PROVIDER_LOOP_VERIFICATION.json`.
 
-1. Read the mandatory files listed in `AGENTS.md`.
-2. Record `git status`, branch and HEAD.
-3. Inspect current source paths for MissionLoop, Operator Core, Prompt Composer, Model Router, AI Gateway, evaluation and event handling.
-4. Map existing connections and identify only the missing links.
-5. Confirm `.env` is ignored and provider secrets are neither logged nor persisted.
+## Forge proposal from the final verified cycle
 
-## Required execution chain
+## Single next evidence-backed step
 
-```text
-Mission selected
-  -> capability precheck
-  -> governance decision/approval when required
-  -> Project Memory and workspace evidence
-  -> grounded Prompt Composition
-  -> Model Router selection
-  -> AI Gateway provider execution
-  -> output evaluation
-  -> mission result and evidence persistence
-  -> learning/capability update
-  -> next mission scheduled
-  -> live Desktop update
-```
+**Complete FG-003.100 by executing and finalizing one governed, live, two-cycle `operator.autonomous-cycle` run against the real provider in the local Docker runtime.**
 
-## Acceptance criteria
+This should precede any Phase R4 implementation. The supplied evidence consistently identifies live provider-loop finalization as the only remaining Phase R3 gap:
 
-- At least two consecutive missions complete without a new human task being entered between them.
-- Every provider call is linked to its mission, composition, routing decision and evidence.
-- Provider output is evaluated before the mission is accepted.
-- Failures, timeouts and quota errors produce controlled failed/blocked states rather than corrupting the loop.
-- Governance approval is requested only when the active policy requires it.
-- Execution, evaluation, learning and next-mission rationale persist across runtime replacement.
-- Forge Desktop shows the live mission phase, activity, provider status, evaluation, approval and next mission.
-- No static demo state or separate Desktop truth exists.
-- Secrets are absent from state, evidence, logs and Git.
-- Typecheck, build, tests and live verification are green.
+- `GOVERNANCE/ROADMAP.md`: implementation has deterministic coverage; live finalization is pending.
+- `reconstruction/CURRENT_STATE.md`: `Live provider loop verification: PENDING_FINALIZATION`.
+- `reconstruction/NEXT_MISSION.md`: requires one live two-cycle run and finalization evidence.
 
-## Required evidence
+No supplied evidence proves this live finalization has occurred.
 
-Create a new evidence artifact, preferably:
+### Assumptions to verify
 
-`reconstruction/AUTONOMOUS_PROVIDER_LOOP_VERIFICATION.json`
+1. GitHub-backed HEAD still contains the autonomous-cycle executor and finalization tooling.
+2. Repository instructions in `AGENTS.md` permit the run and introduce no additional requirements.
+3. The local Docker runtime is available and configured with usable provider credentials.
+4. `.env` remains ignored, and credentials cannot enter logs, persisted state, evidence, or Git.
+5. Required governance approval can be provided for the initial external-provider cycle.
 
-It should include:
+If any assumption fails, record the run as blocked; do not create successful verification evidence.
 
-- source commit and verification timestamp;
-- mission IDs and cycle order;
-- capability and governance decisions;
-- composition, routing and execution IDs;
-- provider/model metadata without credentials;
-- evaluation result and acceptance decision;
-- persistence/restart proof;
-- next-mission rationale;
-- relevant test/build results.
+### Concrete verification steps
 
-## Out of scope
+1. Record branch, HEAD, remote, and working-tree status; read `AGENTS.md`.
+2. Inspect the actual autonomous-cycle and finalization paths rather than relying solely on reconstruction documents.
+3. Run the repository-defined typecheck, build, and test commands.
+4. Start one governed live run and approve it only as required by the active policy.
+5. Demonstrate two consecutive provider-backed missions without entering another human task.
+6. For both cycles, verify persistent linkage among:
+   - mission and capability decision;
+   - governance decision/approval;
+   - prompt composition and routing decision;
+   - provider execution;
+   - evaluation before acceptance;
+   - evidence and capability/learning update;
+   - automatic next-mission rationale.
+7. Replace or restart the runtime and verify that execution, evaluation, approval, evidence, and continuation state remain available.
+8. Confirm Forge Desktop displays the same authoritative state, without separate demo data.
+9. Scan logs, persisted state, generated evidence, and Git changes for secrets.
+10. Only if all criteria pass:
+    - generate `reconstruction/AUTONOMOUS_PROVIDER_LOOP_VERIFICATION.json`;
+    - mark Roadmap Phase R3 verified;
+    - update `CURRENT_STATE.md`;
+    - replace `NEXT_MISSION.md` with the first Phase R4 mission derived from observed capability evidence;
+    - commit and push according to repository governance.
 
-- Production deployment.
-- Constitution or governance relaxation.
-- A fixed 500-task learning curriculum.
-- Fundamental alternative-to-code research.
-- Rebuilding existing Mission, Governance, Evolution, Operator or Gateway components.
+Do not begin the canonical Learning Engine until this live Phase R3 closure is proven.
 
-## Completion rule
+## Constraints
 
-When the acceptance criteria are proven, update `CURRENT_STATE.md`, mark Roadmap Phase R3 complete and let Forge propose the first Phase R4 mission from actual capability evidence.
+- Inspect current source before adding a new engine.
+- Reuse mission, capability, evaluation and Project Memory evidence.
+- Keep scoring explainable and deterministic before adding model-assisted learning.
+- Do not implement the full junior-to-senior capability matrix in this first mission.
+- Keep Human Intent Understanding and alternative-to-code research out of the operational runtime until separately validated.
+- Update CURRENT_STATE, ROADMAP and this handoff in the same verified commit.

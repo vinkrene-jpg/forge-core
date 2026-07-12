@@ -42,6 +42,7 @@ A report, mock-up or proposed task is not implementation evidence.
 - Inspect before building. Extend verified code; do not duplicate an existing capability.
 - Human approval remains mandatory at the boundaries defined by the Constitution.
 - Keep user communication concise and in Dutch unless requested otherwise.
+- Prefer one large, pasteable fail-fast PowerShell milestone over many manual commands. Every native command must check its exit code, and commit/push may occur only after all verification succeeds.
 
 ## Risk modes
 

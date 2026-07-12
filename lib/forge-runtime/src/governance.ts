@@ -80,6 +80,34 @@ export function assessMissionRequest(
     });
   }
 
+  if (request.kind === "operator.autonomous-cycle") {
+    const cycleIndex = request.input?.cycleIndex;
+    const maxCycles = request.input?.maxCycles;
+    const continuationAuthorized =
+      request.input?.continuationAuthorized === true;
+    const boundedContinuation =
+      continuationAuthorized &&
+      typeof cycleIndex === "number" &&
+      typeof maxCycles === "number" &&
+      Number.isInteger(cycleIndex) &&
+      Number.isInteger(maxCycles) &&
+      cycleIndex > 1 &&
+      cycleIndex <= maxCycles &&
+      maxCycles <= 5;
+
+    return Object.freeze({
+      policyVersion: GOVERNANCE_POLICY_VERSION,
+      action: "mission.execute",
+      missionKind: request.kind,
+      riskLevel: boundedContinuation ? "low" : "medium",
+      decision: boundedContinuation ? "allow" : "require_approval",
+      reason: boundedContinuation
+        ? "Bounded continuation of an explicitly approved autonomous provider loop."
+        : "Starting an external provider-backed autonomous loop requires explicit operator approval.",
+      assessedAt,
+    });
+  }
+
   const durationValue = request.input?.durationMs;
   const durationMs =
     typeof durationValue === "number"

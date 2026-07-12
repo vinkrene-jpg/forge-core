@@ -45,3 +45,7 @@ The practical runtime continues using conventional source code. Separately, Forg
 ## AD-011 — Risk-calibrated execution
 
 Low-risk reversible work proceeds directly; medium-risk work receives one decisive preflight; destructive or irreversible work secures evidence/backups before repair and cleanup.
+
+## AD-012 — Bounded autonomous provider cycles
+
+An operator starts and approves an external provider-backed autonomous loop once. Forge may then schedule only the explicitly bounded number of continuation cycles. Every execution is linked to a mission and grounded composition, deterministically evaluated before acceptance, persisted as project evidence and visible through the authoritative runtime and Desktop. Provider failure stops continuation without degrading the runtime.

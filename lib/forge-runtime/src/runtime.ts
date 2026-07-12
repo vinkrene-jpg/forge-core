@@ -6,11 +6,18 @@ import type {
   AiExecutionRecord,
   AiGatewayStatus,
   AiGatewaySummary,
+  AiProviderConnector,
 } from "./ai-gateway";
 import {
   FileAiGatewayStateStore,
   type AiGatewayStateStore,
-} from "./ai-gateway-store";import { randomUUID } from "node:crypto";
+} from "./ai-gateway-store";
+import { createHash, randomUUID } from "node:crypto";
+import {
+  AutonomousOutputEvaluator,
+  parseAutonomousCycleInput,
+  type AutonomousEvaluation,
+} from "./autonomous-cycle";
 import {
   CapabilityAnalyzer,
 } from "./capability-analysis";
@@ -81,6 +88,7 @@ import {
   type RuntimeHealthSnapshot,
 } from "./kernel";
 import {
+  MissionAbortError,
   MissionEngine,
   type MissionEngineOptions,
 } from "./mission-engine";
@@ -134,6 +142,7 @@ export interface ForgeRuntimeOptions {
   readonly capabilityStateStore?: CapabilityStateStore;
   readonly operatorStateStore?: OperatorStateStore;
   readonly aiGatewayStateStore?: AiGatewayStateStore;
+  readonly aiProviderConnectors?: readonly AiProviderConnector[];
   readonly missionLoopPollIntervalMs?: number;
 }
 
@@ -155,6 +164,7 @@ export class ForgeRuntime {
   readonly #evolutionEngine: EvolutionEngine;
   readonly #operatorCore: OperatorCore;
   readonly #aiGateway: AiGatewayEngine;
+  readonly #autonomousEvaluator = new AutonomousOutputEvaluator();
   readonly #missionLoop: MissionLoop;
   #persistence = createInitialRuntimeState();
 
@@ -165,6 +175,8 @@ export class ForgeRuntime {
     const missionOptions: MissionEngineOptions = {
       events: this.#events,
       getRuntimeHealth: () => this.#kernel.healthSnapshot(),
+      executeAutonomousCycle: (mission, signal) =>
+        this.#executeAutonomousCycle(mission, signal),
       stateStore:
         options.missionStateStore ??
         new FileMissionStateStore(),
@@ -226,6 +238,7 @@ export class ForgeRuntime {
         this.#operatorCore.getComposition(
           compositionId,
         ),
+      connectors: options.aiProviderConnectors,
     };
 
     this.#aiGateway =
@@ -248,6 +261,155 @@ export class ForgeRuntime {
     this.#persistence = frozen;
 
     return frozen;
+  }
+
+  async #executeAutonomousCycle(
+    mission: MissionRecord,
+    signal: AbortSignal,
+  ): Promise<Readonly<Record<string, unknown>>> {
+    const input = parseAutonomousCycleInput(mission.input);
+
+    if (signal.aborted) {
+      throw new MissionAbortError();
+    }
+
+    const composition = await this.#operatorCore.composePrompt({
+      projectId: input.projectId,
+      objective: [
+        input.objective,
+        "",
+        `This is autonomous cycle ${input.cycleIndex} of ${input.maxCycles}.`,
+        "Use repository evidence and persistent project memory.",
+        "Return the single next evidence-backed implementation step.",
+        "State assumptions and concrete verification steps explicitly.",
+        "Do not claim that code, tests or runtime changes occurred unless the supplied evidence proves it.",
+      ].join("\n"),
+      taskType: "analysis",
+      privacy: "standard",
+      budget: "medium",
+      files: input.files,
+      memoryKinds: [
+        "architecture",
+        "decision",
+        "requirement",
+        "task",
+        "evidence",
+      ],
+    });
+
+    if (signal.aborted) {
+      throw new MissionAbortError();
+    }
+
+    const execution = await this.#aiGateway.executeComposition(
+      composition.id,
+      mission.id,
+    );
+    const evaluation: AutonomousEvaluation =
+      this.#autonomousEvaluator.evaluate(mission.id, execution);
+    const outputText = execution.outputText ?? "";
+    const outputSha256 = createHash("sha256")
+      .update(outputText, "utf8")
+      .digest("hex");
+
+    this.#events.publish("autonomous.cycle.evaluated", {
+      missionId: mission.id,
+      cycleIndex: input.cycleIndex,
+      executionId: execution.id,
+      evaluationId: evaluation.id,
+      decision: evaluation.decision,
+      score: evaluation.score,
+    });
+
+    const evidenceMemory = await this.#operatorCore.addMemory(
+      input.projectId,
+      {
+        kind: "evidence",
+        source: `autonomous-cycle:${mission.id}`,
+        tags: [
+          "autonomous-cycle",
+          `cycle-${input.cycleIndex}`,
+          evaluation.decision,
+        ],
+        content: [
+          `Mission: ${mission.id}`,
+          `Cycle: ${input.cycleIndex}/${input.maxCycles}`,
+          `Composition: ${composition.id}`,
+          `Execution: ${execution.id}`,
+          `Evaluation: ${evaluation.id}`,
+          `Decision: ${evaluation.decision}`,
+          `Score: ${evaluation.score}`,
+          `Output SHA-256: ${outputSha256}`,
+          "",
+          "Provider output:",
+          outputText.slice(0, 4_000) || "No provider output.",
+        ].join("\n"),
+      },
+    );
+
+    if (evaluation.decision !== "accepted") {
+      throw new Error(
+        `Autonomous output rejected by evaluation ${evaluation.id} with score ${evaluation.score}`,
+      );
+    }
+
+    let nextMissionId: string | null = null;
+
+    if (input.cycleIndex < input.maxCycles) {
+      try {
+        const rootMissionId = input.rootMissionId ?? mission.id;
+        const next = await this.createMission({
+          kind: "operator.autonomous-cycle",
+          title:
+            `Autonomous provider cycle ${input.cycleIndex + 1}/${input.maxCycles}`,
+          input: {
+            projectId: input.projectId,
+            objective: input.objective,
+            cycleIndex: input.cycleIndex + 1,
+            maxCycles: input.maxCycles,
+            rootMissionId,
+            previousMissionId: mission.id,
+            continuationAuthorized: true,
+            files: input.files,
+          },
+        });
+
+        nextMissionId = next.mission.id;
+        this.#events.publish(
+          "autonomous.cycle.continuation.scheduled",
+          {
+            missionId: mission.id,
+            nextMissionId,
+            rootMissionId,
+            cycleIndex: input.cycleIndex + 1,
+          },
+        );
+      } catch (error) {
+        this.#events.publish(
+          "autonomous.cycle.continuation.failed",
+          {
+            missionId: mission.id,
+            cycleIndex: input.cycleIndex,
+            error: errorMessage(error),
+          },
+        );
+        throw error;
+      }
+    }
+
+    return Object.freeze({
+      cycleIndex: input.cycleIndex,
+      maxCycles: input.maxCycles,
+      rootMissionId: input.rootMissionId ?? mission.id,
+      previousMissionId: input.previousMissionId,
+      compositionId: composition.id,
+      executionId: execution.id,
+      evaluation,
+      evidenceMemoryId: evidenceMemory.id,
+      outputSha256,
+      usage: execution.usage,
+      nextMissionId,
+    });
   }
 
   async #reconcileGovernanceState(): Promise<void> {
@@ -720,9 +882,11 @@ export class ForgeRuntime {
 
   executePromptComposition(
     compositionId: string,
+    missionId: string | null = null,
   ): Promise<AiExecutionRecord> {
     return this.#aiGateway.executeComposition(
       compositionId,
+      missionId,
     );
   }
 

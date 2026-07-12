@@ -516,7 +516,7 @@ export class OperatorCore {
       "# Model Route",
       `Profile: ${route.selectedProfile.id}`,
       `Execution mode: ${route.selectedProfile.executionMode}`,
-      `Provider binding: not configured`,
+      "Provider binding: resolved by the AI Gateway at execution time",
       `Rationale: ${route.rationale}`,
       "",
       "# Execution Contract",

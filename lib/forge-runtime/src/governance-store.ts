@@ -31,6 +31,7 @@ export interface GovernanceStateStore {
 const missionKinds = new Set<MissionKind>([
   "runtime.self-check",
   "runtime.stability-window",
+  "operator.autonomous-cycle",
 ]);
 
 const riskLevels = new Set<GovernanceRiskLevel>([

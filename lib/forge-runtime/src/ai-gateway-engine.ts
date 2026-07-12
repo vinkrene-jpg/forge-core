@@ -25,6 +25,7 @@ export interface AiGatewayEngineOptions {
     compositionId: string,
   ) => PromptComposition | null;
   readonly stateStore?: AiGatewayStateStore;
+  readonly connectors?: readonly AiProviderConnector[];
 }
 
 function optionalPositiveInteger(
@@ -71,6 +72,7 @@ function cloneExecution(
 ): AiExecutionRecord {
   return Object.freeze({
     ...execution,
+    missionId: execution.missionId ?? null,
     usage: Object.freeze({ ...execution.usage }),
   });
 }
@@ -98,9 +100,8 @@ export class AiGatewayEngine {
       options.stateStore ??
       new FileAiGatewayStateStore();
 
-    const connectors: AiProviderConnector[] = [
-      new OpenAiResponsesConnector(),
-    ];
+    const connectors: readonly AiProviderConnector[] =
+      options.connectors ?? [new OpenAiResponsesConnector()];
 
     this.#connectors = new Map(
       connectors.map((connector) => [
@@ -292,6 +293,7 @@ export class AiGatewayEngine {
 
   async executeComposition(
     compositionId: string,
+    missionId: string | null = null,
   ): Promise<AiExecutionRecord> {
     this.#ensureInitialized();
 
@@ -312,6 +314,7 @@ export class AiGatewayEngine {
     const running: AiExecutionRecord =
       Object.freeze({
         id: executionId,
+        missionId,
         compositionId,
         projectId: composition.projectId,
         routeProfileId:
@@ -350,6 +353,7 @@ export class AiGatewayEngine {
         "ai.execution.unavailable",
         {
           executionId,
+          missionId,
           compositionId,
         },
       );
@@ -390,6 +394,7 @@ export class AiGatewayEngine {
 
     this.#events.publish("ai.execution.started", {
       executionId,
+      missionId,
       compositionId,
       providerId: connector.id,
       model: status.model,
@@ -489,6 +494,7 @@ export class AiGatewayEngine {
           : "ai.execution.failed",
         {
           executionId,
+          missionId: completed.missionId,
           compositionId:
             completed.compositionId,
           providerId:

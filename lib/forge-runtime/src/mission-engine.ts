@@ -25,6 +25,10 @@ export class MissionAbortError extends Error {
 export interface MissionEngineOptions {
   readonly events: RuntimeEventBus;
   readonly getRuntimeHealth: () => RuntimeHealthSnapshot;
+  readonly executeAutonomousCycle?: (
+    mission: MissionRecord,
+    signal: AbortSignal,
+  ) => Promise<Readonly<Record<string, unknown>>>;
   readonly stateStore?: MissionStateStore;
 }
 
@@ -53,7 +57,8 @@ function errorMessage(error: unknown): string {
 function assertSupportedKind(kind: unknown): asserts kind is MissionKind {
   if (
     kind !== "runtime.self-check" &&
-    kind !== "runtime.stability-window"
+    kind !== "runtime.stability-window" &&
+    kind !== "operator.autonomous-cycle"
   ) {
     throw new Error(`Unsupported mission kind: ${String(kind)}`);
   }
@@ -114,6 +119,8 @@ function wait(
 export class MissionEngine {
   readonly #events: RuntimeEventBus;
   readonly #getRuntimeHealth: () => RuntimeHealthSnapshot;
+  readonly #executeAutonomousCycle:
+    MissionEngineOptions["executeAutonomousCycle"];
   readonly #stateStore: MissionStateStore;
   #state: PersistedMissionState = Object.freeze({
     version: MISSION_STORE_VERSION,
@@ -125,6 +132,8 @@ export class MissionEngine {
   constructor(options: MissionEngineOptions) {
     this.#events = options.events;
     this.#getRuntimeHealth = options.getRuntimeHealth;
+    this.#executeAutonomousCycle =
+      options.executeAutonomousCycle;
     this.#stateStore =
       options.stateStore ?? new FileMissionStateStore();
   }
@@ -259,7 +268,9 @@ export class MissionEngine {
         (
           request.kind === "runtime.self-check"
             ? "Runtime self-check"
-            : "Runtime stability window"
+            : request.kind === "runtime.stability-window"
+              ? "Runtime stability window"
+              : "Autonomous provider cycle"
         );
 
       const mission = cloneMission({
@@ -660,6 +671,16 @@ export class MissionEngine {
         finalKernelStatus: lastHealth.kernelStatus,
         finalHealthStatus: lastHealth.status,
       });
+    }
+
+    if (mission.kind === "operator.autonomous-cycle") {
+      if (!this.#executeAutonomousCycle) {
+        throw new Error(
+          "Autonomous cycle executor is not configured",
+        );
+      }
+
+      return this.#executeAutonomousCycle(mission, signal);
     }
 
     const exhaustiveCheck: never = mission.kind;

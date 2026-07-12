@@ -78,6 +78,42 @@ function requirementsForMission(
     ]);
   }
 
+  if (kind === "operator.autonomous-cycle") {
+    return Object.freeze([
+      ...shared,
+      {
+        capabilityId: "project.memory.persist",
+        minimumStatus: "operational",
+        reason: "Cycle grounds work in persistent project memory.",
+      },
+      {
+        capabilityId: "prompt.context.compose",
+        minimumStatus: "operational",
+        reason: "Cycle requires a grounded prompt composition.",
+      },
+      {
+        capabilityId: "model.route.select",
+        minimumStatus: "operational",
+        reason: "Cycle records an explicit model routing decision.",
+      },
+      {
+        capabilityId: "ai.provider.execute",
+        minimumStatus: "operational",
+        reason: "Cycle executes through the controlled provider gateway.",
+      },
+      {
+        capabilityId: "evaluation.output.assess",
+        minimumStatus: "operational",
+        reason: "Provider output must be evaluated before acceptance.",
+      },
+      {
+        capabilityId: "mission.autonomous.continue",
+        minimumStatus: "operational",
+        reason: "Accepted output schedules a bounded next mission.",
+      },
+    ]);
+  }
+
   return Object.freeze([
     ...shared,
     {
@@ -104,8 +140,12 @@ export class CapabilityAnalyzer {
           `Execute mission "${request.title?.trim() || request.kind}"`,
         requirements: requirementsForMission(request.kind),
         expectedReuse: 5,
-        missionCriticality:
-          request.kind === "runtime.self-check" ? 2 : 3,
+      missionCriticality:
+          request.kind === "runtime.self-check"
+            ? 2
+            : request.kind === "operator.autonomous-cycle"
+              ? 4
+              : 3,
       },
       "mission",
       request.kind,

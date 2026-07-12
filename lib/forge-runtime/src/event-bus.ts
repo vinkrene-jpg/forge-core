@@ -43,7 +43,10 @@ export type RuntimeEventType =
   | "ai.execution.started"
   | "ai.execution.succeeded"
   | "ai.execution.failed"
-  | "ai.execution.unavailable";
+  | "ai.execution.unavailable"
+  | "autonomous.cycle.evaluated"
+  | "autonomous.cycle.continuation.scheduled"
+  | "autonomous.cycle.continuation.failed";
 
 export interface RuntimeEvent {
   readonly sequence: number;

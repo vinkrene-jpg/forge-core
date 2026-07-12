@@ -60,6 +60,13 @@ function validateState(
     }
 
     requiredString(execution.id, "execution.id");
+    if (
+      execution.missionId !== undefined &&
+      execution.missionId !== null &&
+      typeof execution.missionId !== "string"
+    ) {
+      throw new Error("execution.missionId is invalid");
+    }
     requiredString(
       execution.compositionId,
       "execution.compositionId",
@@ -148,7 +155,14 @@ export class FileAiGatewayStateStore
 
     return Object.freeze({
       version: parsed.version,
-      executions: Object.freeze(parsed.executions),
+      executions: Object.freeze(
+        parsed.executions.map((execution) =>
+          Object.freeze({
+            ...execution,
+            missionId: execution.missionId ?? null,
+          }),
+        ),
+      ),
     });
   }
 

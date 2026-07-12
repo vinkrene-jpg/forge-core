@@ -233,6 +233,11 @@ OPENAI_MODEL=...
                       {execution.model ?? "no model"} Â·
                       route {execution.routeProfileId}
                     </div>
+                    {execution.missionId ? (
+                      <div className="mt-1 font-mono text-xs text-muted-foreground">
+                        mission {execution.missionId}
+                      </div>
+                    ) : null}
                   </div>
                   <Badge
                     variant={

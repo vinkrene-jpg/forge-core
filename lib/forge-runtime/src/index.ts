@@ -27,6 +27,13 @@ export {
   OpenAiResponsesConnector,
 } from "./openai-responses-connector";
 export {
+  AutonomousOutputEvaluator,
+  parseAutonomousCycleInput,
+  type AutonomousCycleInput,
+  type AutonomousEvaluation,
+  type AutonomousEvaluationCheck,
+} from "./autonomous-cycle";
+export {
   ModelRouter,
 } from "./model-router";
 
