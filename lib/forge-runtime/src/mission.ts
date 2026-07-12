@@ -1,6 +1,7 @@
 export type MissionKind =
   | "runtime.self-check"
-  | "runtime.stability-window";
+  | "runtime.stability-window"
+  | "operator.autonomous-cycle";
 
 export type MissionStatus =
   | "awaiting_approval"

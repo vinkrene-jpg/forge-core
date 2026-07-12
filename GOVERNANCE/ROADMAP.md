@@ -2,7 +2,7 @@
 
 Status date: 2026-07-12
 
-## Phase R1 — Recovery and canonical governance
+## Phase R1 â€” Recovery and canonical governance
 
 Status: substantially complete.
 
@@ -10,7 +10,7 @@ Status: substantially complete.
 - Repository, branch, baseline and reconstruction evidence established.
 - Runtime persistence and restart recovery verified.
 
-## Phase R2 — Operational runtime engines
+## Phase R2 â€” Operational runtime engines
 
 Status: verified for the reconstructed scope.
 
@@ -23,9 +23,9 @@ Status: verified for the reconstructed scope.
 - Provider-independent AI Gateway.
 - Real OpenAI provider execution verified on 2026-07-12.
 
-## Phase R3 — Closed autonomous provider loop
+## Phase R3 â€” Closed autonomous provider loop
 
-Status: current priority; not yet proven end-to-end.
+Status: complete and live verified.
 
 - Connect an Operator/Mission execution path to the AI Gateway without duplicating existing code.
 - Evaluate provider output before mission acceptance.
@@ -33,7 +33,9 @@ Status: current priority; not yet proven end-to-end.
 - Automatically schedule the next evidence-backed mission.
 - Prove multiple consecutive cycles through live Desktop state.
 
-## Phase R4 — Learning and adaptive capability development
+Implementation includes a governed `operator.autonomous-cycle` mission, mission-linked provider executions, deterministic output evaluation, persistent evidence memory, a maximum of five explicitly bounded cycles and controlled failure containment.
+
+## Phase R4 â€” Learning and adaptive capability development
 
 Status: planned after R3.
 
@@ -42,7 +44,7 @@ Status: planned after R3.
 - Generate adaptive development exercises from a capability matrix instead of following a fixed list.
 - Begin with Human Intent Understanding before advanced software-engineering levels.
 
-## Phase R5 — Complete end architecture
+## Phase R5 â€” Complete end architecture
 
 Status: future, prioritized by verified gaps rather than a fixed build order.
 
@@ -58,7 +60,7 @@ Candidate gaps currently not proven as canonical implementations:
 
 Forge must inspect current source before creating any of these. Existing partial capability is extended rather than rebuilt.
 
-## Phase R6 — Forge Intelligence research
+## Phase R6 â€” Forge Intelligence research
 
 Status: parallel research only; may not block or destabilize production work.
 

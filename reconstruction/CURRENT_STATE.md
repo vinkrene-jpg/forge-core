@@ -42,3 +42,18 @@ Older reconstruction text states that provider execution was unavailable until c
 ## Current constraint
 
 Do not add unrelated engines merely because they appear in the end architecture. The current priority is to integrate and prove the existing components as one closed loop. Inspect the repository first to determine whether any part of that integration already exists.
+
+## Autonomous provider loop implementation
+
+Implementation status: complete with deterministic integration coverage.
+
+- `operator.autonomous-cycle` connects MissionLoop, capability analysis, governance, Operator Core, Prompt Composer, Model Router and AI Gateway.
+- The first external-provider loop requires explicit approval; continuations remain bounded to the approved maximum (five or fewer).
+- Every provider execution records its mission ID and composition ID.
+- Deterministic evaluation checks provider success, mission linkage, substantive output, explicit assumptions, verification guidance and secret safety.
+- Accepted results persist as Project Memory evidence and may schedule the next bounded mission.
+- Rejected or failed provider output stops continuation while the runtime remains operational.
+- Forge Desktop can start the loop and shows mission-linked provider executions and persisted evaluation state.
+- Automated tests prove two consecutive cycles, restart persistence and contained provider/quota failure.
+
+Live provider loop verification: VERIFIED at 2026-07-12T20:26:06.7455656+02:00. Evidence: `reconstruction/AUTONOMOUS_PROVIDER_LOOP_VERIFICATION.json`.

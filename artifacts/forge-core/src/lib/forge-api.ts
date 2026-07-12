@@ -108,7 +108,8 @@ export interface MissionRecord {
   readonly id: string;
   readonly kind:
     | "runtime.self-check"
-    | "runtime.stability-window";
+    | "runtime.stability-window"
+    | "operator.autonomous-cycle";
   readonly title: string;
   readonly status: MissionStatus;
   readonly createdAt: string;

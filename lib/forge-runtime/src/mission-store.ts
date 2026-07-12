@@ -27,6 +27,7 @@ export interface MissionStateStore {
 const missionKinds = new Set<MissionKind>([
   "runtime.self-check",
   "runtime.stability-window",
+  "operator.autonomous-cycle",
 ]);
 
 const missionStatuses = new Set<MissionStatus>([

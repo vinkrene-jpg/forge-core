@@ -1,4 +1,4 @@
-import { Play, ShieldAlert } from "lucide-react";
+import { Bot, Play, ShieldAlert } from "lucide-react";
 import {
   useCreateMission,
   useMissionsQuery,
@@ -73,6 +73,31 @@ export default function Missions() {
             disabled={createMission.isPending}
             onClick={() =>
               createMission.mutate({
+                kind: "operator.autonomous-cycle",
+                title: "Autonomous provider loop 1/2",
+                input: {
+                  projectId: "forge-core",
+                  objective:
+                    "Review the current Forge Core architecture and identify the next evidence-backed implementation step toward the verified end architecture.",
+                  cycleIndex: 1,
+                  maxCycles: 2,
+                  files: [
+                    "GOVERNANCE/ROADMAP.md",
+                    "reconstruction/CURRENT_STATE.md",
+                    "reconstruction/NEXT_MISSION.md",
+                  ],
+                },
+              })
+            }
+          >
+            <Bot className="mr-2 h-4 w-4" />
+            Start autonomous loop
+          </Button>
+          <Button
+            variant="outline"
+            disabled={createMission.isPending}
+            onClick={() =>
+              createMission.mutate({
                 kind: "runtime.stability-window",
                 title: "Desktop stability window",
                 input: {
@@ -128,6 +153,15 @@ export default function Missions() {
                       {mission.lastError ? (
                         <div className="mt-2 text-xs text-destructive">
                           {mission.lastError}
+                        </div>
+                      ) : null}
+                      {mission.output?.evaluation &&
+                      typeof mission.output.evaluation === "object" ? (
+                        <div className="mt-2 text-xs text-muted-foreground">
+                          Evaluated and persisted · next mission{" "}
+                          {typeof mission.output.nextMissionId === "string"
+                            ? mission.output.nextMissionId.slice(0, 8)
+                            : "none"}
                         </div>
                       ) : null}
                     </td>

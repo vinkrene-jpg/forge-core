@@ -1,0 +1,52 @@
+﻿{
+    "verifiedAt":  "2026-07-12T20:26:06.7455656+02:00",
+    "sourceCommit":  "eb370fb",
+    "patchSha256":  "fa01531b6332a5cd2c64914060cc5d0ac9a89d2b1f9db1918da1fe6dc1e4772c",
+    "branch":  "reconstruct/forge-core-v1",
+    "providerId":  "openai-responses",
+    "model":  "gpt-5.6",
+    "cycles":  [
+                   {
+                       "missionId":  "d65c1ea2-8f52-4115-a4b1-99a27f17432e",
+                       "cycleIndex":  1,
+                       "status":  "succeeded",
+                       "compositionId":  "1ec7cfbd-7d0a-4813-931f-8b094dbcb7c5",
+                       "executionId":  "27d7b15d-1e3d-445a-8b8b-15afd374b048",
+                       "evaluationId":  "e2835f62-d0d6-4ca1-bf57-875542b6eaf6",
+                       "evaluationDecision":  "accepted",
+                       "evaluationScore":  100,
+                       "outputSha256":  "290eb91b10f3a26dd8aba36e733738f9c9596d10e862e25469c7e05baf393ad7",
+                       "nextMissionId":  "13d0cf76-21ff-4994-87fa-d576d0c708ca"
+                   },
+                   {
+                       "missionId":  "13d0cf76-21ff-4994-87fa-d576d0c708ca",
+                       "cycleIndex":  2,
+                       "status":  "succeeded",
+                       "compositionId":  "0e7c38da-c177-4fbd-81c9-40bf408d7ce9",
+                       "executionId":  "c944f4f6-9dbe-47ad-8c63-40cb78adcfd4",
+                       "evaluationId":  "9f012fa2-4cc9-491a-bf52-8a05bb57b899",
+                       "evaluationDecision":  "accepted",
+                       "evaluationScore":  100,
+                       "outputSha256":  "6b6856ca2758e3cd3e4596fdc4d15c9d9ced2df901e6e80b9ab8b57a4b52f336",
+                       "nextMissionId":  null
+                   }
+               ],
+    "automaticContinuation":  true,
+    "boundedAtTwoCycles":  true,
+    "initialApprovalRequired":  true,
+    "continuationApprovalRequired":  false,
+    "projectMemoryEvidenceCount":  2,
+    "restartPersistence":  {
+                               "passed":  true,
+                               "recoveryCountBefore":  19,
+                               "recoveryCountAfter":  20
+                           },
+    "tests":  {
+                  "deterministicIntegration":  "passed",
+                  "providerFailureContainment":  "passed",
+                  "typecheck":  "passed",
+                  "productionBuild":  "passed",
+                  "liveProvider":  "passed"
+              },
+    "secretPersisted":  false
+}

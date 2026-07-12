@@ -26,6 +26,7 @@ export interface AiGatewaySummary {
 
 export interface AiExecutionRecord {
   readonly id: string;
+  readonly missionId: string | null;
   readonly compositionId: string;
   readonly projectId: string;
   readonly routeProfileId: string;

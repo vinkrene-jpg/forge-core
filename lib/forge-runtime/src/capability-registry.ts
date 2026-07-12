@@ -283,6 +283,36 @@ function defaultCapabilities(): readonly CapabilityRecord[] {
       confidence: 1,
       source: "operator-core-bootstrap",
     },
+    {
+      id: "ai.provider.execute",
+      name: "Controlled AI Provider Execution",
+      description:
+        "Execute grounded compositions through the provider-independent AI Gateway.",
+      status: "operational",
+      version: "1.0.0",
+      confidence: 1,
+      source: "verified-ai-provider-execution",
+    },
+    {
+      id: "evaluation.output.assess",
+      name: "Deterministic Provider Output Evaluation",
+      description:
+        "Evaluate mission linkage, substance, verification guidance and secret safety before acceptance.",
+      status: "operational",
+      version: "1.0.0",
+      confidence: 1,
+      source: "autonomous-provider-loop",
+    },
+    {
+      id: "mission.autonomous.continue",
+      name: "Bounded Autonomous Mission Continuation",
+      description:
+        "Schedule the next evidence-backed mission within an explicitly approved cycle limit.",
+      status: "operational",
+      version: "1.0.0",
+      confidence: 1,
+      source: "autonomous-provider-loop",
+    },
   ];
 
   return defaults.map((capability) =>
