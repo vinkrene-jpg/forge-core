@@ -1,0 +1,20 @@
+﻿services:
+  app:
+    image: forge-core-reconstruction:local
+
+    build:
+      context: .
+      dockerfile: Dockerfile.reconstruction
+
+    environment:
+      CI: "true"
+
+    command:
+      - sh
+      - -c
+      - |
+        pnpm --filter @workspace/db run push --force &&
+        node artifacts/api-server/dist/index.mjs
+
+    volumes: !override
+      - forge_storage:/app/storage
