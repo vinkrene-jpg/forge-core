@@ -1,0 +1,45 @@
+{
+    "verifiedAt":  "2026-07-12T15:34:19.1404110+02:00",
+    "commit":  "ef6a6f73bf823e557aa81f285aad33891ada9106",
+    "containerModel":  "clean-linux-image",
+    "health":  {
+                   "status":  "ok",
+                   "database":  "ok",
+                   "storage":  "ok"
+               },
+    "runtime":  {
+                    "kernel":  {
+                                   "status":  "running",
+                                   "revision":  2,
+                                   "startedAt":  "2026-07-12T13:34:17.740Z",
+                                   "updatedAt":  "2026-07-12T13:34:17.740Z",
+                                   "lastError":  null
+                               },
+                    "health":  {
+                                   "status":  "ok",
+                                   "kernelStatus":  "running",
+                                   "checkedAt":  "2026-07-12T13:34:19.101Z",
+                                   "startedAt":  "2026-07-12T13:34:17.740Z",
+                                   "uptimeMs":  1361,
+                                   "eventCount":  2
+                               },
+                    "events":  [
+                                   {
+                                       "sequence":  1,
+                                       "type":  "kernel.starting",
+                                       "occurredAt":  "2026-07-12T13:34:17.740Z",
+                                       "payload":  {
+
+                                                   }
+                                   },
+                                   {
+                                       "sequence":  2,
+                                       "type":  "kernel.started",
+                                       "occurredAt":  "2026-07-12T13:34:17.740Z",
+                                       "payload":  {
+                                                       "startedAt":  "2026-07-12T13:34:17.740Z"
+                                                   }
+                                   }
+                               ]
+                }
+}

@@ -1,0 +1,16 @@
+FROM node:24-alpine
+
+WORKDIR /app
+
+ENV CI=true
+
+RUN corepack enable && corepack prepare pnpm@11.10.0 --activate
+
+COPY . .
+
+RUN pnpm install --frozen-lockfile
+RUN pnpm --filter @workspace/api-server run build
+
+EXPOSE 5000
+
+CMD ["sh", "-c", "pnpm --filter @workspace/db run push --force && node artifacts/api-server/dist/index.mjs"]
