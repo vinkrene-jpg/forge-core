@@ -1,5 +1,6 @@
-import { Router, type IRouter } from "express";
+﻿import { Router, type IRouter } from "express";
 import healthRouter from "./health";
+import runtimeRouter from "./runtime";
 import dashboardRouter from "./dashboard";
 import coreRouter from "./core";
 import aiRouter from "./ai";
@@ -17,6 +18,7 @@ import analysisRouter from "./analysis";
 const router: IRouter = Router();
 
 router.use(healthRouter);
+router.use(runtimeRouter);
 router.use(dashboardRouter);
 router.use(coreRouter);
 router.use(aiRouter);
