@@ -26,6 +26,8 @@ export interface LearningObservation {
   readonly executionId: string;
   readonly evaluationId: string;
   readonly evidenceMemoryId: string;
+  readonly sourceProposalId: string | null;
+  readonly targetCapabilityId: string | null;
   readonly evaluationScore: number;
   readonly outcome: LearningOutcome;
   readonly signals: readonly LearningSignal[];
@@ -45,7 +47,11 @@ export interface LearningCapabilityProfile {
   readonly updatedAt: string;
 }
 
-export type LearningProposalStatus = "proposed" | "scheduled";
+export type LearningProposalStatus =
+  | "proposed"
+  | "scheduled"
+  | "completed"
+  | "failed";
 
 export interface LearningMissionTemplate {
   readonly kind: "operator.autonomous-cycle";
@@ -69,8 +75,10 @@ export interface LearningMissionProposal {
   readonly mission: LearningMissionTemplate;
   readonly status: LearningProposalStatus;
   readonly scheduledMissionId: string | null;
+  readonly resultObservationId: string | null;
   readonly createdAt: string;
   readonly scheduledAt: string | null;
+  readonly completedAt: string | null;
 }
 
 export interface ObserveAutonomousLearningRequest {
@@ -88,6 +96,20 @@ export interface ObserveAutonomousLearningRequest {
   readonly evidenceMemoryId: string;
   readonly projectId: string;
   readonly capabilityIds: readonly string[];
+  readonly sourceProposalId?: string | null;
+  readonly targetCapabilityId?: string | null;
+}
+
+export interface RecordFailedLearningExerciseRequest {
+  readonly proposalId: string;
+  readonly missionId: string;
+  readonly executionId: string;
+  readonly evaluationId: string;
+  readonly evaluationScore: number;
+  readonly failedCheckIds: readonly string[];
+  readonly evidenceMemoryId: string;
+  readonly projectId: string;
+  readonly reason: string;
 }
 
 export interface LearningSummary {
@@ -96,5 +118,7 @@ export interface LearningSummary {
   readonly proposals: number;
   readonly proposed: number;
   readonly scheduled: number;
+  readonly completed: number;
+  readonly failed: number;
   readonly lastObservedAt: string | null;
 }

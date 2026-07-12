@@ -52,7 +52,7 @@ export default function Learning() {
           ["Observations", data?.summary.observations ?? 0],
           ["Profiles", data?.summary.profiles ?? 0],
           ["Open proposals", data?.summary.proposed ?? 0],
-          ["Scheduled", data?.summary.scheduled ?? 0],
+          ["Completed", data?.summary.completed ?? 0],
         ].map(([label, value]) => (
           <Card key={String(label)}>
             <CardContent className="pt-6">
@@ -89,7 +89,11 @@ export default function Learning() {
                 </div>
                 <Badge
                   variant={
-                    proposal.status === "scheduled" ? "default" : "secondary"
+                    proposal.status === "completed"
+                      ? "default"
+                      : proposal.status === "failed"
+                        ? "destructive"
+                        : "secondary"
                   }
                 >
                   {proposal.status}
@@ -104,10 +108,19 @@ export default function Learning() {
                   <Play className="mr-2 h-4 w-4" />
                   Submit through governance
                 </Button>
-              ) : (
+              ) : proposal.status === "scheduled" ? (
+                <div className="mt-3 flex items-center gap-2 text-sm text-amber-500">
+                  <Play className="h-4 w-4" />
+                  Awaiting or executing mission {proposal.scheduledMissionId}
+                </div>
+              ) : proposal.status === "completed" ? (
                 <div className="mt-3 flex items-center gap-2 text-sm text-emerald-500">
                   <CheckCircle2 className="h-4 w-4" />
-                  Mission {proposal.scheduledMissionId}
+                  Evidence {proposal.resultObservationId}
+                </div>
+              ) : (
+                <div className="mt-3 text-sm text-destructive">
+                  Failed evidence {proposal.resultObservationId}
                 </div>
               )}
             </div>

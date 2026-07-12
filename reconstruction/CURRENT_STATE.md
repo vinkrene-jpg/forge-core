@@ -61,3 +61,7 @@ Live provider loop verification: VERIFIED at 2026-07-12T20:26:06.7455656+02:00. 
 ## Learning Engine foundation
 
 FG-004.000 is live verified at 2026-07-12T20:59:33.0567566+02:00. The canonical Learning Engine imports persisted mission, provider execution, deterministic evaluation, Project Memory and capability evidence without repeating provider calls. It maintains transparent deterministic capability profiles and proposes adaptive one-cycle learning missions. Proposals remain inert until submitted through the existing capability analysis and governance path. Restart persistence is verified in reconstruction/LEARNING_ENGINE_VERIFICATION.json.
+
+## Governed learning failure feedback
+
+FG-004.100 verified the negative path at 2026-07-12T21:43:37.7087171+02:00. One approved provider execution returned safe but incomplete and explicitly unverified output. Deterministic evaluation rejected it at 83 because assumptions-explicit failed. Forge preserved the failed mission and execution, converted them exactly once into negative capability evidence, closed the proposal as failed, created an inert recovery proposal and survived restart without another provider call. Evidence: reconstruction/LEARNING_FAILURE_FEEDBACK_VERIFICATION.json.

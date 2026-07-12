@@ -218,6 +218,8 @@ export interface LearningSummary {
   readonly proposals: number;
   readonly proposed: number;
   readonly scheduled: number;
+  readonly completed: number;
+  readonly failed: number;
   readonly lastObservedAt: string | null;
 }
 
@@ -249,10 +251,12 @@ export interface LearningMissionProposal {
   readonly targetCapabilityId: string;
   readonly priority: number;
   readonly reason: string;
-  readonly status: "proposed" | "scheduled";
+  readonly status: "proposed" | "scheduled" | "completed" | "failed";
   readonly scheduledMissionId: string | null;
+  readonly resultObservationId: string | null;
   readonly createdAt: string;
   readonly scheduledAt: string | null;
+  readonly completedAt: string | null;
 }
 
 export interface LearningStateResponse {

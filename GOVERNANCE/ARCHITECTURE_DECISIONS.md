@@ -53,3 +53,7 @@ An operator starts and approves an external provider-backed autonomous loop once
 ## AD-013 - Evidence-backed deterministic learning
 
 The Learning Engine derives capability scores only from persisted mission, execution, evaluation, Project Memory and registry evidence. Scoring and proposal priority remain deterministic and explainable. A learning proposal is not execution authority: scheduling always enters the normal capability analysis and governance path.
+
+## AD-014 - Rejected exercises become negative evidence
+
+A governed learning exercise that fails deterministic evaluation is never promoted to success. If its persisted execution is secret-free and uniquely linked, Forge may record it once as negative capability evidence, close the proposal as failed and create an inert recovery proposal. Recovery may not repeat the provider call automatically.

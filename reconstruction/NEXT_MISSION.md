@@ -1,17 +1,17 @@
 # Forge Next Mission
 
-## FG-004.100 - Governed Learning Exercise Feedback
+## FG-004.110 - Executable Learning Exercise Tool Binding
 
-Status: ready after live verification of FG-004.000.
+Status: ready after verified containment of the FG-004.100 negative path.
 
 ## Objective
 
-Execute one selected Learning Engine proposal through the existing capability and governance gates, record its verified result as learning evidence, and prove that the capability profile and next priority adapt without duplicate or unbounded missions.
+Give one learning exercise a controlled read-only verification tool path so Forge can inspect actual runtime evidence instead of asking a provider to claim execution. Reuse the recovery proposal, require explicit approval, keep the cycle bound at one and accept success only when tool evidence and deterministic evaluation agree.
 
 ## Constraints
 
-- Human approval remains required for the external provider boundary.
-- Use one bounded learning mission; do not start a fixed curriculum.
-- Reuse the canonical Learning Engine, Mission Engine, Project Memory and evaluator.
-- A provider or verification failure must stop safely and remain evidence.
-- Commit and push only after tests, build, live evidence and restart persistence pass.
+- Do not repeat the failed provider-only exercise.
+- No workspace mutation or capability promotion in this mission.
+- Tool evidence must be persisted and linked to mission, proposal and evaluation.
+- Provider failure or weak output remains negative evidence without automatic retry.
+- Human approval remains mandatory before any new provider call.

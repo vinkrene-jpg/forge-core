@@ -68,3 +68,7 @@ Status: parallel research only; may not block or destabilize production work.
 - Alternative internal representations above traditional source code.
 - Model and tool evaluation.
 - Architecture and capability research under experimental isolation.
+
+### Verified negative learning feedback
+
+FG-004.100 proves that rejected provider output becomes bounded negative learning evidence rather than false success or an automatic retry. The successful feedback path remains deterministically covered; live success awaits an exercise with real execution tools.
