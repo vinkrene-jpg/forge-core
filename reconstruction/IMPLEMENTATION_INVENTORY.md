@@ -1,4 +1,4 @@
-﻿# Implementation Inventory
+# Implementation Inventory
 
 | Component | Status | Evidence |
 |---|---|---|
@@ -8,8 +8,8 @@
 | Database schemas | Present | lib/db |
 | Replit configuration | Present | root and artifact configuration |
 | Kernel | Missing | No source or Git-history evidence |
-| Mission Loop | Missing | No source or Git-history evidence |
-| Mission Engine | Missing | No source or Git-history evidence |
+| Mission Loop | Implemented | Persistent single-mission execution loop with live recovery verification |
+| Mission Engine | Implemented | Persistent mission model, queue, executors and API verification |
 | Learning Engine | Missing | No source or Git-history evidence |
 | Capability Registry | Missing | No source or Git-history evidence |
 | Capability Analysis | Missing | No source or Git-history evidence |

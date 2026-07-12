@@ -1,4 +1,4 @@
-﻿# Forge Reconstruction Status
+# Forge Reconstruction Status
 
 Datum: 2026-07-12
 
@@ -60,3 +60,12 @@ Status: implemented and live verified.
 - An unclean container stop is detected on the next start.
 - Recovery was verified with a forced SIGKILL.
 - Evidence: reconstruction/RUNTIME_PERSISTENCE_VERIFICATION.json.
+## Mission Engine and MissionLoop
+
+Status: implemented and live verified.
+
+- Missions are persisted in the forge_storage volume.
+- MissionLoop executes one mission at a time.
+- runtime.self-check and runtime.stability-window are real operational executors.
+- A running mission survives a forced container SIGKILL and resumes as a new attempt.
+- Evidence: reconstruction/MISSION_ENGINE_VERIFICATION.json.

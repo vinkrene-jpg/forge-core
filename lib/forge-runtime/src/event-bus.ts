@@ -6,7 +6,15 @@ export type RuntimeEventType =
   | "kernel.started"
   | "kernel.stopping"
   | "kernel.stopped"
-  | "kernel.failed";
+  | "kernel.failed"
+  | "mission.enqueued"
+  | "mission.started"
+  | "mission.succeeded"
+  | "mission.failed"
+  | "mission.requeued"
+  | "mission.recovered"
+  | "mission.loop.started"
+  | "mission.loop.stopped";
 
 export interface RuntimeEvent {
   readonly sequence: number;
@@ -23,7 +31,7 @@ export class RuntimeEventBus {
   readonly #history: RuntimeEvent[] = [];
   #sequence = 0;
 
-  constructor(historyLimit = 100) {
+  constructor(historyLimit = 200) {
     if (!Number.isInteger(historyLimit) || historyLimit < 1) {
       throw new Error("historyLimit must be a positive integer");
     }

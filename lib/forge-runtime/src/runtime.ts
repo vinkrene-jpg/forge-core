@@ -9,6 +9,21 @@ import {
   type RuntimeHealthSnapshot,
 } from "./kernel";
 import {
+  MissionEngine,
+  type MissionEngineOptions,
+} from "./mission-engine";
+import { MissionLoop } from "./mission-loop";
+import {
+  FileMissionStateStore,
+  type MissionStateStore,
+} from "./mission-store";
+import type {
+  CreateMissionRequest,
+  MissionLoopSnapshot,
+  MissionRecord,
+  MissionSummary,
+} from "./mission";
+import {
   createInitialRuntimeState,
   FileRuntimeStateStore,
   type PersistedRuntimeState,
@@ -23,11 +38,15 @@ export interface ForgeRuntimeSnapshot {
   readonly kernel: KernelStateSnapshot;
   readonly health: RuntimeHealthSnapshot;
   readonly persistence: PersistedRuntimeState;
+  readonly missionLoop: MissionLoopSnapshot;
+  readonly missions: MissionSummary;
   readonly events: readonly RuntimeEvent[];
 }
 
 export interface ForgeRuntimeOptions {
   readonly stateStore?: RuntimeStateStore;
+  readonly missionStateStore?: MissionStateStore;
+  readonly missionLoopPollIntervalMs?: number;
 }
 
 function errorMessage(error: unknown): string {
@@ -40,11 +59,30 @@ export class ForgeRuntime {
   readonly #events = new RuntimeEventBus();
   readonly #kernel = new ForgeKernel(this.#events);
   readonly #stateStore: RuntimeStateStore;
+  readonly #missionEngine: MissionEngine;
+  readonly #missionLoop: MissionLoop;
   #persistence = createInitialRuntimeState();
 
   constructor(options: ForgeRuntimeOptions = {}) {
     this.#stateStore =
       options.stateStore ?? new FileRuntimeStateStore();
+
+    const missionOptions: MissionEngineOptions = {
+      events: this.#events,
+      getRuntimeHealth: () => this.#kernel.healthSnapshot(),
+      stateStore:
+        options.missionStateStore ??
+        new FileMissionStateStore(),
+    };
+
+    this.#missionEngine = new MissionEngine(missionOptions);
+
+    this.#missionLoop = new MissionLoop({
+      engine: this.#missionEngine,
+      events: this.#events,
+      pollIntervalMs:
+        options.missionLoopPollIntervalMs ?? 500,
+    });
   }
 
   async #persist(
@@ -121,6 +159,9 @@ export class ForgeRuntime {
         lastError: null,
       });
 
+      await this.#missionEngine.initialize();
+      this.#missionLoop.start();
+
       return running;
     } catch (error) {
       await this.#persist({
@@ -136,6 +177,8 @@ export class ForgeRuntime {
   }
 
   async stop(): Promise<KernelStateSnapshot> {
+    await this.#missionLoop.stop();
+
     const stopped = await this.#kernel.stop();
     const stoppedAt = new Date().toISOString();
 
@@ -156,13 +199,37 @@ export class ForgeRuntime {
     return this.#events.subscribe(listener);
   }
 
+  async createMission(
+    request: CreateMissionRequest,
+  ): Promise<MissionRecord> {
+    const mission = await this.#missionEngine.enqueue(request);
+
+    this.#missionLoop.wake();
+
+    return mission;
+  }
+
+  listMissions(): readonly MissionRecord[] {
+    return this.#missionEngine.list();
+  }
+
+  getMission(missionId: string): MissionRecord | null {
+    return this.#missionEngine.get(missionId);
+  }
+
   snapshot(): ForgeRuntimeSnapshot {
+    const missionLoop = this.#missionLoop.snapshot();
+
     return Object.freeze({
       kernel: this.#kernel.stateSnapshot(),
       health: this.#kernel.healthSnapshot(),
       persistence: Object.freeze({
         ...this.#persistence,
       }),
+      missionLoop,
+      missions: this.#missionEngine.summary(
+        missionLoop.currentMissionId,
+      ),
       events: this.#events.snapshot(),
     });
   }

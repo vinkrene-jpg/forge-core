@@ -11,6 +11,35 @@ export {
 } from "./kernel";
 
 export {
+  MissionAbortError,
+  MissionEngine,
+  type MissionEngineOptions,
+} from "./mission-engine";
+
+export {
+  MissionLoop,
+  type MissionLoopOptions,
+} from "./mission-loop";
+
+export {
+  createInitialMissionState,
+  FileMissionStateStore,
+  resolveMissionStatePath,
+  MISSION_STORE_VERSION,
+  type MissionStateStore,
+  type PersistedMissionState,
+} from "./mission-store";
+
+export {
+  type CreateMissionRequest,
+  type MissionKind,
+  type MissionLoopSnapshot,
+  type MissionRecord,
+  type MissionStatus,
+  type MissionSummary,
+} from "./mission";
+
+export {
   createInitialRuntimeState,
   FileRuntimeStateStore,
   resolveRuntimeStatePath,
