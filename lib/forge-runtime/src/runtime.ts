@@ -134,6 +134,12 @@ import {
   listLearningMatrixEntries,
   type LearningCapabilityMatrixEntry,
 } from "./learning-matrix";
+import {
+  parseWorkspaceChangeRequest,
+  WorkspaceExecutionError,
+  WorkspaceExecutor,
+  type WorkspaceVerificationRunner,
+} from "./workspace-executor";
 
 export interface RuntimeMissionCreationResult {
   readonly mission: MissionRecord;
@@ -165,6 +171,7 @@ export interface ForgeRuntimeOptions {
   readonly operatorStateStore?: OperatorStateStore;
   readonly aiGatewayStateStore?: AiGatewayStateStore;
   readonly learningStateStore?: LearningStateStore;
+  readonly workspaceVerificationRunner?: WorkspaceVerificationRunner;
   readonly aiProviderConnectors?: readonly AiProviderConnector[];
   readonly missionLoopPollIntervalMs?: number;
 }
@@ -189,6 +196,7 @@ export class ForgeRuntime {
   readonly #aiGateway: AiGatewayEngine;
   readonly #learningEngine: LearningEngine;
   readonly #learningEvidenceTool: LearningEvidenceTool;
+  readonly #workspaceExecutor: WorkspaceExecutor;
   readonly #autonomousEvaluator = new AutonomousOutputEvaluator();
   readonly #missionLoop: MissionLoop;
   #persistence = createInitialRuntimeState();
@@ -202,6 +210,8 @@ export class ForgeRuntime {
       getRuntimeHealth: () => this.#kernel.healthSnapshot(),
       executeAutonomousCycle: (mission, signal) =>
         this.#executeAutonomousCycle(mission, signal),
+      executeWorkspaceChange: (mission, signal) =>
+        this.#executeWorkspaceChange(mission, signal),
       stateStore:
         options.missionStateStore ??
         new FileMissionStateStore(),
@@ -253,6 +263,11 @@ export class ForgeRuntime {
 
     this.#operatorCore =
       new OperatorCore(operatorOptions);
+
+    this.#workspaceExecutor = new WorkspaceExecutor({
+      events: this.#events,
+      verificationRunner: options.workspaceVerificationRunner,
+    });
 
     const aiGatewayOptions: AiGatewayEngineOptions = {
       events: this.#events,
@@ -543,6 +558,54 @@ export class ForgeRuntime {
       usage: execution.usage,
       nextMissionId,
     });
+  }
+
+  async #executeWorkspaceChange(
+    mission: MissionRecord,
+    signal: AbortSignal,
+  ): Promise<Readonly<Record<string, unknown>>> {
+    const projectId =
+      typeof mission.input.projectId === "string"
+        ? mission.input.projectId
+        : "forge-core";
+    const project = this.#operatorCore.getProject(projectId);
+
+    if (!project) {
+      throw new Error(`Project not found: ${projectId}`);
+    }
+
+    const request = parseWorkspaceChangeRequest(mission.input);
+
+    try {
+      const execution = await this.#workspaceExecutor.execute(
+        project.rootPath,
+        mission.id,
+        request,
+        signal,
+      );
+      const evidence = await this.#operatorCore.addMemory(projectId, {
+        kind: "evidence",
+        source: `workspace-execution:${mission.id}`,
+        tags: ["workspace-execution", execution.status, execution.branch],
+        content: JSON.stringify(execution, null, 2),
+      });
+
+      return Object.freeze({
+        ...execution,
+        evidenceMemoryId: evidence.id,
+      });
+    } catch (error) {
+      if (error instanceof WorkspaceExecutionError) {
+        await this.#operatorCore.addMemory(projectId, {
+          kind: "evidence",
+          source: `workspace-execution:${mission.id}`,
+          tags: ["workspace-execution", error.result.status, "failed"],
+          content: JSON.stringify(error.result, null, 2),
+        });
+      }
+
+      throw error;
+    }
   }
 
   async #reconcileLearningEvidence(): Promise<void> {

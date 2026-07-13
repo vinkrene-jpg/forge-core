@@ -87,6 +87,21 @@ export {
 export {
   WorkspaceConnector,
 } from "./workspace-connector";
+
+export {
+  NodeWorkspaceVerificationRunner,
+  parseWorkspaceChangeRequest,
+  WorkspaceExecutionError,
+  WorkspaceExecutor,
+  type WorkspaceChangeRequest,
+  type WorkspaceCommandResult,
+  type WorkspaceCommitRequest,
+  type WorkspaceExecutionResult,
+  type WorkspaceFileChange,
+  type WorkspaceVerificationRunner,
+  type WorkspaceVerificationEvidence,
+  type WorkspaceVerificationStep,
+} from "./workspace-executor";
 export {
   CapabilityAnalyzer,
 } from "./capability-analysis";
