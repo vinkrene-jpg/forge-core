@@ -61,3 +61,7 @@ A governed learning exercise that fails deterministic evaluation is never promot
 ## AD-015 - Dependency-scoped failure domains
 
 Batch execution uses explicit dependencies. Shared source, typecheck or build failure blocks every dependent chapter. A provider, exercise or research failure blocks only its own branch; unrelated verified chapters continue and persist separate evidence. No failed branch is reported as complete.
+
+## AD-016 - Governed host-local workspace execution
+
+Source mutation is performed only by a dedicated host-local Workspace Executor on an explicitly approved, clean, named non-main Git branch. Every file change carries an expected SHA-256 precondition. Protected paths, traversal, arbitrary commands and raw command-output persistence are denied. Fixed verification runs before commit; failure restores exact snapshots. Git push is a separate critical action and remains approval-gated.

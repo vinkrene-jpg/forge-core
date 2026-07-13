@@ -60,3 +60,13 @@ Every completed milestone must update, in the same commit:
 - `GOVERNANCE/ROADMAP.md` when phase status changed.
 
 Do not mark a component complete without a concrete evidence file, test or live verification.
+
+## Operator workflow preference
+
+- Deliver one large pasteable PowerShell milestone with automatic stop on failure.
+- Batch related chapters and minimize manual operator commands.
+- Communicate concisely in Dutch.
+- Shared source, schema, typecheck or build failures block dependent chapters.
+- Unrelated provider, exercise or research failures block only their own branch.
+- Never retry provider calls automatically.
+- Commit and push only verified or safely contained outcomes.

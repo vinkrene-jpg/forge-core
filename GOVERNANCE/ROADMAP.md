@@ -76,3 +76,12 @@ FG-004.100 proves that rejected provider output becomes bounded negative learnin
 ### Accelerated independent learning chapters
 
 The read-only evidence-tool path and the adaptive Human Intent capability matrix share a build gate but have separate live outcomes. Provider or exercise failure blocks only its dependent branch; deterministic matrix work continues and retains separate evidence.
+
+## Workspace Executor milestone - 2026-07-13
+
+Status: verified host-local foundation.
+
+- Governed operator.workspace-change missions are implemented.
+- SHA-256 preconditions, protected-path denial, fixed verification and exact rollback are tested.
+- Forge completed one live host-local mission and created its own verified Git commit.
+- Provider-to-change-plan translation and the persistent host execution bridge remain next.
