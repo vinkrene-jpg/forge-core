@@ -69,3 +69,15 @@ FG-004.100 verified the negative path at 2026-07-12T21:43:37.7087171+02:00. One 
 ## Learning accelerator bundle
 
 FG-004.110 and FG-004.200 were processed as independent chapters at 2026-07-12T22:01:04.5317427+02:00. Shared tests, typecheck and build passed. The dependency-aware Human Intent matrix contains three experimental capabilities with no operational authority. The read-only evidence-tool chapter ended as succeeded and used 1 provider execution(s); its result did not invalidate the independent matrix chapter. Evidence: reconstruction/LEARNING_ACCELERATOR_VERIFICATION.json.
+
+## Governed Workspace Executor - verified 2026-07-13
+
+- operator.workspace-change requires explicit approval before mutation.
+- Existing files require exact SHA-256 preconditions; protected paths and arbitrary commands are denied.
+- Fixed verification runs before commit and failure restores exact snapshots.
+- Verification evidence stores hashes and counts, never raw command output.
+- Live dogfood mission: 95570db1-11b5-4106-a162-c46d28a21650.
+- Live dogfood commit: 0d53bb35137b87583edf70ef4c77bbd62b98d0f9.
+- Evidence: 
+econstruction/WORKSPACE_EXECUTOR_VERIFICATION.json.
+- Operational mode: host-local runtime; the persistent Docker-to-host execution bridge remains next.

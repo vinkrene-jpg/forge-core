@@ -1,0 +1,60 @@
+{
+  "schemaVersion": 1,
+  "verifiedAt": "2026-07-13T04:25:22.655Z",
+  "sourceCommit": "7d5bc10669eb2f16f01de075a8c57898953c09d0",
+  "branch": "reconstruct/forge-core-v1",
+  "missionId": "95570db1-11b5-4106-a162-c46d28a21650",
+  "approvalId": "a48cbb0d-e578-44ff-9532-b445e76cca5b",
+  "governanceDecision": "require_approval",
+  "governanceRisk": "high",
+  "capabilityAnalysisId": "d6db371f-5a87-4bdf-ba86-b6b28f592db5",
+  "workspaceExecutionId": "e3b7580c-57e5-4883-890f-26066c3641ad",
+  "evidenceMemoryId": "7494ceba-cc38-48e7-98f2-a91a551bfd86",
+  "dogfoodCommit": "0d53bb35137b87583edf70ef4c77bbd62b98d0f9",
+  "status": "committed",
+  "changedFiles": [
+    {
+      "path": "reconstruction/WORKSPACE_EXECUTOR_DOGFOOD.md",
+      "beforeSha256": null,
+      "afterSha256": "cfca10be0e3bc755a73fd7180ba1c855505f964c68c440c391f6a51024aac3dc"
+    }
+  ],
+  "verification": [
+    {
+      "command": "git diff --check",
+      "exitCode": 0,
+      "stdoutChars": 0,
+      "stderrChars": 0,
+      "stdoutSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "stderrSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "durationMs": 51
+    },
+    {
+      "command": "C:\\WINDOWS\\system32\\cmd.exe /d /s /c pnpm run typecheck",
+      "exitCode": 0,
+      "stdoutChars": 412,
+      "stderrChars": 125,
+      "stdoutSha256": "2a9a14c91bc18087e2fc5fcac738efe8d5a75f419513c0c5c4f8e44b883cd6c7",
+      "stderrSha256": "e243c1ea0a55d1798eef837a7d20c93b2cdff3ade37f86de6098d4a19a9ef9b9",
+      "durationMs": 4207
+    },
+    {
+      "command": "git diff --cached --check",
+      "exitCode": 0,
+      "stdoutChars": 0,
+      "stderrChars": 0,
+      "stdoutSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "stderrSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "durationMs": 53
+    }
+  ],
+  "rollbackPerformed": false,
+  "assertions": {
+    "approvalRequiredBeforeMutation": true,
+    "preconditionHashEnforced": true,
+    "protectedPathsDenied": true,
+    "verificationPassedBeforeCommit": true,
+    "rawCommandOutputPersisted": false,
+    "pushPerformed": false
+  }
+}
