@@ -29,6 +29,10 @@ export interface MissionEngineOptions {
     mission: MissionRecord,
     signal: AbortSignal,
   ) => Promise<Readonly<Record<string, unknown>>>;
+  readonly executeWorkspaceChange?: (
+    mission: MissionRecord,
+    signal: AbortSignal,
+  ) => Promise<Readonly<Record<string, unknown>>>;
   readonly stateStore?: MissionStateStore;
 }
 
@@ -58,7 +62,8 @@ function assertSupportedKind(kind: unknown): asserts kind is MissionKind {
   if (
     kind !== "runtime.self-check" &&
     kind !== "runtime.stability-window" &&
-    kind !== "operator.autonomous-cycle"
+    kind !== "operator.autonomous-cycle" &&
+    kind !== "operator.workspace-change"
   ) {
     throw new Error(`Unsupported mission kind: ${String(kind)}`);
   }
@@ -121,6 +126,8 @@ export class MissionEngine {
   readonly #getRuntimeHealth: () => RuntimeHealthSnapshot;
   readonly #executeAutonomousCycle:
     MissionEngineOptions["executeAutonomousCycle"];
+  readonly #executeWorkspaceChange:
+    MissionEngineOptions["executeWorkspaceChange"];
   readonly #stateStore: MissionStateStore;
   #state: PersistedMissionState = Object.freeze({
     version: MISSION_STORE_VERSION,
@@ -134,6 +141,8 @@ export class MissionEngine {
     this.#getRuntimeHealth = options.getRuntimeHealth;
     this.#executeAutonomousCycle =
       options.executeAutonomousCycle;
+    this.#executeWorkspaceChange =
+      options.executeWorkspaceChange;
     this.#stateStore =
       options.stateStore ?? new FileMissionStateStore();
   }
@@ -270,7 +279,9 @@ export class MissionEngine {
             ? "Runtime self-check"
             : request.kind === "runtime.stability-window"
               ? "Runtime stability window"
-              : "Autonomous provider cycle"
+              : request.kind === "operator.autonomous-cycle"
+                ? "Autonomous provider cycle"
+                : "Governed workspace change"
         );
 
       const mission = cloneMission({
@@ -681,6 +692,14 @@ export class MissionEngine {
       }
 
       return this.#executeAutonomousCycle(mission, signal);
+    }
+
+    if (mission.kind === "operator.workspace-change") {
+      if (!this.#executeWorkspaceChange) {
+        throw new Error("Workspace executor is not configured");
+      }
+
+      return this.#executeWorkspaceChange(mission, signal);
     }
 
     const exhaustiveCheck: never = mission.kind;

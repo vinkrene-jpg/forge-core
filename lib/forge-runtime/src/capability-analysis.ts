@@ -119,6 +119,27 @@ function requirementsForMission(
     ]);
   }
 
+  if (kind === "operator.workspace-change") {
+    return Object.freeze([
+      ...shared,
+      {
+        capabilityId: "tool.workspace.write",
+        minimumStatus: "operational",
+        reason: "Mission applies preconditioned changes inside the approved workspace.",
+      },
+      {
+        capabilityId: "tool.workspace.verify",
+        minimumStatus: "operational",
+        reason: "Every change must pass fixed typecheck, test or build verification.",
+      },
+      {
+        capabilityId: "tool.workspace.rollback",
+        minimumStatus: "operational",
+        reason: "Failed verification must restore the exact pre-mission workspace.",
+      },
+    ]);
+  }
+
   return Object.freeze([
     ...shared,
     {
@@ -148,7 +169,8 @@ export class CapabilityAnalyzer {
       missionCriticality:
           request.kind === "runtime.self-check"
             ? 2
-            : request.kind === "operator.autonomous-cycle"
+            : request.kind === "operator.autonomous-cycle" ||
+                request.kind === "operator.workspace-change"
               ? 4
               : 3,
       },

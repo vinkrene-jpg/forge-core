@@ -108,6 +108,27 @@ export function assessMissionRequest(
     });
   }
 
+  if (request.kind === "operator.workspace-change") {
+    const commit = request.input?.commit;
+    const pushes =
+      typeof commit === "object" &&
+      commit !== null &&
+      !Array.isArray(commit) &&
+      (commit as Readonly<Record<string, unknown>>).push === true;
+
+    return Object.freeze({
+      policyVersion: GOVERNANCE_POLICY_VERSION,
+      action: "mission.execute",
+      missionKind: request.kind,
+      riskLevel: pushes ? "critical" : "high",
+      decision: "require_approval",
+      reason: pushes
+        ? "A verified workspace change with external Git push requires explicit operator approval."
+        : "A local source mutation and optional commit require explicit operator approval.",
+      assessedAt,
+    });
+  }
+
   const durationValue = request.input?.durationMs;
   const durationMs =
     typeof durationValue === "number"

@@ -284,6 +284,36 @@ function defaultCapabilities(): readonly CapabilityRecord[] {
       source: "operator-core-bootstrap",
     },
     {
+      id: "tool.workspace.write",
+      name: "Preconditioned Workspace Mutation",
+      description:
+        "Apply bounded text changes only when their expected SHA-256 matches the clean approved workspace.",
+      status: "operational",
+      version: "1.0.0",
+      confidence: 1,
+      source: "workspace-executor-verification",
+    },
+    {
+      id: "tool.workspace.verify",
+      name: "Workspace Change Verification",
+      description:
+        "Run fixed typecheck, test and build gates before a workspace change may be committed.",
+      status: "operational",
+      version: "1.0.0",
+      confidence: 1,
+      source: "workspace-executor-verification",
+    },
+    {
+      id: "tool.workspace.rollback",
+      name: "Workspace Rollback",
+      description:
+        "Restore exact file snapshots when mutation or verification fails before commit.",
+      status: "operational",
+      version: "1.0.0",
+      confidence: 1,
+      source: "workspace-executor-verification",
+    },
+    {
       id: "ai.provider.execute",
       name: "Controlled AI Provider Execution",
       description:

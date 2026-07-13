@@ -9,7 +9,8 @@
   "types": "./src/index.ts",
   "scripts": {
     "typecheck": "tsc -p tsconfig.json --noEmit",
-    "test": "node --import tsx --test src/*.test.ts"
+    "test": "node --import tsx --test src/*.test.ts",
+    "verify:workspace-executor": "node --import tsx src/workspace-executor-live.ts"
   },
   "devDependencies": {
     "@types/node": "^24.13.3",
