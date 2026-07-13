@@ -297,13 +297,21 @@ export class NodeWorkspaceVerificationRunner implements WorkspaceVerificationRun
     rootPath: string,
     signal: AbortSignal,
   ): Promise<WorkspaceCommandResult> {
-    const pnpm = process.platform === "win32" ? "pnpm.cmd" : "pnpm";
     const args =
       step === "test"
         ? ["--filter", "@workspace/forge-runtime", "test"]
         : ["run", step];
 
-    return runProcess(pnpm, args, rootPath, signal);
+    if (process.platform === "win32") {
+      return runProcess(
+        process.env.ComSpec?.trim() || "cmd.exe",
+        ["/d", "/s", "/c", "pnpm", ...args],
+        rootPath,
+        signal,
+      );
+    }
+
+    return runProcess("pnpm", args, rootPath, signal);
   }
 }
 
