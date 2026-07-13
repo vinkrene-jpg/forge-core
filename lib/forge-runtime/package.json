@@ -10,7 +10,8 @@
   "scripts": {
     "typecheck": "tsc -p tsconfig.json --noEmit",
     "test": "node --import tsx --test src/*.test.ts",
-    "verify:workspace-executor": "node --import tsx src/workspace-executor-live.ts"
+    "verify:workspace-executor": "node --import tsx src/workspace-executor-live.ts",
+    "bridge:host": "node --import tsx src/workspace-bridge-host.ts"
   },
   "devDependencies": {
     "@types/node": "^24.13.3",

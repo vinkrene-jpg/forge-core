@@ -2,7 +2,8 @@ export type MissionKind =
   | "runtime.self-check"
   | "runtime.stability-window"
   | "operator.autonomous-cycle"
-  | "operator.workspace-change";
+  | "operator.workspace-change"
+  | "operator.workspace-plan";
 
 export type MissionStatus =
   | "awaiting_approval"

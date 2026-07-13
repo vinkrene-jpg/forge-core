@@ -140,6 +140,15 @@ import {
   WorkspaceExecutor,
   type WorkspaceVerificationRunner,
 } from "./workspace-executor";
+import {
+  FileWorkspaceBridgeClient,
+  type WorkspaceChangeExecutor,
+} from "./workspace-bridge";
+import {
+  parseWorkspaceProviderPlan,
+  type WorkspaceChangePlan,
+  type WorkspacePlanningTarget,
+} from "./workspace-change-planner";
 
 export interface RuntimeMissionCreationResult {
   readonly mission: MissionRecord;
@@ -172,6 +181,7 @@ export interface ForgeRuntimeOptions {
   readonly aiGatewayStateStore?: AiGatewayStateStore;
   readonly learningStateStore?: LearningStateStore;
   readonly workspaceVerificationRunner?: WorkspaceVerificationRunner;
+  readonly workspaceChangeExecutor?: WorkspaceChangeExecutor;
   readonly aiProviderConnectors?: readonly AiProviderConnector[];
   readonly missionLoopPollIntervalMs?: number;
 }
@@ -196,7 +206,7 @@ export class ForgeRuntime {
   readonly #aiGateway: AiGatewayEngine;
   readonly #learningEngine: LearningEngine;
   readonly #learningEvidenceTool: LearningEvidenceTool;
-  readonly #workspaceExecutor: WorkspaceExecutor;
+  readonly #workspaceExecutor: WorkspaceChangeExecutor;
   readonly #autonomousEvaluator = new AutonomousOutputEvaluator();
   readonly #missionLoop: MissionLoop;
   #persistence = createInitialRuntimeState();
@@ -212,6 +222,8 @@ export class ForgeRuntime {
         this.#executeAutonomousCycle(mission, signal),
       executeWorkspaceChange: (mission, signal) =>
         this.#executeWorkspaceChange(mission, signal),
+      executeWorkspacePlan: (mission, signal) =>
+        this.#executeWorkspacePlan(mission, signal),
       stateStore:
         options.missionStateStore ??
         new FileMissionStateStore(),
@@ -264,10 +276,21 @@ export class ForgeRuntime {
     this.#operatorCore =
       new OperatorCore(operatorOptions);
 
-    this.#workspaceExecutor = new WorkspaceExecutor({
-      events: this.#events,
-      verificationRunner: options.workspaceVerificationRunner,
-    });
+    const bridgeDirectory = process.env.FORGE_WORKSPACE_BRIDGE_DIR?.trim();
+    const bridgeToken = process.env.FORGE_WORKSPACE_BRIDGE_TOKEN?.trim();
+
+    this.#workspaceExecutor =
+      options.workspaceChangeExecutor ??
+      (bridgeDirectory && bridgeToken
+        ? new FileWorkspaceBridgeClient({
+            directory: bridgeDirectory,
+            token: bridgeToken,
+            events: this.#events,
+          })
+        : new WorkspaceExecutor({
+            events: this.#events,
+            verificationRunner: options.workspaceVerificationRunner,
+          }));
 
     const aiGatewayOptions: AiGatewayEngineOptions = {
       events: this.#events,
@@ -608,6 +631,162 @@ export class ForgeRuntime {
     }
   }
 
+  async #executeWorkspacePlan(
+    mission: MissionRecord,
+    signal: AbortSignal,
+  ): Promise<Readonly<Record<string, unknown>>> {
+    const projectId =
+      typeof mission.input.projectId === "string"
+        ? mission.input.projectId
+        : "forge-core";
+    const objective =
+      typeof mission.input.objective === "string"
+        ? mission.input.objective.trim()
+        : "";
+    const rawTargets = mission.input.targets;
+
+    if (objective.length === 0 || objective.length > 10_000) {
+      throw new Error("Workspace planning objective is required and limited to 10000 characters");
+    }
+
+    if (!Array.isArray(rawTargets) || rawTargets.length === 0 || rawTargets.length > 8) {
+      throw new Error("Workspace planning requires between 1 and 8 target files");
+    }
+
+    const sourceFiles: string[] = [];
+    const targets: WorkspacePlanningTarget[] = [];
+    const seen = new Set<string>();
+
+    for (const [index, rawTarget] of rawTargets.entries()) {
+      if (
+        typeof rawTarget !== "object" ||
+        rawTarget === null ||
+        Array.isArray(rawTarget)
+      ) {
+        throw new Error(`targets[${index}] must be an object`);
+      }
+
+      const candidate = rawTarget as Readonly<Record<string, unknown>>;
+      const targetPath =
+        typeof candidate.path === "string" ? candidate.path.trim() : "";
+      const allowCreate = candidate.allowCreate === true;
+
+      const validatedTarget = parseWorkspaceChangeRequest({
+        changes: [{ path: targetPath, expectedSha256: null, content: "path-validation" }],
+        verification: ["typecheck"],
+        commit: null,
+      });
+      const canonicalPath = validatedTarget.changes[0].path;
+
+      if (seen.has(canonicalPath)) {
+        throw new Error(`Duplicate workspace planning target: ${canonicalPath}`);
+      }
+
+      seen.add(canonicalPath);
+
+      try {
+        const file = await this.#operatorCore.readWorkspaceFile(
+          projectId,
+          canonicalPath,
+          200_000,
+        );
+
+        if (file.truncated) {
+          throw new Error(`Workspace planning target is too large: ${canonicalPath}`);
+        }
+
+        sourceFiles.push(canonicalPath);
+        targets.push(Object.freeze({
+          path: canonicalPath,
+          expectedSha256: createHash("sha256")
+            .update(file.content, "utf8")
+            .digest("hex"),
+          exists: true,
+        }));
+      } catch (error) {
+        const errorCode =
+          typeof error === "object" &&
+          error !== null &&
+          "code" in error &&
+          typeof error.code === "string"
+            ? error.code
+            : null;
+
+        if (!allowCreate || errorCode !== "ENOENT") {
+          throw error;
+        }
+
+        targets.push(Object.freeze({
+          path: canonicalPath,
+          expectedSha256: null,
+          exists: false,
+        }));
+      }
+    }
+
+    if (signal.aborted) {
+      throw new MissionAbortError();
+    }
+
+    const composition = await this.#operatorCore.composePrompt({
+      projectId,
+      objective: [
+        objective,
+        "",
+        "Return exactly one raw JSON object. Do not use Markdown fences or prose outside JSON.",
+        "The only allowed top-level fields are schemaVersion, summary, changes, verification and commit.",
+        "schemaVersion must equal 1.",
+        "changes must contain only approved target paths and must copy each expectedSha256 exactly from the manifest.",
+        "verification must include typecheck and may additionally include test and build.",
+        "commit must contain a concise message and push must be false.",
+        "Never include credentials, environment values, arbitrary commands, deletions or protected paths.",
+        "",
+        `Approved target manifest: ${JSON.stringify(targets)}`,
+      ].join("\n"),
+      taskType: "coding",
+      privacy: "standard",
+      budget: "high",
+      files: sourceFiles,
+      memoryKinds: ["architecture", "decision", "requirement", "task", "evidence"],
+    });
+    const execution = await this.#aiGateway.executeComposition(
+      composition.id,
+      mission.id,
+    );
+
+    if (execution.status !== "succeeded" || !execution.outputText) {
+      throw new Error(`Workspace provider planning failed: ${execution.error ?? execution.status}`);
+    }
+
+    const plan = parseWorkspaceProviderPlan({
+      missionId: mission.id,
+      projectId,
+      objective,
+      targets,
+      compositionId: composition.id,
+      executionId: execution.id,
+      outputText: execution.outputText,
+    });
+    const evidence = await this.#operatorCore.addMemory(projectId, {
+      kind: "evidence",
+      source: `workspace-plan:${mission.id}`,
+      tags: ["workspace-plan", "provider-validated", "awaiting-execution-approval"],
+      content: JSON.stringify(plan, null, 2),
+    });
+
+    this.#events.publish("workspace.plan.validated", {
+      missionId: mission.id,
+      planId: plan.id,
+      executionId: execution.id,
+      files: plan.request.changes.length,
+    });
+
+    return Object.freeze({
+      plan,
+      evidenceMemoryId: evidence.id,
+    });
+  }
+
   async #reconcileLearningEvidence(): Promise<void> {
     const completed = this.#missionEngine
       .list()
@@ -941,6 +1120,74 @@ export class ForgeRuntime {
 
   getMission(missionId: string): MissionRecord | null {
     return this.#missionEngine.get(missionId);
+  }
+
+  async scheduleWorkspacePlan(missionId: string): Promise<{
+    readonly planningMission: MissionRecord;
+    readonly plan: WorkspaceChangePlan;
+    readonly executionMission: RuntimeMissionCreationResult;
+  }> {
+    const planningMission = this.#missionEngine.get(missionId);
+
+    if (!planningMission || planningMission.kind !== "operator.workspace-plan") {
+      throw new Error("Succeeded workspace planning mission not found");
+    }
+
+    if (planningMission.status !== "succeeded" || !planningMission.output) {
+      throw new Error("Workspace plan is not ready for execution");
+    }
+
+    const rawPlan = planningMission.output.plan;
+
+    if (typeof rawPlan !== "object" || rawPlan === null || Array.isArray(rawPlan)) {
+      throw new Error("Workspace planning mission has no validated plan");
+    }
+
+    const candidate = rawPlan as unknown as WorkspaceChangePlan;
+
+    if (
+      typeof candidate.id !== "string" ||
+      candidate.missionId !== planningMission.id ||
+      typeof candidate.projectId !== "string" ||
+      typeof candidate.summary !== "string" ||
+      typeof candidate.providerOutputSha256 !== "string"
+    ) {
+      throw new Error("Workspace planning mission contains an invalid plan record");
+    }
+
+    const request = parseWorkspaceChangeRequest(
+      candidate.request as unknown as Readonly<Record<string, unknown>>,
+    );
+    const plan = Object.freeze({
+      ...candidate,
+      request,
+    });
+    const executionMission = await this.createMission({
+      kind: "operator.workspace-change",
+      title: `Execute approved workspace plan: ${plan.summary}`,
+      input: {
+        projectId: plan.projectId,
+        sourcePlanningMissionId: planningMission.id,
+        sourcePlanId: plan.id,
+        providerOutputSha256: plan.providerOutputSha256,
+        changes: request.changes,
+        verification: request.verification,
+        commit: request.commit,
+      },
+    });
+
+    this.#events.publish("workspace.plan.scheduled", {
+      planningMissionId: planningMission.id,
+      planId: plan.id,
+      executionMissionId: executionMission.mission.id,
+      approvalId: executionMission.approval?.id ?? null,
+    });
+
+    return Object.freeze({
+      planningMission,
+      plan,
+      executionMission,
+    });
   }
 
   listApprovals(

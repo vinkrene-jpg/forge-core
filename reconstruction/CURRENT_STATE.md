@@ -81,3 +81,12 @@ FG-004.110 and FG-004.200 were processed as independent chapters at 2026-07-12T2
 - Evidence: 
 econstruction/WORKSPACE_EXECUTOR_VERIFICATION.json.
 - Operational mode: host-local runtime; the persistent Docker-to-host execution bridge remains next.
+
+## FG-005.100 - Provider change planner and host execution bridge
+
+- Provider-backed workspace planning is a non-mutating mission with its own explicit approval.
+- Provider output is accepted only as strict JSON bound to approved paths and exact SHA-256 source preconditions.
+- A validated plan becomes a separate high-risk workspace-change mission and requires a second explicit approval.
+- The container sends authenticated, expiring requests through an HMAC file bridge; a Windows host agent performs the governed Git mutation.
+- Typecheck, test, build, rollback and local commit remain mandatory. Provider-generated push is forbidden.
+- Provider failure is contained to the provider branch and is never automatically retried.

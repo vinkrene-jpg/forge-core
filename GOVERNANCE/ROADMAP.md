@@ -85,3 +85,7 @@ Status: verified host-local foundation.
 - SHA-256 preconditions, protected-path denial, fixed verification and exact rollback are tested.
 - Forge completed one live host-local mission and created its own verified Git commit.
 - Provider-to-change-plan translation and the persistent host execution bridge remain next.
+
+## FG-005.100 Provider planner and host bridge
+
+Status: implemented with deterministic verification. Live provider dogfood is recorded separately in reconstruction/PROVIDER_BRIDGE_VERIFICATION.json because provider availability is an isolated runtime condition.

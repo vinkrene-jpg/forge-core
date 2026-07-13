@@ -8,6 +8,8 @@
 
     environment:
       CI: "true"
+      FORGE_WORKSPACE_BRIDGE_DIR: "/bridge"
+      FORGE_WORKSPACE_BRIDGE_TOKEN: "${FORGE_WORKSPACE_BRIDGE_TOKEN:-}"
 
     command:
       - sh
@@ -18,3 +20,4 @@
 
     volumes: !override
       - forge_storage:/app/storage
+      - ./.forge-bridge:/bridge

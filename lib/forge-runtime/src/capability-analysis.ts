@@ -140,6 +140,32 @@ function requirementsForMission(
     ]);
   }
 
+  if (kind === "operator.workspace-plan") {
+    return Object.freeze([
+      ...shared,
+      {
+        capabilityId: "tool.workspace.inspect",
+        minimumStatus: "operational",
+        reason: "Planner binds provider output to current source evidence.",
+      },
+      {
+        capabilityId: "prompt.context.compose",
+        minimumStatus: "operational",
+        reason: "Planner requires a grounded prompt composition.",
+      },
+      {
+        capabilityId: "ai.provider.execute",
+        minimumStatus: "operational",
+        reason: "Planner uses one controlled provider execution.",
+      },
+      {
+        capabilityId: "workspace.plan.validate",
+        minimumStatus: "operational",
+        reason: "Provider output must pass strict schema and source-hash validation.",
+      },
+    ]);
+  }
+
   return Object.freeze([
     ...shared,
     {
@@ -170,7 +196,8 @@ export class CapabilityAnalyzer {
           request.kind === "runtime.self-check"
             ? 2
             : request.kind === "operator.autonomous-cycle" ||
-                request.kind === "operator.workspace-change"
+                request.kind === "operator.workspace-change" ||
+                request.kind === "operator.workspace-plan"
               ? 4
               : 3,
       },

@@ -129,6 +129,19 @@ export function assessMissionRequest(
     });
   }
 
+  if (request.kind === "operator.workspace-plan") {
+    return Object.freeze({
+      policyVersion: GOVERNANCE_POLICY_VERSION,
+      action: "mission.execute",
+      missionKind: request.kind,
+      riskLevel: "medium",
+      decision: "require_approval",
+      reason:
+        "Creating a provider-backed source change plan consumes external resources and requires explicit approval; it cannot mutate the workspace.",
+      assessedAt,
+    });
+  }
+
   const durationValue = request.input?.durationMs;
   const durationMs =
     typeof durationValue === "number"

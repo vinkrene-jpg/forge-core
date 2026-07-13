@@ -33,6 +33,10 @@ export interface MissionEngineOptions {
     mission: MissionRecord,
     signal: AbortSignal,
   ) => Promise<Readonly<Record<string, unknown>>>;
+  readonly executeWorkspacePlan?: (
+    mission: MissionRecord,
+    signal: AbortSignal,
+  ) => Promise<Readonly<Record<string, unknown>>>;
   readonly stateStore?: MissionStateStore;
 }
 
@@ -63,7 +67,8 @@ function assertSupportedKind(kind: unknown): asserts kind is MissionKind {
     kind !== "runtime.self-check" &&
     kind !== "runtime.stability-window" &&
     kind !== "operator.autonomous-cycle" &&
-    kind !== "operator.workspace-change"
+    kind !== "operator.workspace-change" &&
+    kind !== "operator.workspace-plan"
   ) {
     throw new Error(`Unsupported mission kind: ${String(kind)}`);
   }
@@ -128,6 +133,8 @@ export class MissionEngine {
     MissionEngineOptions["executeAutonomousCycle"];
   readonly #executeWorkspaceChange:
     MissionEngineOptions["executeWorkspaceChange"];
+  readonly #executeWorkspacePlan:
+    MissionEngineOptions["executeWorkspacePlan"];
   readonly #stateStore: MissionStateStore;
   #state: PersistedMissionState = Object.freeze({
     version: MISSION_STORE_VERSION,
@@ -143,6 +150,8 @@ export class MissionEngine {
       options.executeAutonomousCycle;
     this.#executeWorkspaceChange =
       options.executeWorkspaceChange;
+    this.#executeWorkspacePlan =
+      options.executeWorkspacePlan;
     this.#stateStore =
       options.stateStore ?? new FileMissionStateStore();
   }
@@ -281,7 +290,9 @@ export class MissionEngine {
               ? "Runtime stability window"
               : request.kind === "operator.autonomous-cycle"
                 ? "Autonomous provider cycle"
-                : "Governed workspace change"
+                : request.kind === "operator.workspace-change"
+                  ? "Governed workspace change"
+                  : "Governed provider workspace plan"
         );
 
       const mission = cloneMission({
@@ -700,6 +711,14 @@ export class MissionEngine {
       }
 
       return this.#executeWorkspaceChange(mission, signal);
+    }
+
+    if (mission.kind === "operator.workspace-plan") {
+      if (!this.#executeWorkspacePlan) {
+        throw new Error("Workspace plan executor is not configured");
+      }
+
+      return this.#executeWorkspacePlan(mission, signal);
     }
 
     const exhaustiveCheck: never = mission.kind;

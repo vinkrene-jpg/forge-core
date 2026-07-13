@@ -216,4 +216,62 @@ router.post(
   },
 );
 
+router.get("/operator/workspace-plans", (_req, res): void => {
+  res.json({
+    missions: forgeRuntime
+      .listMissions()
+      .filter((mission) => mission.kind === "operator.workspace-plan"),
+  });
+});
+
+router.post(
+  "/operator/workspace-plans",
+  async (req, res): Promise<void> => {
+    try {
+      const result = await forgeRuntime.createMission({
+        kind: "operator.workspace-plan",
+        title:
+          typeof req.body?.title === "string"
+            ? req.body.title
+            : "Governed provider workspace plan",
+        input: {
+          projectId: req.body?.projectId ?? "forge-core",
+          objective: req.body?.objective,
+          targets: req.body?.targets,
+        },
+      });
+
+      res.status(202).json({
+        ...result.mission,
+        governance: result.governance,
+        approval: result.approval,
+        capabilityAnalysis: result.capabilityAnalysis,
+      });
+    } catch (error) {
+      res.status(400).json({ error: message(error) });
+    }
+  },
+);
+
+router.post(
+  "/operator/workspace-plans/:missionId/schedule",
+  async (req, res): Promise<void> => {
+    try {
+      const result = await forgeRuntime.scheduleWorkspacePlan(
+        req.params.missionId,
+      );
+
+      res.status(202).json({
+        planningMission: result.planningMission,
+        plan: result.plan,
+        executionMission: result.executionMission.mission,
+        governance: result.executionMission.governance,
+        approval: result.executionMission.approval,
+      });
+    } catch (error) {
+      res.status(400).json({ error: message(error) });
+    }
+  },
+);
+
 export default router;

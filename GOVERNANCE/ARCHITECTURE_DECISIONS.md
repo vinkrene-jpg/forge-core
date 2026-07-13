@@ -65,3 +65,7 @@ Batch execution uses explicit dependencies. Shared source, typecheck or build fa
 ## AD-016 - Governed host-local workspace execution
 
 Source mutation is performed only by a dedicated host-local Workspace Executor on an explicitly approved, clean, named non-main Git branch. Every file change carries an expected SHA-256 precondition. Protected paths, traversal, arbitrary commands and raw command-output persistence are denied. Fixed verification runs before commit; failure restores exact snapshots. Git push is a separate critical action and remains approval-gated.
+
+## ADR - Authenticated container-to-host workspace execution
+
+Forge keeps planning in the container and authoritative Git mutation on the host. Requests and responses use versioned JSON envelopes authenticated with HMAC-SHA256, short expiry, unique identifiers and exact source preconditions. Planning and execution are separate governed missions. The provider cannot request push, protected paths or arbitrary commands. The host reruns the fixed verifier and rolls back before any commit on failure.

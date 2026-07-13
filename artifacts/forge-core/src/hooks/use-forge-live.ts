@@ -176,6 +176,16 @@ export function useExecuteEvolutionPlan() {
   });
 }
 
+export function useScheduleWorkspacePlan() {
+  const refresh = useRefreshForge();
+
+  return useMutation({
+    mutationFn: (missionId: string) =>
+      forgeApi.scheduleWorkspacePlan(missionId),
+    onSuccess: refresh,
+  });
+}
+
 export function useScheduleLearningProposal() {
   const refresh = useRefreshForge();
 

@@ -314,6 +314,16 @@ function defaultCapabilities(): readonly CapabilityRecord[] {
       source: "workspace-executor-verification",
     },
     {
+      id: "workspace.plan.validate",
+      name: "Provider Workspace Plan Validation",
+      description:
+        "Validate provider change plans against a strict JSON schema, approved target paths and immutable source hashes before execution approval.",
+      status: "operational",
+      version: "1.0.0",
+      confidence: 1,
+      source: "provider-change-planner-verification",
+    },
+    {
       id: "ai.provider.execute",
       name: "Controlled AI Provider Execution",
       description:

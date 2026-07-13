@@ -49,5 +49,6 @@ Thumbs.db
 .local/
 .pnpm-store/
 .env
+.forge-bridge/
 .env.*
 !.env.example

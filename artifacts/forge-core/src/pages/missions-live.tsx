@@ -2,6 +2,7 @@ import { Bot, Play, ShieldAlert } from "lucide-react";
 import {
   useCreateMission,
   useMissionsQuery,
+  useScheduleWorkspacePlan,
 } from "@/hooks/use-forge-live";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -29,6 +30,7 @@ function variant(
 export default function Missions() {
   const missions = useMissionsQuery();
   const createMission = useCreateMission();
+  const scheduleWorkspacePlan = useScheduleWorkspacePlan();
 
   const records = [...(missions.data?.missions ?? [])].sort(
     (left, right) =>
@@ -36,8 +38,8 @@ export default function Missions() {
   );
 
   const error =
-    createMission.error instanceof Error
-      ? createMission.error.message
+    (createMission.error ?? scheduleWorkspacePlan.error) instanceof Error
+      ? (createMission.error ?? scheduleWorkspacePlan.error as Error).message
       : null;
 
   return (
@@ -138,7 +140,33 @@ export default function Missions() {
                 </tr>
               </thead>
               <tbody>
-                {records.map((mission) => (
+                {records.map((mission) => {
+                  const rawPlan = mission.output?.plan;
+                  const plan =
+                    typeof rawPlan === "object" &&
+                    rawPlan !== null &&
+                    "request" in rawPlan &&
+                    typeof rawPlan.request === "object" &&
+                    rawPlan.request !== null
+                      ? rawPlan as {
+                          summary?: unknown;
+                          providerOutputSha256?: unknown;
+                          request: {
+                            changes?: unknown;
+                            verification?: unknown;
+                          };
+                        }
+                      : null;
+                  const changes = Array.isArray(plan?.request.changes)
+                    ? plan.request.changes
+                    : [];
+                  const alreadyScheduled = records.some(
+                    (candidate) =>
+                      candidate.kind === "operator.workspace-change" &&
+                      candidate.input.sourcePlanningMissionId === mission.id,
+                  );
+
+                  return (
                   <tr
                     key={mission.id}
                     className="border-b border-border/40 last:border-0"
@@ -164,6 +192,45 @@ export default function Missions() {
                             : "none"}
                         </div>
                       ) : null}
+                      {plan ? (
+                        <div className="mt-3 rounded-md border border-border/60 bg-muted/30 p-3 text-xs">
+                          <div className="font-medium text-foreground">
+                            {typeof plan.summary === "string"
+                              ? plan.summary
+                              : "Validated provider plan"}
+                          </div>
+                          <div className="mt-2 space-y-1 font-mono text-muted-foreground">
+                            {changes.map((change, index) => {
+                              const item = change as Record<string, unknown>;
+                              return (
+                                <div key={`${String(item.path)}-${index}`}>
+                                  {String(item.path)} · source {String(item.expectedSha256).slice(0, 12)}
+                                </div>
+                              );
+                            })}
+                          </div>
+                          <div className="mt-2 text-muted-foreground">
+                            Checks: {Array.isArray(plan.request.verification)
+                              ? plan.request.verification.join(", ")
+                              : "unknown"}
+                          </div>
+                          {!alreadyScheduled ? (
+                            <Button
+                              className="mt-3"
+                              size="sm"
+                              variant="outline"
+                              disabled={scheduleWorkspacePlan.isPending}
+                              onClick={() => scheduleWorkspacePlan.mutate(mission.id)}
+                            >
+                              Request execution approval
+                            </Button>
+                          ) : (
+                            <div className="mt-2 text-primary">
+                              Execution approval requested
+                            </div>
+                          )}
+                        </div>
+                      ) : null}
                     </td>
                     <td className="px-3 py-4">
                       <Badge variant={variant(mission.status)}>
@@ -180,7 +247,8 @@ export default function Missions() {
                       {new Date(mission.updatedAt).toLocaleString()}
                     </td>
                   </tr>
-                ))}
+                  );
+                })}
               </tbody>
             </table>
           </div>

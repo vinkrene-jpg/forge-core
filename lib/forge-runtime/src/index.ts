@@ -102,6 +102,18 @@ export {
   type WorkspaceVerificationEvidence,
   type WorkspaceVerificationStep,
 } from "./workspace-executor";
+
+export {
+  FileWorkspaceBridgeClient,
+  WorkspaceBridgeHost,
+  type WorkspaceChangeExecutor,
+} from "./workspace-bridge";
+
+export {
+  parseWorkspaceProviderPlan,
+  type WorkspaceChangePlan,
+  type WorkspacePlanningTarget,
+} from "./workspace-change-planner";
 export {
   CapabilityAnalyzer,
 } from "./capability-analysis";

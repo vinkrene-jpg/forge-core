@@ -110,7 +110,9 @@ export interface MissionRecord {
   readonly kind:
     | "runtime.self-check"
     | "runtime.stability-window"
-    | "operator.autonomous-cycle";
+    | "operator.autonomous-cycle"
+    | "operator.workspace-plan"
+    | "operator.workspace-change";
   readonly title: string;
   readonly status: MissionStatus;
   readonly createdAt: string;
@@ -374,6 +376,16 @@ export const forgeApi = {
   scheduleLearningProposal(proposalId: string): Promise<unknown> {
     return requestJson(
       `/api/learning/proposals/${proposalId}/schedule`,
+      {
+        method: "POST",
+        body: "{}",
+      },
+    );
+  },
+
+  scheduleWorkspacePlan(missionId: string): Promise<unknown> {
+    return requestJson(
+      `/api/operator/workspace-plans/${missionId}/schedule`,
       {
         method: "POST",
         body: "{}",
