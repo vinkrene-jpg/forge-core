@@ -1,7 +1,7 @@
 import { Router, type IRouter } from "express";
 import { jsonSafe } from "../lib/jsonSafe";
 import { eq, desc } from "drizzle-orm";
-import { db, projectsTable, goalsTable, backlogItemsTable, type ProjectRow } from "@workspace/db";
+import { db, projectsTable, goalsTable, backlogItemsTable } from "@workspace/db";
 import {
   ListProjectsResponse,
   CreateProjectBody,
@@ -44,9 +44,7 @@ router.post("/projects", async (req, res): Promise<void> => {
     res.status(400).json({ error: body.error.message });
     return;
   }
-  const insertedRows = await db.insert(projectsTable).values(body.data).returning();
-  const row = (insertedRows as unknown as ProjectRow[])[0];
-  if (!row) throw new Error("Project insert returned no row");
+  const [row] = await db.insert(projectsTable).values(body.data).returning();
   await audit({ actor: "owner", action: "project_created", targetType: "project", targetId: row.id, details: row.name });
   res.status(201).json(CreateProjectResponse.parse(jsonSafe(row)));
 });
@@ -94,8 +92,7 @@ router.delete("/projects/:id", async (req, res): Promise<void> => {
     res.status(400).json({ error: params.error.message });
     return;
   }
-  const deletedRows = await db.delete(projectsTable).where(eq(projectsTable.id, params.data.id)).returning();
-  const row = (deletedRows as unknown as ProjectRow[])[0];
+  const [row] = await db.delete(projectsTable).where(eq(projectsTable.id, params.data.id)).returning();
   if (!row) {
     res.status(404).json({ error: "Project not found" });
     return;

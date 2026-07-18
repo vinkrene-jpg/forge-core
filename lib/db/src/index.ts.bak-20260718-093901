@@ -107,5 +107,3 @@ export type {
   DailyLoopRunRow,
   GuardianFindingData,
 } from "./schema";
-
-export * from "./schema";

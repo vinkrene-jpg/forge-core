@@ -94,8 +94,7 @@ router.delete("/projects/:id", async (req, res): Promise<void> => {
     res.status(400).json({ error: params.error.message });
     return;
   }
-  const deletedRows = await db.delete(projectsTable).where(eq(projectsTable.id, params.data.id)).returning();
-  const row = (deletedRows as unknown as ProjectRow[])[0];
+  const [row] = await db.delete(projectsTable).where(eq(projectsTable.id, params.data.id)).returning();
   if (!row) {
     res.status(404).json({ error: "Project not found" });
     return;
