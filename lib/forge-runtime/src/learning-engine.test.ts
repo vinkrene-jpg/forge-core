@@ -12,6 +12,7 @@ const environmentKeys = [
   "FORGE_AI_PROVIDER",
   "OPENAI_API_KEY",
   "OPENAI_MODEL",
+  "FORGE_AUTONOMY_ENABLED",
 ] as const;
 
 async function waitFor(
@@ -47,6 +48,7 @@ async function withEnvironment(
   process.env.FORGE_AI_PROVIDER = "openai-responses";
   process.env.OPENAI_API_KEY = "test-only-not-a-real-secret";
   process.env.OPENAI_MODEL = "test-model";
+  process.env.FORGE_AUTONOMY_ENABLED = "false";
 
   try {
     await run(storageRoot);
@@ -136,7 +138,7 @@ test(
         title: "Learning evidence source",
         input: {
           projectId: "forge-core",
-          objective: "Create one accepted evidence source for learning.",
+          objective: "Produce one accepted evidence source for learning.",
           cycleIndex: 1,
           maxCycles: 1,
           files: [],
@@ -236,6 +238,14 @@ test(
         scheduled.mission.mission.input.targetCapabilityId,
         reconciledProposal.targetCapabilityId,
       );
+      assert.ok(scheduled.mission.mission.input.reasonForSelection);
+      assert.ok(
+        scheduled.mission.mission.input.expectedNewEvidence.length > 0,
+      );
+      assert.match(
+        scheduled.mission.mission.input.reasonForSelection,
+        /open blockage|recent/i,
+      );
 
       await assert.rejects(
         reconciled.scheduleLearningProposal(reconciledProposal.id),
@@ -306,10 +316,16 @@ test(
       assert.notEqual(targetAfter.score, targetBefore.score);
       assert.ok(nextProposal);
       assert.equal(nextProposal.status, "proposed");
-      assert.notEqual(
-        nextProposal.targetCapabilityId,
-        reconciledProposal.targetCapabilityId,
+      assert.ok(
+        nextProposal.targetCapabilityId !==
+          reconciledProposal.targetCapabilityId ||
+          /deprioritized|without repeating|lowest evidence-backed gap|no recent successful repeat/i.test(
+            nextProposal.mission.input.reasonForSelection,
+          ),
       );
+      assert.ok(nextProposal.reason.length > 0);
+      assert.ok(nextProposal.mission.input.reasonForSelection.length > 0);
+      assert.ok(nextProposal.mission.input.expectedNewEvidence.length > 0);
 
       const failedTargetBefore = reconciled
         .listLearningProfiles()

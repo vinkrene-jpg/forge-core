@@ -51,7 +51,7 @@ function requiredText(
   return normalized;
 }
 
-function requirementsForMission(
+export function requirementsForMission(
   kind: MissionKind,
 ): readonly CapabilityRequirement[] {
   const shared: CapabilityRequirement[] = [

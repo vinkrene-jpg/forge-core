@@ -11,6 +11,8 @@ import type {
   CreateMissionRequest,
   MissionKind,
   MissionRecord,
+  MissionResult,
+  MissionResultStatus,
   MissionStatus,
   MissionSummary,
 } from "./mission";
@@ -60,6 +62,90 @@ function errorMessage(error: unknown): string {
   return error instanceof Error
     ? error.message
     : String(error ?? "Unknown error");
+}
+
+interface MissionFailurePayload {
+  readonly status: MissionResultStatus;
+  readonly cause: string;
+  readonly message: string;
+  readonly output: Readonly<Record<string, unknown>> | null;
+}
+
+function missionResult(
+  status: MissionResultStatus,
+  cause: string,
+  message: string,
+): MissionResult {
+  return Object.freeze({
+    status,
+    cause,
+    message,
+    producedAt: new Date().toISOString(),
+  });
+}
+
+function failurePayload(error: unknown): MissionFailurePayload {
+  const fallbackMessage = errorMessage(error);
+
+  if (typeof error === "object" && error !== null) {
+    const candidate = error as {
+      missionResultStatus?: unknown;
+      missionResultCause?: unknown;
+      missionOutput?: unknown;
+      message?: unknown;
+    };
+
+    const status =
+      candidate.missionResultStatus === "failed" ||
+      candidate.missionResultStatus === "blocked" ||
+      candidate.missionResultStatus === "rejected"
+        ? candidate.missionResultStatus
+        : fallbackMessage.includes("rejected by evaluation")
+          ? "rejected"
+          : /blocked|forbidden|not allowed|requires explicit operator approval/i.test(
+                fallbackMessage,
+              )
+            ? "blocked"
+            : "failed";
+
+    const cause =
+      typeof candidate.missionResultCause === "string" &&
+      candidate.missionResultCause.trim().length > 0
+        ? candidate.missionResultCause.trim()
+        : status === "rejected"
+          ? "evaluation"
+          : status === "blocked"
+            ? "governance"
+            : "execution";
+
+    const output =
+      typeof candidate.missionOutput === "object" &&
+      candidate.missionOutput !== null &&
+      !Array.isArray(candidate.missionOutput)
+        ? Object.freeze({ ...(candidate.missionOutput as Record<string, unknown>) })
+        : null;
+
+    return Object.freeze({
+      status,
+      cause,
+      message:
+        typeof candidate.message === "string" && candidate.message.length > 0
+          ? candidate.message
+          : fallbackMessage,
+      output,
+    });
+  }
+
+  return Object.freeze({
+    status: /blocked|forbidden|not allowed|requires explicit operator approval/i.test(
+      fallbackMessage,
+    )
+      ? "blocked"
+      : "failed",
+    cause: "execution",
+    message: fallbackMessage,
+    output: null,
+  });
 }
 
 function assertSupportedKind(kind: unknown): asserts kind is MissionKind {
@@ -406,6 +492,9 @@ export class MissionEngine {
         status: "cancelled",
         updatedAt: now,
         completedAt: now,
+        output: Object.freeze({
+          missionResult: missionResult("rejected", "governance", reason),
+        }),
         lastError: reason,
       });
 
@@ -481,7 +570,14 @@ export class MissionEngine {
     return this.#updateRunningMission(
       missionId,
       "succeeded",
-      output,
+      Object.freeze({
+        ...output,
+        missionResult: missionResult(
+          "completed",
+          "execution",
+          "Mission completed successfully",
+        ),
+      }),
       null,
     );
   }
@@ -490,11 +586,20 @@ export class MissionEngine {
     missionId: string,
     error: unknown,
   ): Promise<MissionRecord> {
+    const failure = failurePayload(error);
+
     return this.#updateRunningMission(
       missionId,
       "failed",
-      null,
-      errorMessage(error),
+      Object.freeze({
+        ...(failure.output ?? {}),
+        missionResult: missionResult(
+          failure.status,
+          failure.cause,
+          failure.message,
+        ),
+      }),
+      failure.message,
     );
   }
 

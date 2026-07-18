@@ -61,6 +61,8 @@ export interface LearningMissionTemplate {
   readonly input: Readonly<{
     projectId: string;
     objective: string;
+    reasonForSelection: string;
+    expectedNewEvidence: readonly string[];
     cycleIndex: 1;
     maxCycles: 1;
     continuationAuthorized: false;

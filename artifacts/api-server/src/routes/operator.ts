@@ -1,13 +1,43 @@
 import { Router, type IRouter } from "express";
 import {
+  assessMissionRequest,
   forgeRuntime,
+  requirementsForMission,
+  type CapabilityStatus,
   type CreateProjectMemoryRequest,
+  type CreateMissionRequest,
   type ModelRouteRequest,
+  type MissionKind,
   type ProjectMemoryKind,
   type PromptComposeRequest,
 } from "@workspace/forge-runtime";
 
 const router: IRouter = Router();
+
+type IntakeGovernanceStatus =
+  | "can_start"
+  | "approval_required"
+  | "blocked";
+
+interface MissionIntakePreview {
+  readonly originalCommand: string;
+  readonly interpretedGoal: string;
+  readonly missionKind: MissionKind;
+  readonly request: CreateMissionRequest;
+  readonly governance: {
+    readonly status: IntakeGovernanceStatus;
+    readonly decision: "allow" | "require_approval" | "deny";
+    readonly riskLevel: "low" | "medium" | "high" | "critical";
+    readonly reason: string;
+    readonly hardBoundaryActive: boolean;
+  };
+  readonly expectedCapabilities: readonly {
+    readonly capabilityId: string;
+    readonly minimumStatus: CapabilityStatus;
+    readonly currentStatus: CapabilityStatus | "missing";
+    readonly reason: string;
+  }[];
+}
 
 function message(error: unknown): string {
   return error instanceof Error
@@ -30,6 +60,251 @@ function memoryKind(
   }
 
   return undefined;
+}
+
+function normalizeCommand(value: unknown): string {
+  if (typeof value !== "string") {
+    throw new Error("command must be a string");
+  }
+
+  const normalized = value.trim().replace(/\s+/g, " ");
+
+  if (normalized.length < 8) {
+    throw new Error("command must be at least 8 characters");
+  }
+
+  if (normalized.length > 4000) {
+    throw new Error("command must be at most 4000 characters");
+  }
+
+  return normalized;
+}
+
+function pickProjectId(): string {
+  return forgeRuntime.listOperatorProjects()[0]?.id ?? "forge-core";
+}
+
+function extractMaxCycles(command: string): number {
+  const cycleMatch = command.match(/(\d+)\s*(?:cycle|cycles|cycli)/i);
+  const candidate = cycleMatch ? Number(cycleMatch[1]) : 1;
+
+  if (!Number.isInteger(candidate) || candidate < 1) {
+    return 1;
+  }
+
+  return Math.min(candidate, 5);
+}
+
+function extractDurationMs(command: string): number {
+  const match = command.match(/(\d+)\s*(ms|millisecond|milliseconds|sec|secs|second|seconds|min|mins|minute|minutes|uur|hour|hours)/i);
+
+  if (!match) {
+    return 30_000;
+  }
+
+  const amount = Number(match[1]);
+  const unit = match[2].toLowerCase();
+
+  if (!Number.isFinite(amount) || amount <= 0) {
+    return 30_000;
+  }
+
+  if (unit.startsWith("ms")) {
+    return Math.min(Math.round(amount), 300_000);
+  }
+
+  if (unit.startsWith("sec")) {
+    return Math.min(Math.round(amount * 1000), 300_000);
+  }
+
+  if (unit.startsWith("min")) {
+    return Math.min(Math.round(amount * 60_000), 300_000);
+  }
+
+  return Math.min(Math.round(amount * 3_600_000), 300_000);
+}
+
+function extractProofTargetPath(command: string): string | null {
+  const match = command.match(/\b([a-z0-9][a-z0-9._-]*proof[a-z0-9._-]*\.txt)\b/i);
+
+  if (!match) {
+    return null;
+  }
+
+  return match[1].toLowerCase();
+}
+
+function chooseMissionKind(command: string): MissionKind {
+  if (/(stabil|stability|soak|monitor)/i.test(command)) {
+    return "runtime.stability-window";
+  }
+
+  if (/(health|gezondheid|self-check|statuscheck|check runtime)/i.test(command)) {
+    return "runtime.self-check";
+  }
+
+  return "operator.autonomous-cycle";
+}
+
+function buildMissionIntakePreview(command: string): MissionIntakePreview {
+  const projectId = pickProjectId();
+  const missionKind = chooseMissionKind(command);
+  const interpretedGoal = command;
+  const proofTargetPath = extractProofTargetPath(command);
+
+  const request: CreateMissionRequest =
+    missionKind === "operator.autonomous-cycle"
+      ? {
+          kind: missionKind,
+          title: `Operator opdracht: ${interpretedGoal.slice(0, 90)}`,
+          input: {
+            projectId,
+            objective: interpretedGoal,
+            ...(proofTargetPath ? { proofTargetPath } : {}),
+            cycleIndex: 1,
+            maxCycles: extractMaxCycles(command),
+            continuationAuthorized: false,
+          },
+        }
+      : missionKind === "runtime.stability-window"
+        ? {
+            kind: missionKind,
+            title: `Operator stability check: ${interpretedGoal.slice(0, 90)}`,
+            input: {
+              durationMs: extractDurationMs(command),
+              projectId,
+              objective: interpretedGoal,
+            },
+          }
+        : {
+            kind: missionKind,
+            title: `Operator runtime check: ${interpretedGoal.slice(0, 90)}`,
+            input: {
+              projectId,
+              objective: interpretedGoal,
+            },
+          };
+
+  const assessment = assessMissionRequest(request);
+  const autonomy = forgeRuntime.autonomySummary();
+  const expectedCapabilities = requirementsForMission(missionKind).map((requirement) => {
+    const current = forgeRuntime.getCapability(requirement.capabilityId);
+
+    return Object.freeze({
+      capabilityId: requirement.capabilityId,
+      minimumStatus: requirement.minimumStatus,
+      currentStatus: current?.status ?? "missing",
+      reason: requirement.reason,
+    });
+  });
+
+  const status: IntakeGovernanceStatus =
+    assessment.decision === "allow"
+      ? "can_start"
+      : assessment.decision === "require_approval"
+        ? "approval_required"
+        : "blocked";
+
+  return Object.freeze({
+    originalCommand: command,
+    interpretedGoal,
+    missionKind,
+    request,
+    governance: {
+      status,
+      decision: assessment.decision,
+      riskLevel: assessment.riskLevel,
+      reason: assessment.reason,
+      hardBoundaryActive: autonomy.blockedByHardGovernance,
+    },
+    expectedCapabilities,
+  });
+}
+
+async function persistMissionIntake(
+  preview: MissionIntakePreview,
+  missionId: string | null,
+): Promise<void> {
+  const projectId = pickProjectId();
+
+  await forgeRuntime.addProjectMemory(projectId, {
+    kind: "task",
+    source: "desktop-mission-intake",
+    tags: ["mission-intake", "command"],
+    content: preview.originalCommand,
+  });
+
+  await forgeRuntime.addProjectMemory(projectId, {
+    kind: "decision",
+    source: "desktop-mission-intake",
+    tags: ["mission-intake", "interpretation", preview.missionKind],
+    content: JSON.stringify(
+      {
+        interpretedGoal: preview.interpretedGoal,
+        missionKind: preview.missionKind,
+        governance: preview.governance,
+        expectedCapabilities: preview.expectedCapabilities,
+      },
+      null,
+      2,
+    ),
+  });
+
+  await forgeRuntime.recordMemoryBridgeDecision({
+    title: "Operator opdrachtinvoer",
+    content: preview.originalCommand,
+    tags: ["desktop-intake", "command"],
+    sourceMissionId: missionId,
+  });
+
+  await forgeRuntime.recordMemoryBridgeDecision({
+    title: "Operator interpretatie",
+    content: [
+      `Goal: ${preview.interpretedGoal}`,
+      `Mission kind: ${preview.missionKind}`,
+      `Governance: ${preview.governance.status} (${preview.governance.reason})`,
+    ].join("\n"),
+    tags: [
+      "desktop-intake",
+      "interpretation",
+      preview.missionKind,
+      preview.governance.status,
+    ],
+    sourceMissionId: missionId,
+  });
+
+  await forgeRuntime.upsertMemoryBridgeContext({
+    summary: [
+      `Operator goal: ${preview.interpretedGoal}`,
+      `Mission kind: ${preview.missionKind}`,
+      `Governance: ${preview.governance.status}`,
+    ].join("\n"),
+    activeMissionIds: missionId ? [missionId] : [],
+  });
+}
+
+function missionProgress(status: string): number {
+  if (status === "awaiting_approval") {
+    return 20;
+  }
+
+  if (status === "queued") {
+    return 35;
+  }
+
+  if (status === "running") {
+    return 70;
+  }
+
+  if (status === "succeeded") {
+    return 100;
+  }
+
+  if (status === "failed" || status === "cancelled") {
+    return 100;
+  }
+
+  return 0;
 }
 
 router.get("/operator", (_req, res): void => {
@@ -195,6 +470,116 @@ router.get(
     }
 
     res.json(composition);
+  },
+);
+
+router.post(
+  "/operator/mission-intake/preview",
+  (req, res): void => {
+    try {
+      const command = normalizeCommand(req.body?.command);
+      const preview = buildMissionIntakePreview(command);
+      res.json(preview);
+    } catch (error) {
+      res.status(400).json({ error: message(error) });
+    }
+  },
+);
+
+router.post(
+  "/operator/mission-intake/start",
+  async (req, res): Promise<void> => {
+    try {
+      const command = normalizeCommand(req.body?.command);
+      const preview = buildMissionIntakePreview(command);
+
+      await persistMissionIntake(preview, null);
+
+      const result = await forgeRuntime.createMission(preview.request);
+
+      await persistMissionIntake(preview, result.mission.id);
+      await forgeRuntime.recordMemoryBridgeLearning({
+        title: `Mission gestart: ${result.mission.id}`,
+        content: [
+          `Command: ${preview.originalCommand}`,
+          `Interpreted goal: ${preview.interpretedGoal}`,
+          `Mission kind: ${preview.missionKind}`,
+          `Mission status: ${result.mission.status}`,
+          `Governance decision: ${result.governance.decision}`,
+        ].join("\n"),
+        tags: ["desktop-intake", "mission-started", preview.missionKind],
+        sourceMissionId: result.mission.id,
+      });
+
+      res.status(202).json({
+        preview,
+        mission: result.mission,
+        governance: result.governance,
+        approval: result.approval,
+        progress: missionProgress(result.mission.status),
+      });
+    } catch (error) {
+      res.status(400).json({ error: message(error) });
+    }
+  },
+);
+
+router.post(
+  "/operator/mission-intake/:missionId/record-result",
+  async (req, res): Promise<void> => {
+    try {
+      const mission = forgeRuntime.getMission(req.params.missionId);
+
+      if (!mission) {
+        res.status(404).json({ error: "Mission not found" });
+        return;
+      }
+
+      if (mission.status !== "succeeded" && mission.status !== "failed" && mission.status !== "cancelled") {
+        res.status(400).json({ error: "Mission is not finished yet" });
+        return;
+      }
+
+      const projectId = pickProjectId();
+      const resultSummary = mission.status === "succeeded"
+        ? JSON.stringify(mission.output ?? {}, null, 2)
+        : mission.lastError ?? `Mission ended with status ${mission.status}`;
+
+      await forgeRuntime.addProjectMemory(projectId, {
+        kind: "evidence",
+        source: "desktop-mission-console",
+        tags: ["mission-console", "mission-result", mission.status, mission.kind],
+        content: JSON.stringify(
+          {
+            missionId: mission.id,
+            kind: mission.kind,
+            status: mission.status,
+            title: mission.title,
+            startedAt: mission.startedAt,
+            completedAt: mission.completedAt,
+            result: resultSummary,
+          },
+          null,
+          2,
+        ),
+      });
+
+      await forgeRuntime.recordMemoryBridgeLearning({
+        title: `Mission result ${mission.status}: ${mission.id}`,
+        content: [
+          `Mission: ${mission.id}`,
+          `Kind: ${mission.kind}`,
+          `Status: ${mission.status}`,
+          `Result: ${resultSummary}`,
+        ].join("\n"),
+        tags: ["mission-console", "mission-result", mission.status, mission.kind],
+        sourceMissionId: mission.id,
+      });
+
+      res.json({ missionId: mission.id, status: mission.status, recorded: true });
+    } catch (error) {
+      res.status(400).json({ error: message(error) });
+    }
   },
 );
 

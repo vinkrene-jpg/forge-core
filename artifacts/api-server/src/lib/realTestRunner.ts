@@ -271,24 +271,30 @@ export async function executeRealTestRun(input: {
   let sandbox: SandboxRow | undefined;
 
   if (input.moduleId != null) {
-    [module] = await db.select().from(modulesTable).where(eq(modulesTable.id, input.moduleId));
+    [module] = (await db.select().from(modulesTable).where(eq(modulesTable.id, input.moduleId))) as ModuleRow[];
     if (!module) throw new TestTargetError("Module not found");
-    [sandbox] = await db
+    [sandbox] = (await db
       .select()
       .from(sandboxesTable)
       .where(eq(sandboxesTable.moduleId, module.id))
       .orderBy(desc(sandboxesTable.createdAt))
-      .limit(1);
+      .limit(1)) as SandboxRow[];
     if (!sandbox) {
       throw new TestTargetError(
         "Real execution requires a sandbox linked to this module. Create a sandbox with moduleId set and add the module code there.",
       );
     }
   } else if (input.sandboxId != null) {
-    [sandbox] = await db.select().from(sandboxesTable).where(eq(sandboxesTable.id, input.sandboxId));
+    [sandbox] = (await db
+      .select()
+      .from(sandboxesTable)
+      .where(eq(sandboxesTable.id, input.sandboxId))) as SandboxRow[];
     if (!sandbox) throw new TestTargetError("Sandbox not found");
     if (sandbox.moduleId != null) {
-      [module] = await db.select().from(modulesTable).where(eq(modulesTable.id, sandbox.moduleId));
+      [module] = (await db
+        .select()
+        .from(modulesTable)
+        .where(eq(modulesTable.id, sandbox.moduleId))) as ModuleRow[];
     }
   } else {
     throw new TestTargetError("Provide moduleId or sandboxId");

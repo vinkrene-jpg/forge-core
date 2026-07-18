@@ -16,6 +16,7 @@ export const forgeKeys = {
   analyses: ["forge", "analyses"] as const,
   evolution: ["forge", "evolution"] as const,
   learning: ["forge", "learning"] as const,
+  autonomy: ["forge", "autonomy"] as const,
 };
 
 export function useRuntimeQuery() {
@@ -74,6 +75,14 @@ export function useLearningQuery() {
   });
 }
 
+export function useAutonomyQuery() {
+  return useQuery({
+    queryKey: forgeKeys.autonomy,
+    queryFn: forgeApi.autonomy,
+    refetchInterval: 2_000,
+  });
+}
+
 function useRefreshForge() {
   const queryClient = useQueryClient();
 
@@ -99,6 +108,9 @@ function useRefreshForge() {
       }),
       queryClient.invalidateQueries({
         queryKey: forgeKeys.learning,
+      }),
+      queryClient.invalidateQueries({
+        queryKey: forgeKeys.autonomy,
       }),
     ]);
   };
@@ -192,6 +204,33 @@ export function useScheduleLearningProposal() {
   return useMutation({
     mutationFn: (proposalId: string) =>
       forgeApi.scheduleLearningProposal(proposalId),
+    onSuccess: refresh,
+  });
+}
+
+export function useStartAutonomy() {
+  const refresh = useRefreshForge();
+
+  return useMutation({
+    mutationFn: () => forgeApi.startAutonomy(),
+    onSuccess: refresh,
+  });
+}
+
+export function useResumeAutonomy() {
+  const refresh = useRefreshForge();
+
+  return useMutation({
+    mutationFn: () => forgeApi.resumeAutonomy(),
+    onSuccess: refresh,
+  });
+}
+
+export function useStopAutonomy() {
+  const refresh = useRefreshForge();
+
+  return useMutation({
+    mutationFn: () => forgeApi.stopAutonomy(),
     onSuccess: refresh,
   });
 }

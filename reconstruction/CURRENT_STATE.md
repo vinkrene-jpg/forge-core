@@ -1,4 +1,4 @@
-# Forge Current State
+﻿# Forge Current State
 
 Verified through: 2026-07-12 19:16 +02:00
 
@@ -78,7 +78,7 @@ FG-004.110 and FG-004.200 were processed as independent chapters at 2026-07-12T2
 - Verification evidence stores hashes and counts, never raw command output.
 - Live dogfood mission: 95570db1-11b5-4106-a162-c46d28a21650.
 - Live dogfood commit: 0d53bb35137b87583edf70ef4c77bbd62b98d0f9.
-- Evidence: 
+- Evidence:
 econstruction/WORKSPACE_EXECUTOR_VERIFICATION.json.
 - Operational mode: host-local runtime; the persistent Docker-to-host execution bridge remains next.
 
@@ -90,3 +90,77 @@ econstruction/WORKSPACE_EXECUTOR_VERIFICATION.json.
 - The container sends authenticated, expiring requests through an HMAC file bridge; a Windows host agent performs the governed Git mutation.
 - Typecheck, test, build, rollback and local commit remain mandatory. Provider-generated push is forbidden.
 - Provider failure is contained to the provider branch and is never automatically retried.
+
+## FG-005.100 live dogfood outcome
+
+- Outcome: failed
+- Planning mission: dc3ce7ed-4a11-4c91-ac62-1a6c0ffa7718
+- Execution mission:
+- Execution commit:
+- Automatic retry: false
+- Evidence: reconstruction/PROVIDER_BRIDGE_VERIFICATION.json
+
+## Mission output pipeline restoration - 2026-07-15
+
+Status: implemented and validated in source and tests.
+
+- Root cause was confirmed in persisted runtime evidence: repeated `operator.autonomous-cycle` missions failed with `output: null` after evaluator rejection (`score 33`), causing downstream generic memory text.
+- Mission finalization now always persists a structured `missionResult` payload, including explicit statuses (`completed`, `failed`, `blocked`, `rejected`) and cause/message metadata.
+- Autonomous evaluator rejection now throws a structured failure payload that includes mission output context, so failed missions keep evaluable output instead of `null`.
+- Mission Console now renders `missionResult` fields directly for terminal outcomes.
+- Regression coverage added for provider failure and evaluator rejection to enforce non-null mission output with classified mission result.
+
+Validation executed after changes:
+
+- `pnpm run typecheck`
+- `pnpm run build`
+- `pnpm --filter @workspace/forge-runtime test`
+
+## FG-005.110 live verification - 2026-07-15
+
+Status: completed with live governed mission evidence.
+
+- One explicit governed autonomous mission was created and required approval before execution.
+- Verified mission: `7ca0e69b-7e14-4570-8b0e-34c2b52c3749`.
+- Verified approval: `f82a9dda-3572-4362-83b4-d0f2a06f9199`.
+- Verified evaluation: `c8bc3e60-1774-4003-b4f2-7c15e048bad3` (decision `rejected`, score `33`).
+- Terminal mission output was non-null and persisted `missionResult.status=rejected` with `missionResult.cause=evaluation`.
+- Operator evidence memory was persisted for this mission (`3dd17224-8d07-42b9-acd7-d598ebbe688b`).
+- Evidence file: `reconstruction/MISSION_OUTPUT_PIPELINE_VERIFICATION.json`.
+
+## FG-005.120 provider-backed execution stabilization - 2026-07-15
+
+Status: completed with accepted governed mission evidence on an isolated runtime route.
+
+- Live diagnosis confirmed external API providers were unconfigured on the active runtime (`/api/ai/providers` showed `openai`, `anthropic`, `custom` as `configured=false`).
+- Local model endpoint preflight (`http://127.0.0.1:11434/v1/models`) returned `000`, confirming no reachable local model service.
+- A dedicated runtime instance was started on port `5001` with controlled provider routing (`FORGE_AI_PROVIDER=manual-fallback`, `FORGE_LOCAL_MODEL_ENABLED=false`) to stabilize execution without secrets.
+- Verified governed mission: `c22ef824-0f35-4f87-ac44-ccd9620e9ebd`.
+- Verified approval: `22a6b516-a72a-45d5-bb27-d80d38848d7c`.
+- Verified execution: `12aab1a3-3001-4e4c-862a-70c04fc66943` (`providerId=manual-fallback`).
+- Verified evaluation: `d1e6c73b-2dae-44ea-bd09-5f5d4c36275a` (`decision=accepted`, `score=100`).
+- Verified evidence memory: `f52c0819-f66a-4556-b855-0b86fe6efc23`.
+- Terminal mission output persisted `missionResult.status=completed` and `missionResult.cause=execution`.
+- Evidence file: `reconstruction/PROVIDER_STABILIZATION_VERIFICATION.json`.
+
+## FG-005.140 unblock autonomous evaluation - 2026-07-15
+
+Status: completed with root-cause fix and accepted governed mission evidence.
+
+- Root cause was in provider route selection, not in evaluator math: `local-model` was treated as enabled by default and preferred for medium-budget autonomous cycles.
+- In environments without a reachable local model endpoint, executions failed with `error: fetch failed` and `outputText: null`.
+- Evaluator then deterministically scored these missions at `33` because only `mission-linked` and `secret-free` passed while `provider-succeeded`, `output-substantive`, `assumptions-explicit`, and `verification-explicit` failed.
+- Minimal fix: local model routing is now explicit opt-in (`FORGE_LOCAL_MODEL_ENABLED=true`) instead of implicit default-enabled.
+- No evaluator bypass, no hardcoded acceptance, no temporary workaround was introduced.
+- Regression test added to ensure autonomous cycles succeed via manual fallback when local model is not explicitly enabled.
+- Live verification mission accepted after patch: mission `ce073e66-8054-4598-ad3f-d57a273604fa`, evaluation `48a99c9f-67af-4af7-8306-9081b7894efb` (`accepted`, score `100`), evidence memory `bd3ae575-c4fd-4197-b84b-9bb1ef33e31b`.
+- Evidence file: `reconstruction/AUTONOMOUS_EVALUATION_UNBLOCK_VERIFICATION.json`.
+
+## FG-005.150 runtime truth verification - 2026-07-15
+
+Status: live-runtime discrepancy confirmed.
+
+- Live 5000 runtime still emits `providerId=local-model`, `error=fetch failed`, and deterministic evaluation score `33` for recent autonomous missions.
+- The patched source now requires explicit `FORGE_LOCAL_MODEL_ENABLED=true` before local-model can be selected, which should route unconfigured environments to `manual-fallback` instead.
+- The active 5000 process is therefore still running an older build or was not restarted after the provider-selection fix.
+- Live evidence file: `reconstruction/RUNTIME_TRUTH_VERIFICATION.json`.

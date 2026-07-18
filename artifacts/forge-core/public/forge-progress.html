@@ -1,0 +1,66 @@
+<!doctype html>
+<html lang="nl">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Forge Evidence Dashboard</title>
+  <style>
+    :root { color-scheme: dark; font-family: Segoe UI, Arial, sans-serif; }
+    body { margin: 0; background: #10141b; color: #edf2f7; }
+    main { max-width: 920px; margin: 48px auto; padding: 0 24px; }
+    h1 { margin-bottom: 8px; }
+    .muted { color: #9aa7b6; }
+    .grid { display: grid; grid-template-columns: repeat(auto-fit,minmax(240px,1fr)); gap: 16px; margin: 28px 0; }
+    .card { background: #171d27; border: 1px solid #2b3544; border-radius: 12px; padding: 18px; }
+    .ok { color: #62d68a; font-weight: 700; }
+    .warn { color: #f2c166; font-weight: 700; }
+    code { word-break: break-all; }
+    a { color: #7db7ff; }
+  </style>
+</head>
+<body>
+<main>
+  <h1>Forge Evidence Dashboard</h1>
+  <p class="muted">Update 001 · alleen-lezen statuspagina</p>
+  <div class="grid">
+    <section class="card">
+      <h2>Forge runtime</h2>
+      <p id="runtime" class="warn">Controleren...</p>
+    </section>
+    <section class="card">
+      <h2>Lokale provider</h2>
+      <p><span class="ok">local-model</span></p>
+      <p class="muted">qwen2.5-coder:7b via Ollama</p>
+    </section>
+    <section class="card">
+      <h2>Live bewijs</h2>
+      <p class="ok">Bestand + teruglezing + SHA-256 handmatig bevestigd</p>
+      <p class="muted">Dit dashboard verandert geen bewijsgegevens.</p>
+    </section>
+  </div>
+  <section class="card">
+    <h2>Betekenis</h2>
+    <p>De live keten Mission Console → lokaal model → Workspace Executor → bestand → verificatie → evidence is één keer end-to-end bevestigd.</p>
+    <p><a href="/">Terug naar Forge</a></p>
+  </section>
+</main>
+<script>
+(async () => {
+  const target = document.getElementById('runtime');
+  const candidates = ['/api/health', '/health', '/api/runtime/status'];
+  for (const url of candidates) {
+    try {
+      const response = await fetch(url, { cache: 'no-store' });
+      if (response.ok) {
+        target.textContent = 'Actief · ' + url;
+        target.className = 'ok';
+        return;
+      }
+    } catch (_) {}
+  }
+  target.textContent = 'Pagina wordt door Forge geserveerd; afzonderlijk health-endpoint niet gevonden.';
+  target.className = 'warn';
+})();
+</script>
+</body>
+</html>

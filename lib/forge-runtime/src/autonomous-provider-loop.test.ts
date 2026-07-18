@@ -13,8 +13,10 @@ const environmentKeys = [
   "STORAGE_DIR",
   "FORGE_WORKSPACE_ROOT",
   "FORGE_AI_PROVIDER",
+  "FORGE_LOCAL_MODEL_ENABLED",
   "OPENAI_API_KEY",
   "OPENAI_MODEL",
+  "FORGE_AUTONOMY_ENABLED",
 ] as const;
 
 async function waitFor(
@@ -47,6 +49,7 @@ async function withEnvironment(
   process.env.FORGE_AI_PROVIDER = "openai-responses";
   process.env.OPENAI_API_KEY = "test-only-not-a-real-secret";
   process.env.OPENAI_MODEL = "test-model";
+  process.env.FORGE_AUTONOMY_ENABLED = "false";
 
   try {
     await run(storageRoot);
@@ -61,8 +64,33 @@ async function withEnvironment(
       }
     }
 
-    await rm(storageRoot, { recursive: true, force: true });
+    await removeWithRetry(storageRoot);
   }
+}
+
+async function removeWithRetry(pathToRemove: string): Promise<void> {
+  for (let attempt = 0; attempt < 20; attempt += 1) {
+    try {
+      await rm(pathToRemove, { recursive: true, force: true });
+      return;
+    } catch (error) {
+      const code =
+        typeof error === "object" &&
+        error !== null &&
+        "code" in error &&
+        typeof (error as { code?: unknown }).code === "string"
+          ? (error as { code: string }).code
+          : "";
+
+      if (code !== "EBUSY" && code !== "EPERM") {
+        throw error;
+      }
+
+      await new Promise((resolve) => setTimeout(resolve, 50));
+    }
+  }
+
+  await rm(pathToRemove, { recursive: true, force: true });
 }
 
 function autonomousRequest(maxCycles: number) {
@@ -74,6 +102,21 @@ function autonomousRequest(maxCycles: number) {
       objective: "Identify the next evidence-backed Forge implementation step.",
       cycleIndex: 1,
       maxCycles,
+      files: [],
+    },
+  };
+}
+
+function proofRequest() {
+  return {
+    kind: "operator.autonomous-cycle" as const,
+    title: "Autonomous proof mission",
+    input: {
+      projectId: "forge-core",
+      objective:
+        "Maak in een tijdelijke sandbox een bestand forge-proof.txt met een unieke tekst, lees het bestand terug en lever de SHA-256 hash.",
+      cycleIndex: 1,
+      maxCycles: 1,
       files: [],
     },
   };
@@ -199,6 +242,221 @@ test("autonomous provider loop", { concurrency: false }, async (t) => {
     });
   });
 
+  await t.test(
+    "pauses after a learning exercise and resumes only explicitly",
+    async () => {
+      await withEnvironment(async () => {
+        let providerCalls = 0;
+        const connector: AiProviderConnector = {
+          id: "openai-responses",
+          async execute(composition) {
+            providerCalls += 1;
+            const evidenceId = /Required evidence ID:\s*([a-f0-9-]+)/i.exec(
+              composition.content,
+            )?.[1];
+
+            return Object.freeze({
+              providerResponseId: `pause-response-${providerCalls}`,
+              outputText: [
+                "# Evidence-backed implementation step",
+                "Inspect the current integration boundary and implement only the missing link while preserving the authoritative runtime state.",
+                "",
+                "## Assumptions",
+                "The supplied repository state and persistent project memory are authoritative. No unreported code or test result is assumed.",
+                "",
+                "## Verification",
+                "Run typecheck, build, deterministic integration tests, restart the runtime, and verify mission, execution, evaluation and continuation identifiers.",
+                ...(evidenceId
+                  ? [
+                      "",
+                      `EVIDENCE: ${evidenceId}`,
+                      "CAPABILITY_RESULT: PASS",
+                    ]
+                  : []),
+              ].join("\n"),
+              usage: Object.freeze({
+                inputTokens: 120,
+                outputTokens: 80,
+                totalTokens: 200,
+              }),
+            });
+          },
+        };
+        const runtime = new ForgeRuntime({
+          aiProviderConnectors: [connector],
+          missionLoopPollIntervalMs: 100,
+        });
+
+        await runtime.start();
+        const created = await runtime.createMission(autonomousRequest(1));
+
+        assert.ok(created.approval);
+        await runtime.approveApproval(created.approval.id, "integration-test");
+        await runtime.setAutonomyEnabled(true);
+
+        await waitFor(() => {
+          const missions = autonomousMissions(runtime);
+
+          return (
+            missions.length === 2 &&
+            missions[0].status === "succeeded" &&
+            missions[1].status === "awaiting_approval"
+          );
+        });
+
+        assert.equal(providerCalls, 1);
+        const awaitingSummary = runtime.autonomySummary();
+        assert.ok(awaitingSummary.pendingApprovals > 0);
+        assert.match(
+          awaitingSummary.pauseReason ?? "",
+          /approval|cooldown/i,
+        );
+
+        const learningMission = autonomousMissions(runtime)[1];
+        const learningApproval = runtime
+          .listApprovals("pending")
+          .find((approval) => approval.missionId === learningMission.id);
+
+        assert.ok(learningApproval);
+        await runtime.approveApproval(
+          learningApproval.id,
+          "integration-test",
+        );
+
+        await waitFor(() => {
+          const missions = autonomousMissions(runtime);
+
+          return (
+            missions.length === 2 &&
+            (missions[1].status === "succeeded" ||
+              missions[1].status === "failed")
+          );
+        });
+
+        await waitFor(() => {
+          const summary = runtime.autonomySummary();
+
+          return (
+            summary.loopPaused &&
+            summary.pauseRequiresResume &&
+            /learning exercise/i.test(summary.pauseReason ?? "")
+          );
+        });
+
+        const missionCountAfterPause = autonomousMissions(runtime).length;
+        await new Promise((resolve) => setTimeout(resolve, 300));
+        assert.equal(autonomousMissions(runtime).length, missionCountAfterPause);
+        const providerCallsBeforeResume = providerCalls;
+
+        runtime.resumeAutonomy();
+
+        await waitFor(
+          () => runtime.autonomySummary().pauseRequiresResume === false,
+        );
+
+        assert.equal(providerCalls, providerCallsBeforeResume);
+        assert.equal(runtime.autonomySummary().pauseRequiresResume, false);
+
+        await runtime.stop();
+      });
+    },
+  );
+
+  await t.test(
+    "accepts proof mission only with concrete execution evidence",
+    async () => {
+      await withEnvironment(async () => {
+        const connector: AiProviderConnector = {
+          id: "openai-responses",
+          async execute() {
+            return Object.freeze({
+              providerResponseId: "proof-response-1",
+              outputText: [
+                "# Proof execution summary",
+                "Assumptions: the runtime action runner executed file write/read/hash in the mission sandbox.",
+                "Verification guidance: inspect execution evidence and compare the persisted hash with the stored file content.",
+                "CAPABILITY_RESULT: PASS",
+              ].join("\n"),
+              usage: Object.freeze({
+                inputTokens: 120,
+                outputTokens: 80,
+                totalTokens: 200,
+              }),
+            });
+          },
+        };
+        const runtime = new ForgeRuntime({
+          aiProviderConnectors: [connector],
+          missionLoopPollIntervalMs: 100,
+        });
+
+        await runtime.start();
+
+        const created = await runtime.createMission(proofRequest());
+        assert.ok(created.approval);
+        await runtime.approveApproval(created.approval.id, "integration-test");
+
+        await waitFor(() => {
+          const mission = runtime.getMission(created.mission.id);
+          return mission?.status === "succeeded";
+        });
+
+        const mission = runtime.getMission(created.mission.id);
+        assert.equal(mission?.status, "succeeded");
+        const evidence = mission?.output
+          ?.executionEvidence as {
+          receipts?: readonly unknown[];
+          artifacts?: readonly { readonly kind?: unknown; readonly path?: unknown; readonly sha256?: unknown }[];
+        } | undefined;
+        assert.ok(evidence);
+        assert.ok((evidence?.receipts?.length ?? 0) > 0);
+        assert.ok((evidence?.artifacts?.length ?? 0) > 0);
+        assert.equal(evidence?.artifacts?.[0]?.kind, "file-hash-proof");
+        assert.match(String(evidence?.artifacts?.[0]?.path ?? ""), /forge-proof\.txt/i);
+        assert.match(String(evidence?.artifacts?.[0]?.sha256 ?? ""), /^[a-f0-9]{64}$/);
+
+        await runtime.stop();
+      });
+    },
+  );
+
+  await t.test(
+    "blocks build objective when provider route falls back to manual-fallback",
+    async () => {
+      await withEnvironment(async () => {
+        delete process.env.FORGE_AI_PROVIDER;
+        delete process.env.OPENAI_API_KEY;
+        delete process.env.OPENAI_MODEL;
+        delete process.env.FORGE_LOCAL_MODEL_ENABLED;
+
+        const runtime = new ForgeRuntime({
+          missionLoopPollIntervalMs: 100,
+        });
+
+        await runtime.start();
+
+        const created = await runtime.createMission(proofRequest());
+        assert.ok(created.approval);
+        await runtime.approveApproval(created.approval.id, "integration-test");
+
+        await waitFor(() => {
+          const mission = runtime.getMission(created.mission.id);
+          return mission?.status === "failed";
+        });
+
+        const mission = runtime.getMission(created.mission.id);
+        assert.equal(mission?.status, "failed");
+        assert.equal(
+          (mission?.output?.missionResult as { status?: unknown } | undefined)?.status,
+          "blocked",
+        );
+        assert.match(mission?.lastError ?? "", /manual-fallback/i);
+
+        await runtime.stop();
+      });
+    },
+  );
+
   await t.test("contains provider failure without continuation", async () => {
     await withEnvironment(async () => {
       const connector: AiProviderConnector = {
@@ -222,10 +480,108 @@ test("autonomous provider loop", { concurrency: false }, async (t) => {
         return missions.length === 1 && missions[0].status === "failed";
       });
 
-      assert.equal(autonomousMissions(runtime).length, 1);
+      const missions = autonomousMissions(runtime);
+      assert.equal(missions.length, 1);
+      assert.ok(missions[0].output);
+      assert.equal(
+        (missions[0].output?.missionResult as { status?: unknown } | undefined)
+          ?.status,
+        "rejected",
+      );
       assert.equal(runtime.listAiExecutions().length, 1);
       assert.equal(runtime.listAiExecutions()[0].status, "failed");
       assert.equal(runtime.snapshot().kernel.status, "running");
+
+      await runtime.stop();
+    });
+  });
+
+  await t.test("persists rejected mission output when evaluation rejects", async () => {
+    await withEnvironment(async () => {
+      const connector: AiProviderConnector = {
+        id: "openai-responses",
+        async execute() {
+          return Object.freeze({
+            providerResponseId: "response-rejected",
+            outputText: "",
+            usage: Object.freeze({
+              inputTokens: 5,
+              outputTokens: 0,
+              totalTokens: 5,
+            }),
+          });
+        },
+      };
+
+      const runtime = new ForgeRuntime({
+        aiProviderConnectors: [connector],
+        missionLoopPollIntervalMs: 100,
+      });
+
+      await runtime.start();
+      const created = await runtime.createMission(autonomousRequest(1));
+      assert.ok(created.approval);
+      await runtime.approveApproval(created.approval.id, "integration-test");
+
+      await waitFor(() => {
+        const missions = autonomousMissions(runtime);
+        return missions.length === 1 && missions[0].status === "failed";
+      });
+
+      const mission = autonomousMissions(runtime)[0];
+      assert.ok(mission.output);
+      const missionResult = mission.output?.missionResult as {
+        status?: unknown;
+        cause?: unknown;
+      };
+      assert.equal(missionResult.status, "rejected");
+      assert.equal(missionResult.cause, "evaluation");
+      assert.equal(
+        (mission.output?.evaluation as { decision?: unknown } | undefined)
+          ?.decision,
+        "rejected",
+      );
+
+      await runtime.stop();
+    });
+  });
+
+  await t.test("uses manual fallback when local model is not explicitly enabled", async () => {
+    await withEnvironment(async () => {
+      delete process.env.FORGE_AI_PROVIDER;
+      delete process.env.OPENAI_API_KEY;
+      delete process.env.OPENAI_MODEL;
+      delete process.env.FORGE_LOCAL_MODEL_ENABLED;
+
+      const runtime = new ForgeRuntime({
+        missionLoopPollIntervalMs: 100,
+      });
+
+      await runtime.start();
+
+      const created = await runtime.createMission(autonomousRequest(1));
+      assert.ok(created.approval);
+      await runtime.approveApproval(created.approval.id, "integration-test");
+
+      await waitFor(() => {
+        const mission = runtime.getMission(created.mission.id);
+        return mission?.status === "succeeded";
+      });
+
+      const mission = runtime.getMission(created.mission.id);
+      assert.equal(mission?.status, "succeeded");
+      assert.equal(
+        (mission?.output?.evaluation as { score?: unknown } | undefined)?.score,
+        100,
+      );
+
+      const execution = runtime
+        .listAiExecutions()
+        .find((item) => item.missionId === created.mission.id);
+
+      assert.ok(execution);
+      assert.equal(execution?.providerId, "manual-fallback");
+      assert.equal(execution?.status, "succeeded");
 
       await runtime.stop();
     });

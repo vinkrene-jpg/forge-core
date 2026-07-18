@@ -83,6 +83,14 @@ function validateState(
       execution.createdAt,
       "execution.createdAt",
     );
+
+    if (
+      execution.estimatedCostUsd !== undefined &&
+      (typeof execution.estimatedCostUsd !== "number" ||
+        execution.estimatedCostUsd < 0)
+    ) {
+      throw new Error("execution.estimatedCostUsd is invalid");
+    }
   }
 }
 
@@ -160,6 +168,10 @@ export class FileAiGatewayStateStore
           Object.freeze({
             ...execution,
             missionId: execution.missionId ?? null,
+            estimatedCostUsd:
+              typeof execution.estimatedCostUsd === "number"
+                ? execution.estimatedCostUsd
+                : 0,
           }),
         ),
       ),

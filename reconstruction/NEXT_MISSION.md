@@ -1,33 +1,30 @@
 # Forge Next Mission
 
-## FG-005.100 - Provider Change Planner and Host Execution Bridge
+## FG-005.150 - Validate evaluator stability across provider modes
 
-Status: ready after verified Workspace Executor foundation.
+Status: ready.
 
 ## Objective
 
-Translate one grounded provider result into a strict bounded WorkspaceChangeRequest, show exact files, hashes, risk and verification for approval, and execute it through the verified host-local Workspace Executor.
+Demonstrate stable, evidence-based evaluator outcomes across both real-provider and fallback-provider routes, with explicit proof that accepted and rejected decisions match execution evidence.
 
 ## Required chapters
 
-1. Strict executable change schema; prose is never executable.
-2. Source selection and SHA-256 binding before provider execution.
-3. Deterministic validation before approval.
-4. Persistent authenticated Docker-to-host executor bridge.
-5. Approval view with exact diff, commands, commit and push intent.
-6. One real small Forge task from operator goal through provider plan, approval, verification, rollback proof and local commit.
+1. Run one governed autonomous mission on a real configured provider route (if available) and capture acceptance evidence.
+2. Run one governed autonomous mission on fallback route and capture acceptance or rejection evidence with full check breakdown.
+3. Verify evaluator checks map directly to provider execution state and output text characteristics (substantive content, assumptions, verification guidance, secret safety).
+4. Publish comparative evidence under `reconstruction/` with mission, execution, evaluation and memory IDs for both routes.
 
 ## Failure rules
 
-- Shared schema, integrity, typecheck or build failure blocks dependent execution.
-- Unrelated provider or research failure blocks only its own branch.
-- No automatic provider retry.
-- No push or deployment without separate explicit approval.
+- Shared typecheck, test or build failure blocks completion.
+- Provider availability or quota failures are isolated and must not trigger automatic retry.
+- No destructive operations and no history rewrite.
 
-## Resume after FG-005.100
+## Resume checklist
 
-1. Confirm the host bridge health file and Forge API health before accepting workspace work.
-2. Use operator.workspace-plan for provider-generated changes; inspect its exact paths, hashes and verification list.
-3. Schedule the validated plan only after review, then grant the separate operator.workspace-change approval.
-4. If the provider branch failed, inspect PROVIDER_BRIDGE_VERIFICATION.json and retry only after a new explicit operator decision.
-5. Continue with multi-file task decomposition and bounded dependency-aware parallelism; never broaden write authority implicitly.
+1. Confirm runtime/API health.
+2. Validate provider routing and connectivity preflight for both configured real-provider and fallback-provider modes.
+3. Execute governed missions and capture evaluator check-level outcomes.
+4. Capture comparative evidence IDs and hashes across mission/evaluation/memory stores.
+5. Commit only after verification succeeds.

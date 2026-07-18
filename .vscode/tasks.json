@@ -1,0 +1,1207 @@
+{
+	"version": "2.0.0",
+	"tasks": [
+		{
+			"label": "forge-runtime-tests",
+			"type": "shell",
+			"command": "cmd",
+			"args": [
+				"/d",
+				"/s",
+				"/c",
+				"pnpm --filter @workspace/forge-runtime test"
+			],
+			"isBackground": false
+		},
+		{
+			"label": "forge-workspace-typecheck",
+			"type": "shell",
+			"command": "cmd",
+			"args": [
+				"/d",
+				"/s",
+				"/c",
+				"pnpm run typecheck"
+			],
+			"isBackground": false
+		},
+		{
+			"label": "forge-workspace-build",
+			"type": "shell",
+			"command": "cmd",
+			"args": [
+				"/d",
+				"/s",
+				"/c",
+				"pnpm run build"
+			],
+			"isBackground": false
+		},
+		{
+			"label": "forge-runtime-tests-final",
+			"type": "shell",
+			"command": "cmd",
+			"args": [
+				"/d",
+				"/s",
+				"/c",
+				"pnpm --filter @workspace/forge-runtime test"
+			],
+			"isBackground": false
+		},
+		{
+			"label": "forge-workspace-typecheck-final",
+			"type": "shell",
+			"command": "cmd",
+			"args": [
+				"/d",
+				"/s",
+				"/c",
+				"pnpm run typecheck"
+			],
+			"isBackground": false
+		},
+		{
+			"label": "autonomy-test-only",
+			"type": "shell",
+			"command": "cmd",
+			"args": [
+				"/d",
+				"/s",
+				"/c",
+				"pnpm --filter @workspace/forge-runtime exec node --import tsx --test src/autonomy-engine.test.ts"
+			],
+			"isBackground": false
+		},
+		{
+			"label": "autonomy-test-only-rerun",
+			"type": "shell",
+			"command": "cmd",
+			"args": [
+				"/d",
+				"/s",
+				"/c",
+				"pnpm --filter @workspace/forge-runtime exec node --import tsx --test src/autonomy-engine.test.ts"
+			],
+			"isBackground": false
+		},
+		{
+			"label": "autonomy-test-only-rerun-2",
+			"type": "shell",
+			"command": "cmd",
+			"args": [
+				"/d",
+				"/s",
+				"/c",
+				"pnpm --filter @workspace/forge-runtime exec node --import tsx --test src/autonomy-engine.test.ts"
+			],
+			"isBackground": false
+		},
+		{
+			"label": "autonomy-test-diagnose",
+			"type": "shell",
+			"command": "cmd",
+			"args": [
+				"/d",
+				"/s",
+				"/c",
+				"pnpm --filter @workspace/forge-runtime exec node --import tsx --test src/autonomy-engine.test.ts"
+			],
+			"isBackground": false
+		},
+		{
+			"label": "forge-runtime-tests-final-green",
+			"type": "shell",
+			"command": "cmd",
+			"args": [
+				"/d",
+				"/s",
+				"/c",
+				"pnpm --filter @workspace/forge-runtime test"
+			],
+			"isBackground": false
+		},
+		{
+			"label": "forge-workspace-typecheck-final-green",
+			"type": "shell",
+			"command": "cmd",
+			"args": [
+				"/d",
+				"/s",
+				"/c",
+				"pnpm run typecheck"
+			],
+			"isBackground": false
+		},
+		{
+			"label": "forge-workspace-build-final-green",
+			"type": "shell",
+			"command": "cmd",
+			"args": [
+				"/d",
+				"/s",
+				"/c",
+				"pnpm run build"
+			],
+			"isBackground": false
+		},
+		{
+			"label": "git-status-summary",
+			"type": "shell",
+			"command": "cmd",
+			"args": [
+				"/d",
+				"/s",
+				"/c",
+				"git status --short"
+			],
+			"isBackground": false
+		},
+		{
+			"label": "forge-runtime-tests-memory-bridge",
+			"type": "shell",
+			"command": "cmd",
+			"args": [
+				"/d",
+				"/s",
+				"/c",
+				"pnpm --filter @workspace/forge-runtime test"
+			],
+			"isBackground": false
+		},
+		{
+			"label": "forge-typecheck-memory-bridge",
+			"type": "shell",
+			"command": "cmd",
+			"args": [
+				"/d",
+				"/s",
+				"/c",
+				"pnpm run typecheck"
+			],
+			"isBackground": false
+		},
+		{
+			"label": "learning-test-with-autonomy-off",
+			"type": "shell",
+			"command": "cmd",
+			"args": [
+				"/d",
+				"/s",
+				"/c",
+				"set FORGE_AUTONOMY_ENABLED=false&& pnpm --filter @workspace/forge-runtime exec node --import tsx --test src/learning-engine.test.ts"
+			],
+			"isBackground": false
+		},
+		{
+			"label": "forge-runtime-tests-memory-bridge-final",
+			"type": "shell",
+			"command": "cmd",
+			"args": [
+				"/d",
+				"/s",
+				"/c",
+				"pnpm --filter @workspace/forge-runtime test"
+			],
+			"isBackground": false
+		},
+		{
+			"label": "forge-typecheck-memory-bridge-final",
+			"type": "shell",
+			"command": "cmd",
+			"args": [
+				"/d",
+				"/s",
+				"/c",
+				"pnpm run typecheck"
+			],
+			"isBackground": false
+		},
+		{
+			"label": "forge-build-memory-bridge-final",
+			"type": "shell",
+			"command": "cmd",
+			"args": [
+				"/d",
+				"/s",
+				"/c",
+				"pnpm run build"
+			],
+			"isBackground": false
+		},
+		{
+			"label": "git-status-memory-bridge",
+			"type": "shell",
+			"command": "cmd",
+			"args": [
+				"/d",
+				"/s",
+				"/c",
+				"git status --short"
+			],
+			"isBackground": false
+		},
+		{
+			"label": "cleanup-generated-memory-bridge-storage",
+			"type": "shell",
+			"command": "cmd",
+			"args": [
+				"/d",
+				"/s",
+				"/c",
+				"if exist lib\\forge-runtime\\storage rmdir /s /q lib\\forge-runtime\\storage"
+			],
+			"isBackground": false
+		},
+		{
+			"label": "git-status-memory-bridge-clean",
+			"type": "shell",
+			"command": "cmd",
+			"args": [
+				"/d",
+				"/s",
+				"/c",
+				"git status --short"
+			],
+			"isBackground": false
+		},
+		{
+			"label": "pnpm-install",
+			"type": "shell",
+			"command": "pnpm",
+			"args": [
+				"install"
+			]
+		},
+		{
+			"label": "pnpm-install-cmd",
+			"type": "shell",
+			"command": "cmd",
+			"args": [
+				"/c",
+				"pnpm install"
+			]
+		},
+		{
+			"label": "pnpm-install-allow-build",
+			"type": "shell",
+			"command": "cmd",
+			"args": [
+				"/c",
+				"pnpm install --allow-build=better-sqlite3"
+			]
+		},
+		{
+			"label": "pnpm-approve-builds-help",
+			"type": "shell",
+			"command": "cmd",
+			"args": [
+				"/c",
+				"pnpm help approve-builds"
+			]
+		},
+		{
+			"label": "pnpm-approve-builds",
+			"type": "shell",
+			"command": "cmd",
+			"args": [
+				"/c",
+				"pnpm approve-builds better-sqlite3 --all"
+			]
+		},
+		{
+			"label": "pnpm-approve-builds-all",
+			"type": "shell",
+			"command": "cmd",
+			"args": [
+				"/c",
+				"pnpm approve-builds --all"
+			]
+		},
+		{
+			"label": "approve-better-sqlite3",
+			"type": "shell",
+			"command": "cmd",
+			"args": [
+				"/c",
+				"pnpm approve-builds better-sqlite3"
+			]
+		},
+		{
+			"label": "install-cmd",
+			"type": "shell",
+			"command": "cmd",
+			"args": [
+				"/c",
+				"pnpm install"
+			]
+		},
+		{
+			"label": "build-cmd",
+			"type": "shell",
+			"command": "cmd",
+			"args": [
+				"/c",
+				"pnpm run build"
+			]
+		},
+		{
+			"label": "install-after-types",
+			"type": "shell",
+			"command": "cmd",
+			"args": [
+				"/c",
+				"pnpm install"
+			]
+		},
+		{
+			"label": "build-cmd-2",
+			"type": "shell",
+			"command": "cmd",
+			"args": [
+				"/c",
+				"pnpm run build"
+			]
+		},
+		{
+			"label": "typecheck-only",
+			"type": "shell",
+			"command": "cmd",
+			"args": [
+				"/c",
+				"pnpm run typecheck"
+			]
+		},
+		{
+			"label": "api-tsc-raw",
+			"type": "shell",
+			"command": "cmd",
+			"args": [
+				"/c",
+				"pnpm --filter @workspace/api-server exec tsc -p tsconfig.json --noEmit --pretty false"
+			]
+		},
+		{
+			"label": "typecheck-final",
+			"type": "shell",
+			"command": "cmd",
+			"args": [
+				"/c",
+				"pnpm run typecheck"
+			]
+		},
+		{
+			"label": "build-final",
+			"type": "shell",
+			"command": "cmd",
+			"args": [
+				"/c",
+				"pnpm run build"
+			]
+		},
+		{
+			"label": "api-tsc-raw-2",
+			"type": "shell",
+			"command": "cmd",
+			"args": [
+				"/c",
+				"pnpm --filter @workspace/api-server exec tsc -p tsconfig.json --noEmit --pretty false"
+			]
+		},
+		{
+			"label": "api-tsc-raw-3",
+			"type": "shell",
+			"command": "cmd",
+			"args": [
+				"/c",
+				"pnpm --filter @workspace/api-server exec tsc -p tsconfig.json --noEmit --pretty false"
+			]
+		},
+		{
+			"label": "db-build-decls",
+			"type": "shell",
+			"command": "cmd",
+			"args": [
+				"/c",
+				"pnpm --filter @workspace/db exec tsc -b tsconfig.json --force"
+			]
+		},
+		{
+			"label": "api-tsc-raw-4",
+			"type": "shell",
+			"command": "cmd",
+			"args": [
+				"/c",
+				"pnpm --filter @workspace/api-server exec tsc -p tsconfig.json --noEmit --pretty false"
+			]
+		},
+		{
+			"label": "api-tsc-raw-5",
+			"type": "shell",
+			"command": "cmd",
+			"args": [
+				"/c",
+				"pnpm --filter @workspace/api-server exec tsc -p tsconfig.json --noEmit --pretty false"
+			]
+		},
+		{
+			"label": "typecheck-final-2",
+			"type": "shell",
+			"command": "cmd",
+			"args": [
+				"/c",
+				"pnpm run typecheck"
+			]
+		},
+		{
+			"label": "build-final-2",
+			"type": "shell",
+			"command": "cmd",
+			"args": [
+				"/c",
+				"pnpm run build"
+			]
+		},
+		{
+			"label": "runtime-tests",
+			"type": "shell",
+			"command": "cmd",
+			"args": [
+				"/c",
+				"pnpm --filter @workspace/forge-runtime test"
+			]
+		},
+		{
+			"label": "api-tsc-raw-6",
+			"type": "shell",
+			"command": "cmd",
+			"args": [
+				"/c",
+				"pnpm --filter @workspace/api-server exec tsc -p tsconfig.json --noEmit --pretty false"
+			]
+		},
+		{
+			"label": "api-tsc-raw-7",
+			"type": "shell",
+			"command": "cmd",
+			"args": [
+				"/c",
+				"pnpm --filter @workspace/api-server exec tsc -p tsconfig.json --noEmit --pretty false"
+			]
+		},
+		{
+			"label": "typecheck-final-3",
+			"type": "shell",
+			"command": "cmd",
+			"args": [
+				"/c",
+				"pnpm run typecheck"
+			]
+		},
+		{
+			"label": "build-final-3",
+			"type": "shell",
+			"command": "cmd",
+			"args": [
+				"/c",
+				"pnpm run build"
+			]
+		},
+		{
+			"label": "install-final",
+			"type": "shell",
+			"command": "cmd",
+			"args": [
+				"/c",
+				"pnpm install"
+			]
+		},
+		{
+			"label": "build-final-4",
+			"type": "shell",
+			"command": "cmd",
+			"args": [
+				"/c",
+				"pnpm run build"
+			]
+		},
+		{
+			"label": "runtime-tests-final",
+			"type": "shell",
+			"command": "cmd",
+			"args": [
+				"/c",
+				"pnpm --filter @workspace/forge-runtime test"
+			]
+		},
+		{
+			"label": "typecheck-mission-intake",
+			"type": "shell",
+			"command": "cmd",
+			"args": [
+				"/c",
+				"pnpm run typecheck"
+			]
+		},
+		{
+			"label": "build-mission-intake",
+			"type": "shell",
+			"command": "cmd",
+			"args": [
+				"/c",
+				"pnpm run build"
+			]
+		},
+		{
+			"label": "tests-runtime-mission-intake",
+			"type": "shell",
+			"command": "cmd",
+			"args": [
+				"/c",
+				"pnpm --filter @workspace/forge-runtime test"
+			]
+		},
+		{
+			"label": "api-tsc-intake-errors",
+			"type": "shell",
+			"command": "cmd",
+			"args": [
+				"/c",
+				"pnpm --filter @workspace/api-server exec tsc -p tsconfig.json --noEmit --pretty false"
+			]
+		},
+		{
+			"label": "typecheck-mission-intake-2",
+			"type": "shell",
+			"command": "cmd",
+			"args": [
+				"/c",
+				"pnpm run typecheck"
+			]
+		},
+		{
+			"label": "build-mission-intake-2",
+			"type": "shell",
+			"command": "cmd",
+			"args": [
+				"/c",
+				"pnpm run build"
+			]
+		},
+		{
+			"label": "runtime-tests-after-intake",
+			"type": "shell",
+			"command": "cmd",
+			"args": [
+				"/c",
+				"pnpm --filter @workspace/forge-runtime test"
+			]
+		},
+		{
+			"label": "typecheck-mission-console",
+			"type": "shell",
+			"command": "cmd",
+			"args": [
+				"/c",
+				"pnpm run typecheck"
+			]
+		},
+		{
+			"label": "build-mission-console",
+			"type": "shell",
+			"command": "cmd",
+			"args": [
+				"/c",
+				"pnpm run build"
+			]
+		},
+		{
+			"label": "tests-mission-console",
+			"type": "shell",
+			"command": "cmd",
+			"args": [
+				"/c",
+				"pnpm --filter @workspace/forge-runtime test"
+			]
+		},
+		{
+			"label": "checkpoint-quarantine-tmp",
+			"type": "shell",
+			"command": "powershell",
+			"args": [
+				"-NoProfile",
+				"-Command",
+				"$ts=Get-Date -Format 'yyyyMMdd-HHmmss'; $q=\"C:\\Forge\\quarantine\\missions-tmp-$ts\"; New-Item -ItemType Directory -Path $q -Force | Out-Null; Move-Item -Path \"C:\\Forge\\forge-core\\storage\\forge-runtime\\missions.json.*.tmp\" -Destination $q -ErrorAction Stop; Write-Output \"QUAR=$q\"; Write-Output \"COUNT=$((Get-ChildItem $q -File).Count)\""
+			]
+		},
+		{
+			"label": "checkpoint-quarantine-tmp-2",
+			"type": "shell",
+			"command": "powershell",
+			"args": [
+				"-NoProfile",
+				"-Command",
+				"$ts=Get-Date -Format \"yyyyMMdd-HHmmss\"; $q=Join-Path \"C:\\Forge\\quarantine\" (\"missions-tmp-\" + $ts); New-Item -ItemType Directory -Path $q -Force | Out-Null; Move-Item -Path \"C:\\Forge\\forge-core\\storage\\forge-runtime\\missions.json.*.tmp\" -Destination $q -ErrorAction Stop; Write-Output (\"QUAR=\" + $q); Write-Output (\"COUNT=\" + (Get-ChildItem $q -File | Measure-Object).Count)"
+			]
+		},
+		{
+			"label": "checkpoint-quarantine-tmp-cmd",
+			"type": "shell",
+			"command": "cmd",
+			"args": [
+				"/c",
+				"set q=C:\\Forge\\quarantine\\missions-tmp-%RANDOM%%RANDOM% && mkdir \"%q%\" && move \"C:\\Forge\\forge-core\\storage\\forge-runtime\\missions.json.*.tmp\" \"%q%\\\" && echo QUAR=%q%"
+			]
+		},
+		{
+			"label": "checkpoint-quarantine-tmp-cmd-2",
+			"type": "shell",
+			"command": "cmd",
+			"args": [
+				"/c",
+				"set q=C:\\Forge\\quarantine\\missions-tmp-%RANDOM%%RANDOM% && mkdir \"%q%\" && move \"C:\\Forge\\forge-core\\storage\\forge-runtime\\missions.json.26056.1784132704097.tmp\" \"%q%\" && move \"C:\\Forge\\forge-core\\storage\\forge-runtime\\missions.json.27060.1784131314128.tmp\" \"%q%\" && move \"C:\\Forge\\forge-core\\storage\\forge-runtime\\missions.json.29132.1784133130507.tmp\" \"%q%\" && echo QUAR=%q%"
+			]
+		},
+		{
+			"label": "checkpoint-quarantine-tmp-cmd-3",
+			"type": "shell",
+			"command": "cmd",
+			"args": [
+				"/v:on",
+				"/c",
+				"set q=C:\\Forge\\quarantine\\missions-tmp-!RANDOM!!RANDOM! && mkdir \"!q!\" && move \"C:\\Forge\\forge-core\\storage\\forge-runtime\\missions.json.26056.1784132704097.tmp\" \"!q!\" && move \"C:\\Forge\\forge-core\\storage\\forge-runtime\\missions.json.27060.1784131314128.tmp\" \"!q!\" && move \"C:\\Forge\\forge-core\\storage\\forge-runtime\\missions.json.29132.1784133130507.tmp\" \"!q!\" && echo QUAR=!q!"
+			]
+		},
+		{
+			"label": "checkpoint-typecheck-libs",
+			"type": "shell",
+			"command": "cmd",
+			"args": [
+				"/c",
+				"pnpm run typecheck:libs"
+			]
+		},
+		{
+			"label": "checkpoint-autonomy-learning-tests",
+			"type": "shell",
+			"command": "cmd",
+			"args": [
+				"/c",
+				"pnpm --filter @workspace/forge-runtime exec node --import tsx --test src/autonomous-provider-loop.test.ts src/learning-engine.test.ts"
+			]
+		},
+		{
+			"label": "checkpoint-learning-test-only",
+			"type": "shell",
+			"command": "cmd",
+			"args": [
+				"/c",
+				"pnpm --filter @workspace/forge-runtime exec node --import tsx --test src/learning-engine.test.ts"
+			]
+		},
+		{
+			"label": "checkpoint-autonomy-test-only",
+			"type": "shell",
+			"command": "cmd",
+			"args": [
+				"/c",
+				"pnpm --filter @workspace/forge-runtime exec node --import tsx --test src/autonomous-provider-loop.test.ts"
+			]
+		},
+		{
+			"label": "diag-autonomy-test-1",
+			"type": "shell",
+			"command": "cmd",
+			"args": [
+				"/c",
+				"pnpm --filter @workspace/forge-runtime exec node --import tsx --test src/autonomous-provider-loop.test.ts --test-name-pattern=\"completes, continues and survives restart\""
+			]
+		},
+		{
+			"label": "diag-autonomy-test-2",
+			"type": "shell",
+			"command": "cmd",
+			"args": [
+				"/c",
+				"pnpm --filter @workspace/forge-runtime exec node --import tsx --test src/autonomous-provider-loop.test.ts --test-name-pattern=\"pauses after a learning exercise and resumes only explicitly\""
+			]
+		},
+		{
+			"label": "diag-learning-test-1",
+			"type": "shell",
+			"command": "cmd",
+			"args": [
+				"/c",
+				"pnpm --filter @workspace/forge-runtime exec node --import tsx --test src/learning-engine.test.ts --test-name-pattern=\"learning engine persists evidence and uses governance for proposals\""
+			]
+		},
+		{
+			"label": "diag-autonomy-test-1-tap",
+			"type": "shell",
+			"command": "cmd",
+			"args": [
+				"/c",
+				"pnpm --filter @workspace/forge-runtime exec node --import tsx --test --test-reporter tap src/autonomous-provider-loop.test.ts"
+			]
+		},
+		{
+			"label": "diag-learning-test-1-tap",
+			"type": "shell",
+			"command": "cmd",
+			"args": [
+				"/c",
+				"pnpm --filter @workspace/forge-runtime exec node --import tsx --test --test-reporter tap src/learning-engine.test.ts"
+			]
+		},
+		{
+			"label": "rerun-autonomy-test-case-1",
+			"type": "shell",
+			"command": "cmd",
+			"args": [
+				"/c",
+				"pnpm --filter @workspace/forge-runtime exec node --import tsx --test --test-reporter tap src/autonomous-provider-loop.test.ts --test-name-pattern=\"completes, continues and survives restart\""
+			]
+		},
+		{
+			"label": "rerun-autonomy-test-case-2",
+			"type": "shell",
+			"command": "cmd",
+			"args": [
+				"/c",
+				"pnpm --filter @workspace/forge-runtime exec node --import tsx --test --test-reporter tap src/autonomous-provider-loop.test.ts --test-name-pattern=\"pauses after a learning exercise and resumes only explicitly\""
+			]
+		},
+		{
+			"label": "rerun-learning-test-case-1",
+			"type": "shell",
+			"command": "cmd",
+			"args": [
+				"/c",
+				"pnpm --filter @workspace/forge-runtime exec node --import tsx --test --test-reporter tap src/learning-engine.test.ts --test-name-pattern=\"learning engine persists evidence and uses governance for proposals\""
+			]
+		},
+		{
+			"label": "rerun-case-autonomy-completes",
+			"type": "shell",
+			"command": "cmd",
+			"args": [
+				"/c",
+				"pnpm --filter @workspace/forge-runtime exec node --import tsx --test --test-reporter tap src/autonomous-provider-loop.test.ts --test-name-pattern=\"completes, continues and survives restart\""
+			]
+		},
+		{
+			"label": "rerun-case-autonomy-pauses",
+			"type": "shell",
+			"command": "cmd",
+			"args": [
+				"/c",
+				"pnpm --filter @workspace/forge-runtime exec node --import tsx --test --test-reporter tap src/autonomous-provider-loop.test.ts --test-name-pattern=\"pauses after a learning exercise and resumes only explicitly\""
+			]
+		},
+		{
+			"label": "rerun-case-learning-persists",
+			"type": "shell",
+			"command": "cmd",
+			"args": [
+				"/c",
+				"pnpm --filter @workspace/forge-runtime exec node --import tsx --test --test-reporter tap src/learning-engine.test.ts --test-name-pattern=\"learning engine persists evidence and uses governance for proposals\""
+			]
+		},
+		{
+			"label": "final-case-autonomy-completes",
+			"type": "shell",
+			"command": "cmd",
+			"args": [
+				"/c",
+				"pnpm --filter @workspace/forge-runtime exec node --import tsx --test --test-reporter tap src/autonomous-provider-loop.test.ts --test-name-pattern=\"completes, continues and survives restart\""
+			]
+		},
+		{
+			"label": "final-case-autonomy-pauses",
+			"type": "shell",
+			"command": "cmd",
+			"args": [
+				"/c",
+				"pnpm --filter @workspace/forge-runtime exec node --import tsx --test --test-reporter tap src/autonomous-provider-loop.test.ts --test-name-pattern=\"pauses after a learning exercise and resumes only explicitly\""
+			]
+		},
+		{
+			"label": "final-case-learning-persists",
+			"type": "shell",
+			"command": "cmd",
+			"args": [
+				"/c",
+				"pnpm --filter @workspace/forge-runtime exec node --import tsx --test --test-reporter tap src/learning-engine.test.ts --test-name-pattern=\"learning engine persists evidence and uses governance for proposals\""
+			]
+		},
+		{
+			"label": "case-1-completes-only",
+			"type": "shell",
+			"command": "cmd",
+			"args": [
+				"/c",
+				"pnpm --filter @workspace/forge-runtime exec node --import tsx --test --test-reporter tap src/autonomous-provider-loop.test.ts --test-name-pattern=\"completes, continues and survives restart\""
+			]
+		},
+		{
+			"label": "case-2-pauses-only",
+			"type": "shell",
+			"command": "cmd",
+			"args": [
+				"/c",
+				"pnpm --filter @workspace/forge-runtime exec node --import tsx --test --test-reporter tap src/autonomous-provider-loop.test.ts --test-name-pattern=\"pauses after a learning exercise and resumes only explicitly\""
+			]
+		},
+		{
+			"label": "case-3-learning-only",
+			"type": "shell",
+			"command": "cmd",
+			"args": [
+				"/c",
+				"pnpm --filter @workspace/forge-runtime exec node --import tsx --test --test-reporter tap src/learning-engine.test.ts --test-name-pattern=\"learning engine persists evidence and uses governance for proposals\""
+			]
+		},
+		{
+			"label": "final3-case-1",
+			"type": "shell",
+			"command": "cmd",
+			"args": [
+				"/c",
+				"pnpm --filter @workspace/forge-runtime exec node --import tsx --test --test-reporter tap src/autonomous-provider-loop.test.ts --test-name-pattern=\"completes, continues and survives restart\""
+			]
+		},
+		{
+			"label": "final3-case-2",
+			"type": "shell",
+			"command": "cmd",
+			"args": [
+				"/c",
+				"pnpm --filter @workspace/forge-runtime exec node --import tsx --test --test-reporter tap src/autonomous-provider-loop.test.ts --test-name-pattern=\"pauses after a learning exercise and resumes only explicitly\""
+			]
+		},
+		{
+			"label": "final3-case-3",
+			"type": "shell",
+			"command": "cmd",
+			"args": [
+				"/c",
+				"pnpm --filter @workspace/forge-runtime exec node --import tsx --test --test-reporter tap src/learning-engine.test.ts --test-name-pattern=\"learning engine persists evidence and uses governance for proposals\""
+			]
+		},
+		{
+			"label": "req-case-1",
+			"type": "shell",
+			"command": "cmd",
+			"args": [
+				"/c",
+				"pnpm --filter @workspace/forge-runtime exec node --import tsx --test --test-reporter tap src/autonomous-provider-loop.test.ts --test-name-pattern=\"completes, continues and survives restart\""
+			]
+		},
+		{
+			"label": "req-case-2",
+			"type": "shell",
+			"command": "cmd",
+			"args": [
+				"/c",
+				"pnpm --filter @workspace/forge-runtime exec node --import tsx --test --test-reporter tap src/autonomous-provider-loop.test.ts --test-name-pattern=\"pauses after a learning exercise and resumes only explicitly\""
+			]
+		},
+		{
+			"label": "req-case-3",
+			"type": "shell",
+			"command": "cmd",
+			"args": [
+				"/c",
+				"pnpm --filter @workspace/forge-runtime exec node --import tsx --test --test-reporter tap src/learning-engine.test.ts --test-name-pattern=\"learning engine persists evidence and uses governance for proposals\""
+			]
+		},
+		{
+			"label": "validate-case-1",
+			"type": "shell",
+			"command": "cmd",
+			"args": [
+				"/c",
+				"pnpm --filter @workspace/forge-runtime exec node --import tsx --test --test-reporter tap src/autonomous-provider-loop.test.ts --test-name-pattern=\"completes, continues and survives restart\""
+			]
+		},
+		{
+			"label": "validate-case-2",
+			"type": "shell",
+			"command": "cmd",
+			"args": [
+				"/c",
+				"pnpm --filter @workspace/forge-runtime exec node --import tsx --test --test-reporter tap src/autonomous-provider-loop.test.ts --test-name-pattern=\"pauses after a learning exercise and resumes only explicitly\""
+			]
+		},
+		{
+			"label": "validate-case-3",
+			"type": "shell",
+			"command": "cmd",
+			"args": [
+				"/c",
+				"pnpm --filter @workspace/forge-runtime exec node --import tsx --test --test-reporter tap src/learning-engine.test.ts --test-name-pattern=\"learning engine persists evidence and uses governance for proposals\""
+			]
+		},
+		{
+			"label": "check-case1-final",
+			"type": "shell",
+			"command": "cmd",
+			"args": [
+				"/c",
+				"pnpm --filter @workspace/forge-runtime exec node --import tsx --test --test-reporter tap src/autonomous-provider-loop.test.ts --test-name-pattern=\"completes, continues and survives restart\""
+			]
+		},
+		{
+			"label": "check-case2-final",
+			"type": "shell",
+			"command": "cmd",
+			"args": [
+				"/c",
+				"pnpm --filter @workspace/forge-runtime exec node --import tsx --test --test-reporter tap src/autonomous-provider-loop.test.ts --test-name-pattern=\"pauses after a learning exercise and resumes only explicitly\""
+			]
+		},
+		{
+			"label": "check-case3-final",
+			"type": "shell",
+			"command": "cmd",
+			"args": [
+				"/c",
+				"pnpm --filter @workspace/forge-runtime exec node --import tsx --test --test-reporter tap src/learning-engine.test.ts --test-name-pattern=\"learning engine persists evidence and uses governance for proposals\""
+			]
+		},
+		{
+			"label": "final-single-1",
+			"type": "shell",
+			"command": "cmd",
+			"args": [
+				"/c",
+				"pnpm --filter @workspace/forge-runtime exec node --import tsx --test --test-reporter tap src/autonomous-provider-loop.test.ts --test-name-pattern=\"completes, continues and survives restart\""
+			]
+		},
+		{
+			"label": "final-single-2",
+			"type": "shell",
+			"command": "cmd",
+			"args": [
+				"/c",
+				"pnpm --filter @workspace/forge-runtime exec node --import tsx --test --test-reporter tap src/autonomous-provider-loop.test.ts --test-name-pattern=\"pauses after a learning exercise and resumes only explicitly\""
+			]
+		},
+		{
+			"label": "final-single-3",
+			"type": "shell",
+			"command": "cmd",
+			"args": [
+				"/c",
+				"pnpm --filter @workspace/forge-runtime exec node --import tsx --test --test-reporter tap src/learning-engine.test.ts --test-name-pattern=\"learning engine persists evidence and uses governance for proposals\""
+			]
+		},
+		{
+			"label": "single-1-final-pass",
+			"type": "shell",
+			"command": "cmd",
+			"args": [
+				"/c",
+				"pnpm --filter @workspace/forge-runtime exec node --import tsx --test --test-reporter tap src/autonomous-provider-loop.test.ts --test-name-pattern=\"completes, continues and survives restart\""
+			]
+		},
+		{
+			"label": "single-2-final-pass",
+			"type": "shell",
+			"command": "cmd",
+			"args": [
+				"/c",
+				"pnpm --filter @workspace/forge-runtime exec node --import tsx --test --test-reporter tap src/autonomous-provider-loop.test.ts --test-name-pattern=\"pauses after a learning exercise and resumes only explicitly\""
+			]
+		},
+		{
+			"label": "single-3-final-pass",
+			"type": "shell",
+			"command": "cmd",
+			"args": [
+				"/c",
+				"pnpm --filter @workspace/forge-runtime exec node --import tsx --test --test-reporter tap src/learning-engine.test.ts --test-name-pattern=\"learning engine persists evidence and uses governance for proposals\""
+			]
+		},
+		{
+			"label": "req-single-1-final",
+			"type": "shell",
+			"command": "cmd",
+			"args": [
+				"/c",
+				"pnpm --filter @workspace/forge-runtime exec node --import tsx --test --test-reporter tap src/autonomous-provider-loop.test.ts --test-name-pattern=\"completes, continues and survives restart\""
+			]
+		},
+		{
+			"label": "req-single-2-final",
+			"type": "shell",
+			"command": "cmd",
+			"args": [
+				"/c",
+				"pnpm --filter @workspace/forge-runtime exec node --import tsx --test --test-reporter tap src/autonomous-provider-loop.test.ts --test-name-pattern=\"pauses after a learning exercise and resumes only explicitly\""
+			]
+		},
+		{
+			"label": "req-single-3-final",
+			"type": "shell",
+			"command": "cmd",
+			"args": [
+				"/c",
+				"pnpm --filter @workspace/forge-runtime exec node --import tsx --test --test-reporter tap src/learning-engine.test.ts --test-name-pattern=\"learning engine persists evidence and uses governance for proposals\""
+			]
+		},
+		{
+			"label": "req-all-autonomy-learning",
+			"type": "shell",
+			"command": "cmd",
+			"args": [
+				"/c",
+				"pnpm --filter @workspace/forge-runtime exec node --import tsx --test src/autonomous-provider-loop.test.ts src/learning-engine.test.ts"
+			]
+		},
+		{
+			"label": "req-typecheck-libs-final",
+			"type": "shell",
+			"command": "cmd",
+			"args": [
+				"/c",
+				"pnpm run typecheck:libs"
+			]
+		},
+		{
+			"label": "req-build-final",
+			"type": "shell",
+			"command": "cmd",
+			"args": [
+				"/c",
+				"pnpm run build"
+			]
+		},
+		{
+			"label": "recheck-typecheck-libs",
+			"type": "shell",
+			"command": "cmd",
+			"args": [
+				"/c",
+				"pnpm run typecheck:libs"
+			]
+		},
+		{
+			"label": "recheck-build",
+			"type": "shell",
+			"command": "cmd",
+			"args": [
+				"/c",
+				"pnpm run build"
+			]
+		},
+		{
+			"label": "recheck-all-autonomy-learning",
+			"type": "shell",
+			"command": "cmd",
+			"args": [
+				"/c",
+				"pnpm --filter @workspace/forge-runtime exec node --import tsx --test src/autonomous-provider-loop.test.ts src/learning-engine.test.ts"
+			]
+		},
+		{
+			"label": "execution-slice-test-only",
+			"type": "shell",
+			"command": "cmd",
+			"args": [
+				"/c",
+				"pnpm --filter @workspace/forge-runtime exec node --import tsx --test src/execution-slice.test.ts"
+			]
+		},
+		{
+			"label": "execution-mission-tests",
+			"type": "shell",
+			"command": "cmd",
+			"args": [
+				"/c",
+				"pnpm --filter @workspace/forge-runtime exec node --import tsx --test src/execution-slice.test.ts src/workspace-executor.test.ts src/autonomous-provider-loop.test.ts"
+			]
+		},
+		{
+			"label": "autonomy-learning-tests-full",
+			"type": "shell",
+			"command": "cmd",
+			"args": [
+				"/c",
+				"pnpm --filter @workspace/forge-runtime exec node --import tsx --test src/autonomous-provider-loop.test.ts src/learning-engine.test.ts"
+			]
+		},
+		{
+			"label": "typecheck-libs-after-slice",
+			"type": "shell",
+			"command": "cmd",
+			"args": [
+				"/c",
+				"pnpm run typecheck:libs"
+			]
+		},
+		{
+			"label": "build-after-execution-slice",
+			"type": "shell",
+			"command": "cmd",
+			"args": [
+				"/c",
+				"pnpm run build"
+			]
+		},
+		{
+			"label": "req-execution-mission-tests-rerun",
+			"type": "shell",
+			"command": "cmd",
+			"args": [
+				"/c",
+				"pnpm --filter @workspace/forge-runtime exec node --import tsx --test src/execution-slice.test.ts src/workspace-executor.test.ts src/autonomous-provider-loop.test.ts"
+			]
+		},
+		{
+			"label": "req-autonomy-learning-rerun",
+			"type": "shell",
+			"command": "cmd",
+			"args": [
+				"/c",
+				"pnpm --filter @workspace/forge-runtime exec node --import tsx --test src/autonomous-provider-loop.test.ts src/learning-engine.test.ts"
+			]
+		},
+		{
+			"label": "req-typecheck-libs-rerun",
+			"type": "shell",
+			"command": "cmd",
+			"args": [
+				"/c",
+				"pnpm run typecheck:libs"
+			]
+		},
+		{
+			"label": "req-build-rerun",
+			"type": "shell",
+			"command": "cmd",
+			"args": [
+				"/c",
+				"pnpm run build"
+			]
+		},
+		{
+			"label": "live-proof-slice-report",
+			"type": "shell",
+			"command": "cmd",
+			"args": [
+				"/c",
+				"pnpm --filter @workspace/forge-runtime exec node --import tsx src/execution-slice.live-proof.ts"
+			]
+		},
+		{
+			"label": "live-proof-slice-report-2",
+			"type": "shell",
+			"command": "cmd",
+			"args": [
+				"/c",
+				"pnpm --filter @workspace/forge-runtime exec node --import tsx src/execution-slice.live-proof.ts"
+			]
+		}
+	]
+}

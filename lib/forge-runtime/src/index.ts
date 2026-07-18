@@ -27,6 +27,50 @@ export {
   OpenAiResponsesConnector,
 } from "./openai-responses-connector";
 export {
+  LocalModelConnector,
+} from "./local-model-connector";
+export {
+  ManualFallbackConnector,
+} from "./manual-fallback-connector";
+export {
+  FileMemoryBridge,
+  type MemoryBridgeKind,
+  type MemoryBridgeEntry,
+  type MemoryBridgeContext,
+  type SearchMemoryBridgeRequest,
+  type SearchMemoryBridgeResult,
+  type RelevantContextRequest,
+  type RelevantContextResult,
+  type RecordDecisionRequest,
+  type RecordLearningRequest,
+  type RecordCapabilityRequest,
+  type UpsertContextRequest,
+  type MemoryBridgeSummary,
+  type MemoryBridgeOptions,
+} from "./memory-bridge";
+export {
+  AutonomousEngine,
+  type AutonomousEngineOptions,
+} from "./autonomy-engine";
+export {
+  cloneAutonomyState,
+  createInitialAutonomyState,
+  missionCounts,
+  requiresHardGovernanceBoundary,
+  type AutonomousBacklogItem,
+  type AutonomousBacklogStatus,
+  type AutonomousRuntimeState,
+  type AutonomousRuntimeSummary,
+} from "./autonomy";
+export {
+  createInitialPersistedAutonomyState,
+  FileAutonomyStateStore,
+  resolveAutonomyStatePath,
+  AUTONOMY_STORE_VERSION,
+  type AutonomyStateStore,
+  type PersistedAutonomyState,
+} from "./autonomy-store";
+export {
   AutonomousOutputEvaluator,
   parseCapabilityResult,
   parseAutonomousCycleInput,
@@ -116,6 +160,7 @@ export {
 } from "./workspace-change-planner";
 export {
   CapabilityAnalyzer,
+  requirementsForMission,
 } from "./capability-analysis";
 
 export {

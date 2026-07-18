@@ -1,7 +1,9 @@
 import type { PromptComposition } from "./operator";
 
 export type AiProviderId =
-  | "openai-responses";
+  | "openai-responses"
+  | "local-model"
+  | "manual-fallback";
 
 export type AiExecutionStatus =
   | "running"
@@ -38,6 +40,7 @@ export interface AiExecutionRecord {
   readonly inputChars: number;
   readonly outputText: string | null;
   readonly usage: AiUsage;
+  readonly estimatedCostUsd: number;
   readonly providerResponseId: string | null;
   readonly error: string | null;
   readonly createdAt: string;
@@ -49,6 +52,12 @@ export interface AiProviderResult {
   readonly providerResponseId: string | null;
   readonly outputText: string;
   readonly usage: AiUsage;
+}
+
+export interface AiCostSummary {
+  readonly providerId: AiProviderId;
+  readonly executions: number;
+  readonly estimatedCostUsd: number;
 }
 
 export interface AiProviderConnector {
@@ -67,5 +76,9 @@ export interface AiGatewaySummary {
   readonly succeeded: number;
   readonly failed: number;
   readonly unavailable: number;
+  readonly totalEstimatedCostUsd: number;
+  readonly budgetLimitUsd: number;
+  readonly budgetRemainingUsd: number;
+  readonly byProvider: readonly AiCostSummary[];
   readonly lastExecutionAt: string | null;
 }

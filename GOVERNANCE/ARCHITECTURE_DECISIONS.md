@@ -69,3 +69,11 @@ Source mutation is performed only by a dedicated host-local Workspace Executor o
 ## ADR - Authenticated container-to-host workspace execution
 
 Forge keeps planning in the container and authoritative Git mutation on the host. Requests and responses use versioned JSON envelopes authenticated with HMAC-SHA256, short expiry, unique identifiers and exact source preconditions. Planning and execution are separate governed missions. The provider cannot request push, protected paths or arbitrary commands. The host reruns the fixed verifier and rolls back before any commit on failure.
+
+## AD-017 - Terminal missions always persist classified results
+
+A terminal mission outcome must always include a structured `missionResult` payload in persisted mission output, including explicit status (`completed`, `failed`, `blocked`, `rejected`) and cause metadata. Evaluation rejection and governed blocking are classified outcomes, not null-output states. Downstream learning and memory capture must consume this structured result instead of inferring from missing output.
+
+## AD-018 - Local model route is explicit opt-in
+
+Provider route selection may not treat local-model execution as implicitly available. The local model route is enabled only when `FORGE_LOCAL_MODEL_ENABLED=true` is set explicitly. This prevents deterministic misrouting to unreachable local endpoints that produces null-output executions and systematic evaluator rejection unrelated to evaluator correctness.

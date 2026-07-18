@@ -102,7 +102,57 @@ export interface RuntimeSnapshot {
     readonly cancelled: number;
   };
   readonly learning: LearningSummary;
+  readonly autonomy: AutonomousSummary;
   readonly events: readonly RuntimeEvent[];
+}
+
+export interface AutonomousBacklogItem {
+  readonly id: string;
+  readonly objective: string;
+  readonly selectionReason: string;
+  readonly expectedNewEvidence: readonly string[];
+  readonly priority: number;
+  readonly status:
+    | "proposed"
+    | "scheduled"
+    | "running"
+    | "completed"
+    | "failed"
+    | "blocked";
+  readonly source: string;
+  readonly files: readonly string[];
+  readonly missionId: string | null;
+  readonly lastError: string | null;
+  readonly createdAt: string;
+  readonly updatedAt: string;
+}
+
+export interface AutonomousSummary {
+  readonly enabled: boolean;
+  readonly loopStatus: "stopped" | "running";
+  readonly loopPaused: boolean;
+  readonly pauseReason: string | null;
+  readonly pauseDetails: string | null;
+  readonly pauseUntil: string | null;
+  readonly pauseRequiresResume: boolean;
+  readonly lastTickAt: string | null;
+  readonly totalTicks: number;
+  readonly cyclesScheduled: number;
+  readonly lowRiskApprovalsAutoGranted: number;
+  readonly blockedByHardGovernance: boolean;
+  readonly blockingApprovalId: string | null;
+  readonly blockingRiskLevel: "low" | "medium" | "high" | "critical" | null;
+  readonly scheduledWorkspacePlans: readonly string[];
+  readonly backlog: readonly AutonomousBacklogItem[];
+  readonly pendingApprovals: number;
+  readonly pendingHardApprovals: number;
+  readonly queuedMissions: number;
+  readonly runningMissions: number;
+  readonly awaitingApprovalMissions: number;
+  readonly latestMissionId: string | null;
+  readonly costBudgetUsd: number;
+  readonly costSpentUsd: number;
+  readonly costRemainingUsd: number;
 }
 
 export interface MissionRecord {
@@ -284,6 +334,27 @@ export interface LearningStateResponse {
   readonly matrix: readonly LearningCapabilityMatrixEntry[];
 }
 
+export interface AiGatewayCostSummary {
+  readonly providerId: "openai-responses" | "local-model" | "manual-fallback";
+  readonly executions: number;
+  readonly estimatedCostUsd: number;
+}
+
+export interface AiGatewaySummaryResponse {
+  readonly configured: boolean;
+  readonly providerId: "openai-responses" | "local-model" | "manual-fallback" | null;
+  readonly model: string | null;
+  readonly executions: number;
+  readonly succeeded: number;
+  readonly failed: number;
+  readonly unavailable: number;
+  readonly totalEstimatedCostUsd: number;
+  readonly budgetLimitUsd: number;
+  readonly budgetRemainingUsd: number;
+  readonly byProvider: readonly AiGatewayCostSummary[];
+  readonly lastExecutionAt: string | null;
+}
+
 export interface CreateMissionRequest {
   readonly kind: MissionRecord["kind"];
   readonly title?: string;
@@ -371,6 +442,31 @@ export const forgeApi = {
 
   learning(): Promise<LearningStateResponse> {
     return requestJson("/api/learning");
+  },
+
+  autonomy(): Promise<AutonomousSummary> {
+    return requestJson("/api/autonomy");
+  },
+
+  startAutonomy(): Promise<AutonomousSummary> {
+    return requestJson("/api/autonomy/start", {
+      method: "POST",
+      body: "{}",
+    });
+  },
+
+  resumeAutonomy(): Promise<AutonomousSummary> {
+    return requestJson("/api/autonomy/resume", {
+      method: "POST",
+      body: "{}",
+    });
+  },
+
+  stopAutonomy(): Promise<AutonomousSummary> {
+    return requestJson("/api/autonomy/stop", {
+      method: "POST",
+      body: "{}",
+    });
   },
 
   scheduleLearningProposal(proposalId: string): Promise<unknown> {

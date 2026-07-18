@@ -1,6 +1,8 @@
 export interface AiGatewayStatus {
   readonly providerId:
     | "openai-responses"
+    | "local-model"
+    | "manual-fallback"
     | null;
   readonly configured: boolean;
   readonly secretConfigured: boolean;
@@ -15,12 +17,25 @@ export interface AiGatewaySummary {
   readonly configured: boolean;
   readonly providerId:
     | "openai-responses"
+    | "local-model"
+    | "manual-fallback"
     | null;
   readonly model: string | null;
   readonly executions: number;
   readonly succeeded: number;
   readonly failed: number;
   readonly unavailable: number;
+  readonly totalEstimatedCostUsd: number;
+  readonly budgetLimitUsd: number;
+  readonly budgetRemainingUsd: number;
+  readonly byProvider: readonly {
+    readonly providerId:
+      | "openai-responses"
+      | "local-model"
+      | "manual-fallback";
+    readonly executions: number;
+    readonly estimatedCostUsd: number;
+  }[];
   readonly lastExecutionAt: string | null;
 }
 
@@ -32,6 +47,8 @@ export interface AiExecutionRecord {
   readonly routeProfileId: string;
   readonly providerId:
     | "openai-responses"
+    | "local-model"
+    | "manual-fallback"
     | null;
   readonly model: string | null;
   readonly status:
@@ -46,6 +63,7 @@ export interface AiExecutionRecord {
     readonly outputTokens: number | null;
     readonly totalTokens: number | null;
   };
+  readonly estimatedCostUsd: number;
   readonly providerResponseId: string | null;
   readonly error: string | null;
   readonly createdAt: string;

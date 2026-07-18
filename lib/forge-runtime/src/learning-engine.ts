@@ -17,7 +17,10 @@ import type {
   ObserveAutonomousLearningRequest,
   RecordFailedLearningExerciseRequest,
 } from "./learning";
-import { getLearningMatrixEntry } from "./learning-matrix";
+import {
+  getLearningMatrixEntry,
+  listLearningMatrixEntries,
+} from "./learning-matrix";
 
 export interface LearningEngineOptions {
   readonly events: RuntimeEventBus;
@@ -31,6 +34,8 @@ const statusSeed: Readonly<Record<CapabilityStatus, number>> = {
   validated: 70,
   operational: 90,
 };
+
+const RECENT_SUCCESS_WINDOW = 3;
 
 function cloneObservation(
   observation: LearningObservation,
@@ -86,6 +91,7 @@ function boundedScore(value: number, field: string): number {
 
 function rankedEligibleProfiles(
   profiles: ReadonlyMap<string, LearningCapabilityProfile>,
+  recentSuccessfulCapabilityIds: readonly string[],
 ): readonly LearningCapabilityProfile[] {
   const all = [...profiles.values()];
   const eligible = all.filter((profile) => {
@@ -99,12 +105,72 @@ function rankedEligibleProfiles(
     );
   });
 
-  return (eligible.length > 0 ? eligible : all).sort(
-    (left, right) =>
+  const sorted = [...eligible];
+
+
+  const recentlySuccessful = new Set(recentSuccessfulCapabilityIds);
+
+  return sorted.sort((left, right) => {
+    const leftRecent = recentlySuccessful.has(left.capabilityId) ? 1 : 0;
+    const rightRecent = recentlySuccessful.has(right.capabilityId) ? 1 : 0;
+
+    return (
+      leftRecent - rightRecent ||
+      directBlockageScore(right.capabilityId) -
+        directBlockageScore(left.capabilityId) ||
       left.score - right.score ||
+      left.observations - right.observations ||
       left.confidence - right.confidence ||
-      left.capabilityId.localeCompare(right.capabilityId),
+      left.capabilityId.localeCompare(right.capabilityId)
+    );
+  });
+}
+
+function directBlockageScore(
+  capabilityId: string,
+): number {
+  return listLearningMatrixEntries().filter((entry) =>
+    entry.dependencies.includes(capabilityId),
+  ).length;
+}
+
+function getRecentSuccessfulCapabilityIds(
+  observations: readonly LearningObservation[],
+): readonly string[] {
+  return [...observations]
+    .filter((observation) => observation.outcome === "passed")
+    .sort((left, right) => right.observedAt.localeCompare(left.observedAt))
+    .slice(0, RECENT_SUCCESS_WINDOW)
+    .map((observation) => observation.targetCapabilityId)
+    .filter((capabilityId): capabilityId is string => Boolean(capabilityId));
+}
+
+function buildLearningSelection(
+  profile: LearningCapabilityProfile,
+  observations: readonly LearningObservation[],
+): {
+  readonly reasonForSelection: string;
+  readonly expectedNewEvidence: readonly string[];
+} {
+  const matrixEntry = getLearningMatrixEntry(profile.capabilityId);
+  const recentSuccessCapabilityIds = new Set(
+    getRecentSuccessfulCapabilityIds(observations),
   );
+  const expectedNewEvidence = matrixEntry
+    ? matrixEntry.evidenceRequirements
+    : Object.freeze([
+        "Updated runtime evidence",
+        "A concrete verification result",
+        "A non-repeated capability signal",
+      ]);
+  const reasonForSelection = matrixEntry
+    ? `Selected because ${profile.capabilityId} is a current open blockage with ${directBlockageScore(profile.capabilityId)} downstream dependents and ${recentSuccessCapabilityIds.has(profile.capabilityId) ? "recent success evidence exists, so this capability is now deprioritized" : "no recent successful repeat blocks it"}.`
+    : `Selected because ${profile.capabilityId} is the current lowest evidence-backed gap without repeating the most recent successful capability.`;
+
+  return Object.freeze({
+    reasonForSelection,
+    expectedNewEvidence,
+  });
 }
 
 export class LearningEngine {
@@ -392,7 +458,10 @@ export class LearningEngine {
       );
     }
 
-    const rankedProfiles = rankedEligibleProfiles(profiles);
+    const rankedProfiles = rankedEligibleProfiles(
+      profiles,
+      getRecentSuccessfulCapabilityIds(this.#state.observations),
+    );
     const target = rankedProfiles[0];
 
     if (!target) {
@@ -403,6 +472,7 @@ export class LearningEngine {
       (capability) => capability.id === target.capabilityId,
     );
     const matrixEntry = getLearningMatrixEntry(target.capabilityId);
+    const selection = buildLearningSelection(target, this.#state.observations);
     const proposal: LearningMissionProposal = Object.freeze({
       id: randomUUID(),
       sourceObservationId: observation.id,
@@ -424,6 +494,8 @@ export class LearningEngine {
             : `Propose the smallest reversible verification exercise for ` +
               `capability ${target.capabilityId} (${targetCapability?.name ?? "unregistered"}). ` +
               `Use current repository evidence, state assumptions, acceptance criteria and exact tests.`,
+          reasonForSelection: selection.reasonForSelection,
+          expectedNewEvidence: selection.expectedNewEvidence,
           cycleIndex: 1 as const,
           maxCycles: 1 as const,
           continuationAuthorized: false as const,
@@ -664,7 +736,10 @@ export class LearningEngine {
       resultObservationId: observation.id,
       completedAt: observedAt,
     });
-    const rankedProfiles = rankedEligibleProfiles(profiles);
+    const rankedProfiles = rankedEligibleProfiles(
+      profiles,
+      getRecentSuccessfulCapabilityIds(this.#state.observations),
+    );
     const target = rankedProfiles[0];
 
     if (!target) {
@@ -675,6 +750,7 @@ export class LearningEngine {
       (capability) => capability.id === target.capabilityId,
     );
     const matrixEntry = getLearningMatrixEntry(target.capabilityId);
+    const selection = buildLearningSelection(target, this.#state.observations);
     const nextProposal: LearningMissionProposal = Object.freeze({
       id: randomUUID(),
       sourceObservationId: observation.id,
@@ -696,6 +772,8 @@ export class LearningEngine {
               `capability ${target.capabilityId} (${targetCapability?.name ?? "unregistered"}). ` +
               `Address failed checks ${failedCheckIds.join(", ")} and do not repeat ` +
               `the provider-only exercise that failed to produce verified evidence.`,
+          reasonForSelection: selection.reasonForSelection,
+          expectedNewEvidence: selection.expectedNewEvidence,
           cycleIndex: 1 as const,
           maxCycles: 1 as const,
           continuationAuthorized: false as const,

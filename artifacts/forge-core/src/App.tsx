@@ -11,6 +11,7 @@ import { Layout } from "@/components/layout";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { Toaster } from "@/components/ui/toaster";
 import Dashboard from "@/pages/dashboard";
+import MissionConsolePage from "@/pages/mission-console";
 import Missions from "@/pages/missions-live";
 import Approvals from "@/pages/approvals";
 import Capabilities from "@/pages/capabilities-live";
@@ -28,6 +29,7 @@ import DailyLoop from "@/pages/daily-loop";
 import CoreComponents from "@/pages/core-components";
 import AuditLogs from "@/pages/audit-logs";
 import Learning from "@/pages/learning-live";
+import AutonomyLive from "@/pages/autonomy-live";
 import NotFound from "@/pages/not-found";
 
 const queryClient = new QueryClient({
@@ -44,12 +46,14 @@ function Router() {
   return (
     <Layout>
       <Switch>
-        <Route path="/" component={Dashboard} />
+        <Route path="/" component={MissionConsolePage} />
+        <Route path="/runtime" component={Dashboard} />
         <Route path="/missions" component={Missions} />
         <Route path="/approvals" component={Approvals} />
         <Route path="/capabilities" component={Capabilities} />
         <Route path="/evolution" component={Evolution} />
         <Route path="/learning" component={Learning} />
+        <Route path="/autonomy" component={AutonomyLive} />
         <Route path="/events" component={Events} />
         <Route path="/operator" component={OperatorCorePage} />
 

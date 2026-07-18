@@ -89,3 +89,39 @@ Status: verified host-local foundation.
 ## FG-005.100 Provider planner and host bridge
 
 Status: implemented with deterministic verification. Live provider dogfood is recorded separately in reconstruction/PROVIDER_BRIDGE_VERIFICATION.json because provider availability is an isolated runtime condition.
+
+## FG-005.110 Mission output pipeline live verification
+
+Status: completed on 2026-07-15 with governed live mission evidence.
+
+- One explicitly approved autonomous mission was executed and reached a terminal `failed` state with structured non-null output.
+- Mission output persisted `missionResult` classification (`rejected`, cause `evaluation`) instead of null output fallback behavior.
+- Evidence: reconstruction/MISSION_OUTPUT_PIPELINE_VERIFICATION.json.
+
+## FG-005.120 Provider-backed execution stabilization
+
+Status: completed on 2026-07-15 with accepted governed mission evidence.
+
+- Live diagnostics confirmed unavailable configured external providers and unreachable local model endpoint in the active environment.
+- One governed autonomous mission was executed on an isolated runtime with controlled fallback routing and reached accepted evaluation (`score 100`).
+- Terminal mission output persisted `missionResult.status=completed` with explicit execution cause, preserving classified result guarantees.
+- Evidence: reconstruction/PROVIDER_STABILIZATION_VERIFICATION.json.
+
+## FG-005.140 Unblock autonomous evaluation
+
+Status: completed on 2026-07-15 with root-cause fix and live accepted mission evidence.
+
+- Repeated score-33 rejections were traced to provider route selection preferring a non-opted-in local model route.
+- Failed local-model executions produced null output, so evaluator checks deterministically yielded 33 (`mission-linked` + `secret-free` only).
+- Runtime provider selection was corrected to explicit local-model opt-in; evaluator logic remained unchanged.
+- Regression coverage added and runtime tests passed.
+- Live governed mission after patch was accepted with score 100 and persisted learning/evidence linkage.
+- Evidence: reconstruction/AUTONOMOUS_EVALUATION_UNBLOCK_VERIFICATION.json.
+
+## FG-005.150 Runtime truth verification
+
+Status: completed on 2026-07-15 as a truth check against the live 5000 runtime.
+
+- The live runtime still produced `score=33` with `providerId=local-model` and `fetch failed` on recent autonomous execution.
+- The source fix exists, but the live runtime process has not yet loaded it.
+- Evidence: reconstruction/RUNTIME_TRUTH_VERIFICATION.json.

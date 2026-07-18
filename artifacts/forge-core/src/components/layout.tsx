@@ -13,6 +13,7 @@ import {
   LayoutDashboard,
   ListChecks,
   Lock,
+  MessageSquarePlus,
   Package,
   Radio,
   ShieldCheck,
@@ -22,7 +23,9 @@ import {
 import { useRuntimeQuery } from "@/hooks/use-forge-live";
 
 const LIVE_NAV_ITEMS = [
-  { href: "/", label: "Runtime", icon: LayoutDashboard },
+  { href: "/", label: "Mission Console", icon: MessageSquarePlus },
+  { href: "/runtime", label: "Runtime", icon: LayoutDashboard },
+  { href: "/autonomy", label: "Autonomy", icon: Activity },
   { href: "/missions", label: "Missions", icon: ListChecks },
   { href: "/approvals", label: "Approvals", icon: ShieldCheck },
   { href: "/capabilities", label: "Capabilities", icon: Boxes },

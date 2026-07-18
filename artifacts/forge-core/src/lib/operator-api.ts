@@ -1,4 +1,8 @@
 import type {
+  CapabilityStatus,
+  CreateMissionRequest,
+  GovernanceAssessment,
+  MissionRecord,
   ModelBudget,
   ModelPrivacy,
   ModelRouteDecision,
@@ -14,6 +18,10 @@ import type {
 } from "@workspace/forge-runtime";
 
 export type {
+  CapabilityStatus,
+  CreateMissionRequest,
+  GovernanceAssessment,
+  MissionRecord,
   ModelBudget,
   ModelPrivacy,
   ModelRouteDecision,
@@ -27,6 +35,37 @@ export type {
   WorkspaceFileContent,
   WorkspaceFileSummary,
 };
+
+export interface MissionIntakePreview {
+  readonly originalCommand: string;
+  readonly interpretedGoal: string;
+  readonly missionKind: MissionRecord["kind"];
+  readonly request: CreateMissionRequest;
+  readonly governance: {
+    readonly status: "can_start" | "approval_required" | "blocked";
+    readonly decision: GovernanceAssessment["decision"];
+    readonly riskLevel: GovernanceAssessment["riskLevel"];
+    readonly reason: string;
+    readonly hardBoundaryActive: boolean;
+  };
+  readonly expectedCapabilities: readonly {
+    readonly capabilityId: string;
+    readonly minimumStatus: CapabilityStatus;
+    readonly currentStatus: CapabilityStatus | "missing";
+    readonly reason: string;
+  }[];
+}
+
+export interface MissionIntakeStartResult {
+  readonly preview: MissionIntakePreview;
+  readonly mission: MissionRecord;
+  readonly governance: GovernanceAssessment;
+  readonly approval: {
+    readonly id: string;
+    readonly status: string;
+  } | null;
+  readonly progress: number;
+}
 
 async function requestJson<T>(
   path: string,
@@ -187,6 +226,38 @@ export const operatorApi = {
       {
         method: "POST",
         body: JSON.stringify(request),
+      },
+    );
+  },
+
+  missionIntakePreview(command: string): Promise<MissionIntakePreview> {
+    return requestJson("/api/operator/mission-intake/preview", {
+      method: "POST",
+      body: JSON.stringify({ command }),
+    });
+  },
+
+  missionIntakeStart(command: string): Promise<MissionIntakeStartResult> {
+    return requestJson("/api/operator/mission-intake/start", {
+      method: "POST",
+      body: JSON.stringify({ command }),
+    });
+  },
+
+  mission(missionId: string): Promise<MissionRecord> {
+    return requestJson(`/api/missions/${missionId}`);
+  },
+
+  recordMissionResult(missionId: string): Promise<{
+    readonly missionId: string;
+    readonly status: MissionRecord["status"];
+    readonly recorded: true;
+  }> {
+    return requestJson(
+      `/api/operator/mission-intake/${missionId}/record-result`,
+      {
+        method: "POST",
+        body: "{}",
       },
     );
   },

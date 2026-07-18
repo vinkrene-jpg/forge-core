@@ -5,6 +5,7 @@ import {
 } from "@tanstack/react-query";
 import {
   operatorApi,
+  type MissionIntakePreview,
   type ModelBudget,
   type ModelPrivacy,
   type ModelTaskType,
@@ -23,6 +24,10 @@ const keys = {
     ["operator", "files", projectId, path] as const,
   compositions: (projectId: string) =>
     ["operator", "compositions", projectId] as const,
+  missionIntakePreview: (command: string) =>
+    ["operator", "mission-intake", "preview", command] as const,
+  mission: (missionId: string) =>
+    ["operator", "mission", missionId] as const,
 };
 
 export function useOperatorSummary() {
@@ -131,6 +136,79 @@ export function useComposePrompt() {
         }),
         queryClient.invalidateQueries({
           queryKey: keys.summary,
+        }),
+      ]);
+    },
+  });
+}
+
+export function useMissionIntakePreview(command: string) {
+  return useQuery({
+    queryKey: keys.missionIntakePreview(command),
+    queryFn: () =>
+      operatorApi.missionIntakePreview(command),
+    enabled: command.trim().length >= 8,
+    staleTime: 10_000,
+  });
+}
+
+export function useStartMissionFromIntake() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (request: {
+      command: string;
+      preview: MissionIntakePreview;
+    }) => operatorApi.missionIntakeStart(request.command),
+    onSuccess: async (result) => {
+      await Promise.all([
+        queryClient.invalidateQueries({
+          queryKey: ["forge", "missions"],
+        }),
+        queryClient.invalidateQueries({
+          queryKey: ["forge", "approvals"],
+        }),
+        queryClient.invalidateQueries({
+          queryKey: ["forge", "runtime"],
+        }),
+        queryClient.invalidateQueries({
+          queryKey: ["operator", "summary"],
+        }),
+        queryClient.invalidateQueries({
+          queryKey: ["operator", "memories"],
+        }),
+      ]);
+
+      await queryClient.setQueryData(
+        keys.mission(result.mission.id),
+        result.mission,
+      );
+    },
+  });
+}
+
+export function useMissionStatus(missionId: string | null) {
+  return useQuery({
+    queryKey: keys.mission(missionId ?? ""),
+    queryFn: () => operatorApi.mission(missionId ?? ""),
+    enabled: Boolean(missionId),
+    refetchInterval: 2_000,
+  });
+}
+
+export function useRecordMissionResult() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (missionId: string) =>
+      operatorApi.recordMissionResult(missionId),
+    onSuccess: async () => {
+      await Promise.all([
+        queryClient.invalidateQueries({
+          queryKey: ["operator", "summary"],
+        }),
+        queryClient.invalidateQueries({
+          queryKey: ["operator", "memories"],
         }),
       ]);
     },

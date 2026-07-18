@@ -13,6 +13,19 @@ export type MissionStatus =
   | "failed"
   | "cancelled";
 
+export type MissionResultStatus =
+  | "completed"
+  | "failed"
+  | "blocked"
+  | "rejected";
+
+export interface MissionResult {
+  readonly status: MissionResultStatus;
+  readonly cause: string;
+  readonly message: string;
+  readonly producedAt: string;
+}
+
 export interface MissionRecord {
   readonly id: string;
   readonly kind: MissionKind;

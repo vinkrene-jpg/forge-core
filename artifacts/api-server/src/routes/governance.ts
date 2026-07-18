@@ -142,7 +142,7 @@ router.post("/approvals/:id/decide", async (req, res): Promise<void> => {
 
   if (body.data.approve && module) {
     // Approval granted → let the Governor complete the install pipeline.
-    await governInstall(module);
+    await governInstall(module as any);
   } else if (module) {
     await db
       .update(modulesTable)

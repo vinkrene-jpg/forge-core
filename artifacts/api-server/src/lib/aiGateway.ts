@@ -88,7 +88,7 @@ export async function getMemoryContext(query: string, limit = 3): Promise<string
     .orderBy(desc(memoryItemsTable.createdAt))
     .limit(limit);
   if (items.length === 0) return "";
-  return items.map((i) => `[memory:${i.category}] ${i.title}: ${i.content}`).join("\n");
+  return items.map((i: any) => `[memory:${i.category}] ${i.title}: ${i.content}`).join("\n");
 }
 
 interface InvokeOutcome {
@@ -184,7 +184,7 @@ export async function invokeGateway(
     .filter((p): p is ProviderConfig => Boolean(p && p.configured));
 
   if (chain.length === 0) {
-    const [row] = await db
+    const [row] = (await db
       .insert(aiCallsTable)
       .values({
         provider: primaryName,
@@ -193,7 +193,7 @@ export async function invokeGateway(
         status: "error",
         errorMessage: "No AI provider configured. Set OPENAI_API_KEY / ANTHROPIC_API_KEY / CUSTOM_AI_API_KEY in .env",
       })
-      .returning();
+      .returning()) as any[];
     logger.warn({ taskType, callId: row?.id }, "AI invoke without configured provider");
     throw new GatewayError(
       "No AI provider is configured. Add OPENAI_API_KEY, ANTHROPIC_API_KEY or CUSTOM_AI_API_KEY to your .env file.",
@@ -206,7 +206,7 @@ export async function invokeGateway(
   for (const p of chain) {
     try {
       const outcome = await callProvider(p, prompt, memoryContext);
-      const [row] = await db
+      const [row] = (await db
         .insert(aiCallsTable)
         .values({
           provider: outcome.provider,
@@ -217,7 +217,7 @@ export async function invokeGateway(
           tokensOut: outcome.tokensOut,
           costIndication: outcome.costIndication,
         })
-        .returning();
+        .returning()) as any[];
       return { id: row.id, ...outcome };
     } catch (err) {
       lastError = err instanceof Error ? err : new Error(String(err));

@@ -7,6 +7,7 @@ import {
   type PersistedAiGatewayState,
 } from "./ai-gateway-store";
 import type {
+  AiCostSummary,
   AiExecutionRecord,
   AiGatewayStatus,
   AiGatewaySummary,
@@ -18,6 +19,8 @@ import type {
   PromptComposition,
 } from "./operator";
 import { OpenAiResponsesConnector } from "./openai-responses-connector";
+import { LocalModelConnector } from "./local-model-connector";
+import { ManualFallbackConnector } from "./manual-fallback-connector";
 
 export interface AiGatewayEngineOptions {
   readonly events: RuntimeEventBus;
@@ -74,7 +77,65 @@ function cloneExecution(
     ...execution,
     missionId: execution.missionId ?? null,
     usage: Object.freeze({ ...execution.usage }),
+    estimatedCostUsd: execution.estimatedCostUsd,
   });
+}
+
+function roundUsd(value: number): number {
+  return Math.max(0, Math.round(value * 10_000) / 10_000);
+}
+
+function tokenRate(
+  providerId: AiProviderId | null,
+): { readonly inputPer1k: number; readonly outputPer1k: number } {
+  if (providerId === "openai-responses") {
+    const inputPer1k = Number(
+      process.env.FORGE_OPENAI_INPUT_USD_PER_1K?.trim() || "0.005",
+    );
+    const outputPer1k = Number(
+      process.env.FORGE_OPENAI_OUTPUT_USD_PER_1K?.trim() || "0.015",
+    );
+
+    return {
+      inputPer1k: Number.isFinite(inputPer1k) ? inputPer1k : 0.005,
+      outputPer1k: Number.isFinite(outputPer1k) ? outputPer1k : 0.015,
+    };
+  }
+
+  return {
+    inputPer1k: 0,
+    outputPer1k: 0,
+  };
+}
+
+function executionCost(
+  providerId: AiProviderId | null,
+  usage: AiUsage,
+): number {
+  const rates = tokenRate(providerId);
+  const inputTokens = usage.inputTokens ?? 0;
+  const outputTokens = usage.outputTokens ?? 0;
+
+  return roundUsd(
+    (inputTokens / 1_000) * rates.inputPer1k +
+      (outputTokens / 1_000) * rates.outputPer1k,
+  );
+}
+
+function budgetLimitUsd(): number {
+  const configured = Number(
+    process.env.FORGE_BUDGET_USD_PER_RUN?.trim() || "5",
+  );
+
+  if (!Number.isFinite(configured) || configured <= 0) {
+    return 5;
+  }
+
+  return roundUsd(configured);
+}
+
+function localModelEnabled(): boolean {
+  return process.env.FORGE_LOCAL_MODEL_ENABLED?.trim() === "true";
 }
 
 export class AiGatewayEngine {
@@ -101,7 +162,11 @@ export class AiGatewayEngine {
       new FileAiGatewayStateStore();
 
     const connectors: readonly AiProviderConnector[] =
-      options.connectors ?? [new OpenAiResponsesConnector()];
+      options.connectors ?? [
+        new OpenAiResponsesConnector(),
+        new LocalModelConnector(),
+        new ManualFallbackConnector(),
+      ];
 
     this.#connectors = new Map(
       connectors.map((connector) => [
@@ -180,41 +245,79 @@ export class AiGatewayEngine {
   }
 
   status(): AiGatewayStatus {
-    const providerValue =
-      process.env.FORGE_AI_PROVIDER?.trim();
-    const key =
-      process.env.OPENAI_API_KEY?.trim();
-    const model =
-      process.env.OPENAI_MODEL?.trim();
-    const inferredProvider =
-      providerValue ||
-      (key || model
-        ? "openai-responses"
-        : "");
+    const preferredProvider = process.env.FORGE_AI_PROVIDER?.trim();
+    const openAiKey = process.env.OPENAI_API_KEY?.trim();
+    const openAiModel = process.env.OPENAI_MODEL?.trim();
+    const localModelRouteEnabled = localModelEnabled();
 
-    const providerId: AiProviderId | null =
-      inferredProvider === "openai-responses"
-        ? "openai-responses"
+    const availableProviders: AiProviderId[] = [];
+
+    if (
+      this.#connectors.has("openai-responses") &&
+      Boolean(openAiKey) &&
+      Boolean(openAiModel)
+    ) {
+      availableProviders.push("openai-responses");
+    }
+
+    if (
+      this.#connectors.has("local-model") &&
+      localModelRouteEnabled
+    ) {
+      availableProviders.push("local-model");
+    }
+
+    if (this.#connectors.has("manual-fallback")) {
+      availableProviders.push("manual-fallback");
+    }
+
+    const explicitProvider: AiProviderId | null =
+      preferredProvider === "openai-responses" ||
+      preferredProvider === "local-model" ||
+      preferredProvider === "manual-fallback"
+        ? preferredProvider
         : null;
 
-    const apiBase =
-      providerId === null
-        ? null
-        : (
-            process.env.OPENAI_BASE_URL?.trim() ||
-            "https://api.openai.com/v1"
-          );
+    const fallbackProvider: AiProviderId =
+      availableProviders.includes("local-model")
+        ? "local-model"
+        : availableProviders.includes("openai-responses")
+          ? "openai-responses"
+          : "manual-fallback";
 
-    const configured =
-      providerId !== null &&
-      Boolean(key) &&
-      Boolean(model);
+    const providerId: AiProviderId | null =
+      explicitProvider && availableProviders.includes(explicitProvider)
+        ? explicitProvider
+        : availableProviders.length > 0
+          ? fallbackProvider
+          : null;
+
+    const configured = providerId !== null;
+
+    const model =
+      providerId === "openai-responses"
+        ? openAiModel ?? null
+        : providerId === "local-model"
+          ? process.env.FORGE_LOCAL_MODEL_NAME?.trim() ||
+            "qwen2.5-coder:7b"
+          : providerId === "manual-fallback"
+            ? "manual-fallback"
+            : null;
+
+    const apiBase =
+      providerId === "openai-responses"
+        ? process.env.OPENAI_BASE_URL?.trim() ||
+          "https://api.openai.com/v1"
+        : providerId === "local-model"
+          ? process.env.FORGE_LOCAL_MODEL_BASE_URL?.trim() ||
+            "http://127.0.0.1:11434/v1"
+          : null;
 
     return Object.freeze({
       providerId,
       configured,
-      secretConfigured: Boolean(key),
-      model: model || null,
+      secretConfigured: Boolean(openAiKey),
+      model,
       apiBase,
       maxInputChars: optionalPositiveInteger(
         process.env.FORGE_AI_MAX_INPUT_CHARS,
@@ -229,8 +332,8 @@ export class AiGatewayEngine {
         32_000,
       ),
       note: configured
-        ? "Provider is configured for controlled execution."
-        : "Gateway is operational, but provider execution is unavailable until provider, model and secret are configured.",
+        ? `Provider policy active. Preferred execution route: ${providerId}.`
+        : "Gateway is operational, but no provider route is configured.",
     });
   }
 
@@ -241,6 +344,8 @@ export class AiGatewayEngine {
     let succeeded = 0;
     let failed = 0;
     let unavailable = 0;
+    let totalEstimatedCostUsd = 0;
+    const byProvider = new Map<AiProviderId, AiCostSummary>();
 
     for (const execution of this.#state.executions) {
       if (execution.status === "succeeded") {
@@ -250,7 +355,26 @@ export class AiGatewayEngine {
       } else if (execution.status === "unavailable") {
         unavailable += 1;
       }
+
+      totalEstimatedCostUsd += execution.estimatedCostUsd;
+
+      const providerId = execution.providerId ?? "manual-fallback";
+      const current = byProvider.get(providerId);
+
+      byProvider.set(
+        providerId,
+        Object.freeze({
+          providerId,
+          executions: (current?.executions ?? 0) + 1,
+          estimatedCostUsd: roundUsd(
+            (current?.estimatedCostUsd ?? 0) + execution.estimatedCostUsd,
+          ),
+        }),
+      );
     }
+
+    const budgetLimit = budgetLimitUsd();
+    const roundedTotalCost = roundUsd(totalEstimatedCostUsd);
 
     return Object.freeze({
       configured: status.configured,
@@ -260,6 +384,10 @@ export class AiGatewayEngine {
       succeeded,
       failed,
       unavailable,
+      totalEstimatedCostUsd: roundedTotalCost,
+      budgetLimitUsd: budgetLimit,
+      budgetRemainingUsd: roundUsd(Math.max(0, budgetLimit - roundedTotalCost)),
+      byProvider: Object.freeze([...byProvider.values()]),
       lastExecutionAt:
         this.#state.executions.at(-1)?.completedAt ??
         null,
@@ -307,6 +435,25 @@ export class AiGatewayEngine {
     }
 
     const status = this.status();
+    const budget = status.maxInputChars > 0 ? budgetLimitUsd() : budgetLimitUsd();
+    const spentUsd = roundUsd(
+      this.#state.executions.reduce(
+        (total, execution) => total + execution.estimatedCostUsd,
+        0,
+      ),
+    );
+    const providerId = this.#selectProvider(
+      composition,
+      status,
+      spentUsd,
+      budget,
+    );
+    const providerModel =
+      providerId === "openai-responses"
+        ? process.env.OPENAI_MODEL?.trim() ?? null
+        : providerId === "local-model"
+          ? process.env.FORGE_LOCAL_MODEL_NAME?.trim() || "qwen2.5-coder:7b"
+          : "manual-fallback";
     const timestamp =
       new Date().toISOString();
     const executionId = randomUUID();
@@ -319,14 +466,15 @@ export class AiGatewayEngine {
         projectId: composition.projectId,
         routeProfileId:
           composition.route.selectedProfile.id,
-        providerId: status.providerId,
-        model: status.model,
+        providerId,
+        model: providerModel,
         status: status.configured
           ? "running"
           : "unavailable",
         inputChars: composition.content.length,
         outputText: null,
         usage: emptyUsage(),
+        estimatedCostUsd: 0,
         providerResponseId: null,
         error: status.configured
           ? null
@@ -375,12 +523,7 @@ export class AiGatewayEngine {
       );
     }
 
-    const connector =
-      status.providerId === null
-        ? null
-        : this.#connectors.get(
-            status.providerId,
-          );
+    const connector = this.#connectors.get(providerId);
 
     if (!connector) {
       return this.#finish(
@@ -397,7 +540,7 @@ export class AiGatewayEngine {
       missionId,
       compositionId,
       providerId: connector.id,
-      model: status.model,
+      model: providerModel,
     });
 
     try {
@@ -411,6 +554,7 @@ export class AiGatewayEngine {
         status: "succeeded",
         outputText: result.outputText,
         usage: result.usage,
+        providerId,
         providerResponseId:
           result.providerResponseId,
       });
@@ -429,6 +573,7 @@ export class AiGatewayEngine {
           readonly status: "succeeded";
           readonly outputText: string;
           readonly usage: AiUsage;
+          readonly providerId: AiProviderId;
           readonly providerResponseId:
             string | null;
         }
@@ -467,6 +612,10 @@ export class AiGatewayEngine {
             update.status === "succeeded"
               ? update.usage
               : emptyUsage(),
+          estimatedCostUsd:
+            update.status === "succeeded"
+              ? executionCost(update.providerId, update.usage)
+              : 0,
           providerResponseId:
             update.status === "succeeded"
               ? update.providerResponseId
@@ -506,5 +655,77 @@ export class AiGatewayEngine {
 
       return completed;
     });
+  }
+
+  #selectProvider(
+    composition: PromptComposition,
+    status: AiGatewayStatus,
+    spentUsd: number,
+    budgetLimit: number,
+  ): AiProviderId {
+    const localEnabled =
+      this.#connectors.has("local-model") &&
+      localModelEnabled();
+    const openAiReady =
+      this.#connectors.has("openai-responses") &&
+      Boolean(process.env.OPENAI_API_KEY?.trim()) &&
+      Boolean(process.env.OPENAI_MODEL?.trim());
+    const manualEnabled = this.#connectors.has("manual-fallback");
+    const budget = composition.route.request.budget;
+    const hardBudgetReached = spentUsd >= budgetLimit;
+
+    if (hardBudgetReached) {
+      if (localEnabled) {
+        return "local-model";
+      }
+
+      if (manualEnabled) {
+        return "manual-fallback";
+      }
+
+      return "openai-responses";
+    }
+
+    if (budget === "low") {
+      if (localEnabled) {
+        return "local-model";
+      }
+
+      if (manualEnabled) {
+        return "manual-fallback";
+      }
+
+      return "openai-responses";
+    }
+
+    if (budget === "medium") {
+      if (localEnabled) {
+        return "local-model";
+      }
+
+      if (openAiReady) {
+        return "openai-responses";
+      }
+
+      if (manualEnabled) {
+        return "manual-fallback";
+      }
+
+      return "openai-responses";
+    }
+
+    if (openAiReady) {
+      return "openai-responses";
+    }
+
+    if (localEnabled) {
+      return "local-model";
+    }
+
+    if (manualEnabled) {
+      return "manual-fallback";
+    }
+
+    return "manual-fallback";
   }
 }

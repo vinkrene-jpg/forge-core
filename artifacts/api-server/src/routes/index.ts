@@ -20,6 +20,8 @@ import dailyLoopRouter from "./dailyLoop";
 import proposalsRouter from "./proposals";
 import evolutionRouter from "./evolution";
 import analysisRouter from "./analysis";
+import autonomyRouter from "./autonomy";
+import memoryBridgeRouter from "./memoryBridge";
 
 const router: IRouter = Router();
 
@@ -44,5 +46,7 @@ router.use(dailyLoopRouter);
 router.use(proposalsRouter);
 router.use(evolutionRouter);
 router.use(analysisRouter);
+router.use(autonomyRouter);
+router.use(memoryBridgeRouter);
 
 export default router;

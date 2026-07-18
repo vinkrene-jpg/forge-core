@@ -12,9 +12,18 @@ import {
   FileAiGatewayStateStore,
   type AiGatewayStateStore,
 } from "./ai-gateway-store";
+import { spawn } from "node:child_process";
 import { createHash, randomUUID } from "node:crypto";
 import {
+  access,
+  mkdir,
+  readFile,
+  rm,
+} from "node:fs/promises";
+import path from "node:path";
+import {
   AutonomousOutputEvaluator,
+  type AutonomousExecutionEvidence,
   parseCapabilityResult,
   parseAutonomousCycleInput,
   type AutonomousEvaluation,
@@ -149,6 +158,28 @@ import {
   type WorkspaceChangePlan,
   type WorkspacePlanningTarget,
 } from "./workspace-change-planner";
+import {
+  AutonomousEngine,
+} from "./autonomy-engine";
+import type {
+  AutonomousRuntimeSummary,
+} from "./autonomy";
+import {
+  FileAutonomyStateStore,
+  type AutonomyStateStore,
+} from "./autonomy-store";
+import {
+  FileMemoryBridge,
+  type MemoryBridgeSummary,
+  type RelevantContextResult,
+  type SearchMemoryBridgeRequest,
+  type SearchMemoryBridgeResult,
+  type UpsertContextRequest,
+  type RecordDecisionRequest,
+  type RecordLearningRequest,
+  type RecordCapabilityRequest,
+  type MemoryBridgeContext,
+} from "./memory-bridge";
 
 export interface RuntimeMissionCreationResult {
   readonly mission: MissionRecord;
@@ -169,6 +200,8 @@ export interface ForgeRuntimeSnapshot {
   readonly operator: OperatorCoreSummary;
   readonly aiGateway: AiGatewaySummary;
   readonly learning: LearningSummary;
+  readonly autonomy: AutonomousRuntimeSummary;
+  readonly memoryBridge: MemoryBridgeSummary;
   readonly events: readonly RuntimeEvent[];
 }
 
@@ -180,16 +213,76 @@ export interface ForgeRuntimeOptions {
   readonly operatorStateStore?: OperatorStateStore;
   readonly aiGatewayStateStore?: AiGatewayStateStore;
   readonly learningStateStore?: LearningStateStore;
+  readonly autonomyStateStore?: AutonomyStateStore;
   readonly workspaceVerificationRunner?: WorkspaceVerificationRunner;
   readonly workspaceChangeExecutor?: WorkspaceChangeExecutor;
   readonly aiProviderConnectors?: readonly AiProviderConnector[];
   readonly missionLoopPollIntervalMs?: number;
+  readonly autonomyPollIntervalMs?: number;
+  readonly memoryBridgeRootPath?: string;
 }
 
 function errorMessage(error: unknown): string {
   return error instanceof Error
     ? error.message
     : String(error ?? "Unknown error");
+}
+
+interface MissionExecutionFailure extends Error {
+  missionResultStatus?: "failed" | "blocked" | "rejected";
+  missionResultCause?: string;
+  missionOutput?: Readonly<Record<string, unknown>>;
+}
+
+function sha256Text(value: string): string {
+  return createHash("sha256").update(value, "utf8").digest("hex");
+}
+
+function isHexSha256(value: unknown): value is string {
+  return typeof value === "string" && /^[a-f0-9]{64}$/.test(value);
+}
+
+async function runCommand(
+  executable: string,
+  args: readonly string[],
+  cwd: string,
+  signal: AbortSignal,
+): Promise<{ readonly exitCode: number; readonly stdout: string; readonly stderr: string }> {
+  return new Promise((resolve, reject) => {
+    const child = spawn(executable, args, {
+      cwd,
+      shell: false,
+      windowsHide: true,
+      signal,
+      env: process.env,
+    });
+    let stdout = "";
+    let stderr = "";
+
+    child.stdout.on("data", (chunk: Buffer) => {
+      stdout += chunk.toString("utf8");
+    });
+    child.stderr.on("data", (chunk: Buffer) => {
+      stderr += chunk.toString("utf8");
+    });
+    child.on("error", reject);
+    child.on("close", (code) => {
+      resolve({
+        exitCode: code ?? 1,
+        stdout,
+        stderr,
+      });
+    });
+  });
+}
+
+async function exists(targetPath: string): Promise<boolean> {
+  try {
+    await access(targetPath);
+    return true;
+  } catch {
+    return false;
+  }
 }
 
 export class ForgeRuntime {
@@ -205,6 +298,8 @@ export class ForgeRuntime {
   readonly #operatorCore: OperatorCore;
   readonly #aiGateway: AiGatewayEngine;
   readonly #learningEngine: LearningEngine;
+  readonly #autonomyEngine: AutonomousEngine;
+  readonly #memoryBridge: FileMemoryBridge;
   readonly #learningEvidenceTool: LearningEvidenceTool;
   readonly #workspaceExecutor: WorkspaceChangeExecutor;
   readonly #autonomousEvaluator = new AutonomousOutputEvaluator();
@@ -319,6 +414,31 @@ export class ForgeRuntime {
     this.#learningEngine =
       new LearningEngine(learningOptions);
 
+    this.#autonomyEngine = new AutonomousEngine({
+      events: this.#events,
+      stateStore:
+        options.autonomyStateStore ??
+        new FileAutonomyStateStore(),
+      pollIntervalMs: options.autonomyPollIntervalMs,
+      listMissions: () => this.#missionEngine.list(),
+      listApprovals: () => this.#governanceEngine.listApprovals(),
+      approveApproval: (approvalId, actor, note) =>
+        this.approveApproval(approvalId, actor, note),
+      createMission: (request) => this.createMission(request),
+      listLearningProposals: () => this.#learningEngine.listProposals(),
+      listLearningProfiles: () => this.#learningEngine.listProfiles(),
+      scheduleLearningProposal: (proposalId) =>
+        this.scheduleLearningProposal(proposalId),
+      scheduleWorkspacePlan: (missionId) =>
+        this.scheduleWorkspacePlan(missionId),
+      aiGatewaySummary: () => this.#aiGateway.summary(),
+    });
+
+    this.#memoryBridge = new FileMemoryBridge({
+      events: this.#events,
+      rootPath: options.memoryBridgeRootPath,
+    });
+
     this.#learningEvidenceTool = new LearningEvidenceTool({
       getCapability: (capabilityId) =>
         this.#capabilityRegistry.getCapability(capabilityId),
@@ -353,6 +473,10 @@ export class ForgeRuntime {
     signal: AbortSignal,
   ): Promise<Readonly<Record<string, unknown>>> {
     const input = parseAutonomousCycleInput(mission.input);
+    const relevantContext = this.#memoryBridge.relevantContext({
+      query: input.objective,
+      limit: 8,
+    });
 
     if (signal.aborted) {
       throw new MissionAbortError();
@@ -367,6 +491,117 @@ export class ForgeRuntime {
         ? mission.input.targetCapabilityId
         : null;
     let toolEvidenceMemory: ProjectMemoryEntry | null = null;
+    let executionEvidence: AutonomousExecutionEvidence | null = null;
+    let proofFilePath: string | null = null;
+    let proofContent: string | null = null;
+    let proofSha256: string | null = null;
+    let proofWorkspaceRoot: string | null = null;
+
+    if (input.objectiveProfile === "file-create-read-hash") {
+      const targetPath =
+        typeof mission.input.proofTargetPath === "string"
+          ? mission.input.proofTargetPath
+          : "forge-proof.txt";
+      const proof = await this.#executeWorkspaceProof(
+        mission.id,
+        targetPath,
+        signal,
+      );
+      executionEvidence = proof.evidence;
+      proofFilePath = proof.filePath;
+      proofContent = proof.content;
+      proofSha256 = proof.sha256;
+      proofWorkspaceRoot = proof.workspaceRoot;
+
+      const requiredActions = [
+        "write-file",
+        "read-file",
+        "compute-sha256",
+        "verify-file-exists",
+      ] as const;
+      const recordedActions = new Set(
+        executionEvidence.receipts
+          .filter((receipt) => receipt.ok)
+          .map((receipt) => receipt.action),
+      );
+      const matchingArtifact = executionEvidence.artifacts.find(
+        (artifact) =>
+          artifact.kind === "file-hash-proof" &&
+          artifact.path === proofFilePath &&
+          artifact.content === proofContent &&
+          artifact.sha256 === proofSha256,
+      );
+      const fileEffect = executionEvidence.fileEffects.find(
+        (effect) => effect.path === proofFilePath,
+      );
+      const verificationPassed =
+        executionEvidence.verificationRuns.length > 0 &&
+        executionEvidence.verificationRuns.every((run) => run.exitCode === 0);
+      const missingGates: string[] = [];
+
+      if (!(await exists(proofFilePath))) {
+        missingGates.push("file-exists");
+      }
+
+      if (!proofFilePath) {
+        missingGates.push("file-location");
+      }
+
+      if (typeof proofContent !== "string" || proofContent.length === 0) {
+        missingGates.push("file-readback");
+      }
+
+      const loggedSha = fileEffect?.afterSha256 ?? null;
+
+      if (
+        !isHexSha256(proofSha256) ||
+        !isHexSha256(loggedSha) ||
+        loggedSha !== proofSha256
+      ) {
+        missingGates.push("sha256");
+      }
+
+      if (!fileEffect) {
+        missingGates.push("file-change-log");
+      }
+
+      if (!matchingArtifact) {
+        missingGates.push("execution-log");
+      }
+
+      if (!verificationPassed) {
+        missingGates.push("verification-result");
+      }
+
+      for (const action of requiredActions) {
+        if (!recordedActions.has(action)) {
+          missingGates.push(`action-${action}`);
+        }
+      }
+
+      if (missingGates.length > 0) {
+        const failure = new Error(
+          `Autonomous proof evidence gates missing: ${missingGates.join(", ")}`,
+        ) as MissionExecutionFailure;
+        failure.missionResultStatus = "failed";
+        failure.missionResultCause = "evidence-gate";
+        failure.missionOutput = Object.freeze({
+          cycleIndex: input.cycleIndex,
+          maxCycles: input.maxCycles,
+          rootMissionId: input.rootMissionId ?? mission.id,
+          previousMissionId: input.previousMissionId,
+          objectiveExecutionMode: input.objectiveExecutionMode,
+          objectiveProfile: input.objectiveProfile,
+          proofWorkspaceRoot,
+          proofFilePath,
+          proofContent,
+          proofSha256,
+          executionEvidence,
+          missingGates: Object.freeze(missingGates),
+        });
+        throw failure;
+      }
+    }
 
     if (learningProposalId && targetCapabilityId) {
       const bundle = this.#learningEvidenceTool.collect({
@@ -405,9 +640,19 @@ export class ForgeRuntime {
         "",
         `This is autonomous cycle ${input.cycleIndex} of ${input.maxCycles}.`,
         "Use repository evidence and persistent project memory.",
+        "Use Memory Bridge context as durable primary knowledge across sessions.",
         "Return the single next evidence-backed implementation step.",
         "State assumptions and concrete verification steps explicitly.",
         "Do not claim that code, tests or runtime changes occurred unless the supplied evidence proves it.",
+        "",
+        "Current durable context:",
+        relevantContext.currentContext.summary,
+        "",
+        "Relevant durable knowledge entries:",
+        ...relevantContext.relevant.map(
+          (item, index) =>
+            `${index + 1}. [${item.entry.kind}] ${item.entry.title} (score ${item.score})\n${item.entry.content.slice(0, 400)}`,
+        ),
         ...(toolEvidenceMemory
           ? [
               `Required evidence ID: ${toolEvidenceMemory.id}`,
@@ -438,9 +683,36 @@ export class ForgeRuntime {
       composition.id,
       mission.id,
     );
+
+    if (
+      input.objectiveExecutionMode === "build-or-mutate" &&
+      execution.providerId === "manual-fallback"
+    ) {
+      const blocked = new Error(
+        "Build/mutate objective is blocked because provider route manual-fallback cannot produce verified implementation evidence.",
+      ) as MissionExecutionFailure;
+      blocked.missionResultStatus = "blocked";
+      blocked.missionResultCause = "provider-route";
+      blocked.missionOutput = Object.freeze({
+        cycleIndex: input.cycleIndex,
+        maxCycles: input.maxCycles,
+        rootMissionId: input.rootMissionId ?? mission.id,
+        previousMissionId: input.previousMissionId,
+        compositionId: composition.id,
+        executionId: execution.id,
+        objectiveExecutionMode: input.objectiveExecutionMode,
+        objectiveProfile: input.objectiveProfile,
+        executionEvidence,
+      });
+      throw blocked;
+    }
+
     const evaluation: AutonomousEvaluation =
       this.#autonomousEvaluator.evaluate(mission.id, execution, {
         requiredEvidenceId: toolEvidenceMemory?.id ?? null,
+        executionEvidence,
+        objectiveExecutionMode: input.objectiveExecutionMode,
+        objectiveProfile: input.objectiveProfile,
       });
     const outputText = execution.outputText ?? "";
     const capabilityResult = parseCapabilityResult(outputText);
@@ -483,10 +755,39 @@ export class ForgeRuntime {
       },
     );
 
+    const baseOutput = Object.freeze({
+      cycleIndex: input.cycleIndex,
+      maxCycles: input.maxCycles,
+      rootMissionId: input.rootMissionId ?? mission.id,
+      previousMissionId: input.previousMissionId,
+      compositionId: composition.id,
+      executionId: execution.id,
+      evaluation,
+      evidenceMemoryId: evidenceMemory.id,
+      toolEvidenceMemoryId: toolEvidenceMemory?.id ?? null,
+      objectiveExecutionMode: input.objectiveExecutionMode,
+      objectiveProfile: input.objectiveProfile,
+      proofWorkspaceRoot,
+      proofFilePath,
+      proofContent,
+      proofSha256,
+      executionEvidence,
+      capabilityResult,
+      learningObservationId: null,
+      learningProposalId: null,
+      outputSha256,
+      usage: execution.usage,
+      nextMissionId: null,
+    });
+
     if (evaluation.decision !== "accepted") {
-      throw new Error(
+      const failure = new Error(
         `Autonomous output rejected by evaluation ${evaluation.id} with score ${evaluation.score}`,
-      );
+      ) as MissionExecutionFailure;
+      failure.missionResultStatus = "rejected";
+      failure.missionResultCause = "evaluation";
+      failure.missionOutput = baseOutput;
+      throw failure;
     }
 
     const learning = await this.#learningEngine.observeAutonomousCycle({
@@ -518,6 +819,24 @@ export class ForgeRuntime {
           : null,
       capabilityResult,
       toolEvidenceMemoryId: toolEvidenceMemory?.id ?? null,
+    });
+
+    await this.#memoryBridge.recordLearning({
+      title: `Autonomous cycle ${input.cycleIndex}/${input.maxCycles} ${evaluation.decision}`,
+      content: [
+        `Mission: ${mission.id}`,
+        `Objective: ${input.objective}`,
+        `Evaluation decision: ${evaluation.decision}`,
+        `Evaluation score: ${evaluation.score}`,
+        `Composition: ${composition.id}`,
+        `Execution: ${execution.id}`,
+      ].join("\n"),
+      tags: [
+        "autonomous-cycle",
+        evaluation.decision,
+        `cycle-${input.cycleIndex}`,
+      ],
+      sourceMissionId: mission.id,
     });
 
     let nextMissionId: string | null = null;
@@ -565,21 +884,217 @@ export class ForgeRuntime {
     }
 
     return Object.freeze({
-      cycleIndex: input.cycleIndex,
-      maxCycles: input.maxCycles,
-      rootMissionId: input.rootMissionId ?? mission.id,
-      previousMissionId: input.previousMissionId,
-      compositionId: composition.id,
-      executionId: execution.id,
-      evaluation,
-      evidenceMemoryId: evidenceMemory.id,
-      toolEvidenceMemoryId: toolEvidenceMemory?.id ?? null,
-      capabilityResult,
+      ...baseOutput,
       learningObservationId: learning.observation.id,
       learningProposalId: learning.proposal.id,
-      outputSha256,
-      usage: execution.usage,
       nextMissionId,
+    });
+  }
+
+  async #executeWorkspaceProof(
+    missionId: string,
+    targetPath: string,
+    signal: AbortSignal,
+  ): Promise<{
+    readonly workspaceRoot: string;
+    readonly filePath: string;
+    readonly content: string;
+    readonly sha256: string;
+    readonly evidence: AutonomousExecutionEvidence;
+  }> {
+    const storageRoot = process.env.STORAGE_DIR?.trim()
+      ? path.resolve(process.env.STORAGE_DIR)
+      : path.resolve("storage");
+    const workspaceRoot = path.join(
+      storageRoot,
+      "sandboxes",
+      "autonomous-proof-workspaces",
+      missionId,
+    );
+    const proofText =
+      `forge-proof mission=${missionId} ts=${new Date().toISOString()} ` +
+      `nonce=${randomUUID()}`;
+    const proofPathLiteral = targetPath
+      .replaceAll("\\", "\\\\")
+      .replaceAll("'", "\\'");
+    const packageJson = {
+      name: "forge-proof-workspace",
+      private: true,
+      scripts: {
+        typecheck:
+          `node -e \"const fs=require('fs');const p='${proofPathLiteral}';if(!fs.existsSync(p)){console.error('missing proof file');process.exit(1)}const t=fs.readFileSync(p,'utf8');if(!t||t.trim().length===0){console.error('empty proof file');process.exit(1)}console.log('proof verification ok')\"`,
+      },
+    };
+
+    await rm(workspaceRoot, { recursive: true, force: true });
+    await mkdir(workspaceRoot, { recursive: true });
+
+    const init = await runCommand("git", ["init"], workspaceRoot, signal);
+    if (init.exitCode !== 0) {
+      throw new Error(`Failed to initialize proof workspace: ${init.stderr || init.stdout}`);
+    }
+
+    const branch = await runCommand(
+      "git",
+      ["checkout", "-b", "proof-execution"],
+      workspaceRoot,
+      signal,
+    );
+    if (branch.exitCode !== 0) {
+      throw new Error(`Failed to create proof branch: ${branch.stderr || branch.stdout}`);
+    }
+
+    let request;
+    try {
+      request = parseWorkspaceChangeRequest({
+        changes: [
+          {
+            path: "package.json",
+            expectedSha256: null,
+            content: JSON.stringify(packageJson, null, 2),
+          },
+          {
+            path: targetPath,
+            expectedSha256: null,
+            content: proofText,
+          },
+        ],
+        verification: ["typecheck"],
+        commit: null,
+      });
+    } catch (error) {
+      const errorText = errorMessage(error);
+
+      if (/Protected workspace path:/i.test(errorText)) {
+        const blocked = new Error(errorText) as MissionExecutionFailure;
+        blocked.missionResultStatus = "blocked";
+        blocked.missionResultCause = "protected-path";
+        blocked.missionOutput = Object.freeze({
+          workspaceRoot,
+          requestedPath: targetPath,
+        });
+        throw blocked;
+      }
+
+      throw error;
+    }
+
+    let execution;
+    try {
+      execution = await this.#workspaceExecutor.execute(
+        workspaceRoot,
+        missionId,
+        request,
+        signal,
+      );
+    } catch (error) {
+      const errorText = errorMessage(error);
+
+      if (/Protected workspace path:/i.test(errorText)) {
+        const blocked = new Error(errorText) as MissionExecutionFailure;
+        blocked.missionResultStatus = "blocked";
+        blocked.missionResultCause = "protected-path";
+        blocked.missionOutput = Object.freeze({
+          workspaceRoot,
+          requestedPath: targetPath,
+        });
+        throw blocked;
+      }
+
+      throw error;
+    }
+
+    const absoluteProofPath = path.resolve(workspaceRoot, targetPath);
+    const readBack = await readFile(absoluteProofPath, "utf8");
+    const computedHash = sha256Text(readBack);
+    const proofChange = execution.changedFiles.find(
+      (change) => change.path === targetPath,
+    );
+    const receiptAt = new Date().toISOString();
+    const verificationRuns = execution.verification.map((verification) =>
+      Object.freeze({
+        command: verification.command,
+        exitCode: verification.exitCode,
+        stdoutSha256: verification.stdoutSha256,
+        stderrSha256: verification.stderrSha256,
+        durationMs: verification.durationMs,
+      }),
+    );
+    const evidence: AutonomousExecutionEvidence = Object.freeze({
+      objectiveProfile: "file-create-read-hash",
+      receipts: Object.freeze([
+        Object.freeze({
+          id: randomUUID(),
+          action: "write-file" as const,
+          targetPath: absoluteProofPath,
+          startedAt: receiptAt,
+          completedAt: receiptAt,
+          durationMs: 1,
+          ok: Boolean(proofChange),
+          error: proofChange ? null : "Proof change was not recorded",
+        }),
+        Object.freeze({
+          id: randomUUID(),
+          action: "read-file" as const,
+          targetPath: absoluteProofPath,
+          startedAt: receiptAt,
+          completedAt: receiptAt,
+          durationMs: 1,
+          ok: readBack.length > 0,
+          error: readBack.length > 0 ? null : "Proof file is empty",
+        }),
+        Object.freeze({
+          id: randomUUID(),
+          action: "compute-sha256" as const,
+          targetPath: absoluteProofPath,
+          startedAt: receiptAt,
+          completedAt: receiptAt,
+          durationMs: 1,
+          ok: isHexSha256(computedHash),
+          error: isHexSha256(computedHash)
+            ? null
+            : "Computed hash is not a valid SHA-256",
+        }),
+        Object.freeze({
+          id: randomUUID(),
+          action: "verify-file-exists" as const,
+          targetPath: absoluteProofPath,
+          startedAt: receiptAt,
+          completedAt: receiptAt,
+          durationMs: 1,
+          ok: await exists(absoluteProofPath),
+          error: (await exists(absoluteProofPath))
+            ? null
+            : "Proof file does not exist",
+        }),
+      ]),
+      fileEffects: Object.freeze([
+        Object.freeze({
+          path: absoluteProofPath,
+          existedBefore: proofChange?.beforeSha256 !== null,
+          existsAfter: await exists(absoluteProofPath),
+          beforeSha256: proofChange?.beforeSha256 ?? null,
+          afterSha256: proofChange?.afterSha256 ?? "",
+        }),
+      ]),
+      verificationRuns: Object.freeze(verificationRuns),
+      artifacts: Object.freeze([
+        Object.freeze({
+          id: randomUUID(),
+          kind: "file-hash-proof" as const,
+          path: absoluteProofPath,
+          content: readBack,
+          sha256: computedHash,
+        }),
+      ]),
+    });
+
+    return Object.freeze({
+      workspaceRoot,
+      filePath: absoluteProofPath,
+      content: readBack,
+      sha256: computedHash,
+      evidence,
     });
   }
 
@@ -995,10 +1510,40 @@ export class ForgeRuntime {
       await this.#operatorCore.initialize();
       await this.#aiGateway.initialize();
       await this.#learningEngine.initialize();
+      await this.#memoryBridge.initialize();
+      await this.#autonomyEngine.initialize();
       await this.#reconcileLearningEvidence();
       await this.#reconcileGovernanceState();
 
+      this.subscribe((event) => {
+        if (
+          event.type !== "mission.succeeded" &&
+          event.type !== "mission.failed" &&
+          event.type !== "mission.rejected"
+        ) {
+          return;
+        }
+
+        const missionId =
+          typeof event.payload.missionId === "string"
+            ? event.payload.missionId
+            : null;
+
+        if (!missionId) {
+          return;
+        }
+
+        const mission = this.#missionEngine.get(missionId);
+
+        if (!mission) {
+          return;
+        }
+
+        void this.#memoryBridge.captureMissionKnowledge(mission);
+      });
+
       this.#missionLoop.start();
+      this.#autonomyEngine.start();
 
       return running;
     } catch (error) {
@@ -1015,6 +1560,7 @@ export class ForgeRuntime {
   }
 
   async stop(): Promise<KernelStateSnapshot> {
+    await this.#autonomyEngine.stop();
     await this.#missionLoop.stop();
 
     const stopped = await this.#kernel.stop();
@@ -1051,6 +1597,38 @@ export class ForgeRuntime {
       throw new Error(
         `Mission requires capability improvement; evolution plan ${plan.id} created`,
       );
+    }
+
+    if (request.kind === "operator.autonomous-cycle") {
+      const activeAutonomousMissions = this.#missionEngine
+        .list()
+        .filter(
+          (mission) =>
+            mission.kind === "operator.autonomous-cycle" &&
+            (mission.status === "queued" ||
+              mission.status === "running" ||
+              mission.status === "awaiting_approval"),
+        );
+
+      if (activeAutonomousMissions.length > 0) {
+        const continuationAuthorized =
+          request.input?.continuationAuthorized === true;
+        const cycleIndex = request.input?.cycleIndex;
+        const previousMissionId = request.input?.previousMissionId;
+        const boundedContinuation =
+          continuationAuthorized &&
+          typeof cycleIndex === "number" &&
+          Number.isInteger(cycleIndex) &&
+          cycleIndex > 1 &&
+          typeof previousMissionId === "string" &&
+          activeAutonomousMissions.length === 1 &&
+          activeAutonomousMissions[0].status === "running" &&
+          activeAutonomousMissions[0].id === previousMissionId;
+
+        if (!boundedContinuation) {
+          throw new Error("An autonomous mission is already active");
+        }
+      }
     }
 
     const governance =
@@ -1441,6 +2019,66 @@ export class ForgeRuntime {
     return this.#learningEngine.summary();
   }
 
+  memoryBridgeSummary(): MemoryBridgeSummary {
+    return this.#memoryBridge.summary();
+  }
+
+  memoryBridgeCurrentContext(): MemoryBridgeContext {
+    return this.#memoryBridge.currentContext();
+  }
+
+  searchMemoryBridge(
+    request: SearchMemoryBridgeRequest,
+  ): readonly SearchMemoryBridgeResult[] {
+    return this.#memoryBridge.search(request);
+  }
+
+  memoryBridgeRelevantContext(
+    query: string,
+    limit?: number,
+  ): RelevantContextResult {
+    return this.#memoryBridge.relevantContext({
+      query,
+      limit,
+    });
+  }
+
+  recordMemoryBridgeDecision(
+    request: RecordDecisionRequest,
+  ) {
+    return this.#memoryBridge.recordDecision(request);
+  }
+
+  recordMemoryBridgeLearning(
+    request: RecordLearningRequest,
+  ) {
+    return this.#memoryBridge.recordLearning(request);
+  }
+
+  recordMemoryBridgeCapability(
+    request: RecordCapabilityRequest,
+  ) {
+    return this.#memoryBridge.recordCapability(request);
+  }
+
+  upsertMemoryBridgeContext(
+    request: UpsertContextRequest,
+  ) {
+    return this.#memoryBridge.upsertCurrentContext(request);
+  }
+
+  autonomySummary(): AutonomousRuntimeSummary {
+    return this.#autonomyEngine.summary();
+  }
+
+  setAutonomyEnabled(enabled: boolean): Promise<AutonomousRuntimeSummary> {
+    return this.#autonomyEngine.setEnabled(enabled);
+  }
+
+  resumeAutonomy(): AutonomousRuntimeSummary {
+    return this.#autonomyEngine.resume();
+  }
+
   listLearningObservations(): readonly LearningObservation[] {
     return this.#learningEngine.listObservations();
   }
@@ -1484,6 +2122,8 @@ export class ForgeRuntime {
           `Return a concrete result, explicit assumptions, acceptance criteria and exact verification.`,
         learningProposalId: proposal.id,
         targetCapabilityId: proposal.targetCapabilityId,
+        reasonForSelection: proposal.mission.input.reasonForSelection,
+        expectedNewEvidence: proposal.mission.input.expectedNewEvidence,
       },
     });
     const scheduled = await this.#learningEngine.markProposalScheduled(
@@ -1591,6 +2231,8 @@ export class ForgeRuntime {
       operator: this.#operatorCore.summary(),
       aiGateway: this.#aiGateway.summary(),
       learning: this.#learningEngine.summary(),
+      autonomy: this.#autonomyEngine.summary(),
+      memoryBridge: this.#memoryBridge.summary(),
       events: this.#events.snapshot(),
     });
   }

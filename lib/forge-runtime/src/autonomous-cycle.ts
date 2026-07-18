@@ -1,9 +1,63 @@
 import { randomUUID } from "node:crypto";
 import type { AiExecutionRecord } from "./ai-gateway";
 
+export type AutonomousObjectiveExecutionMode =
+  | "analysis-only"
+  | "build-or-mutate";
+
+export type AutonomousObjectiveProfile =
+  | "generic-analysis"
+  | "generic-build"
+  | "file-create-read-hash";
+
+export interface AutonomousActionReceipt {
+  readonly id: string;
+  readonly action: "write-file" | "read-file" | "compute-sha256" | "verify-file-exists";
+  readonly targetPath: string;
+  readonly startedAt: string;
+  readonly completedAt: string;
+  readonly durationMs: number;
+  readonly ok: boolean;
+  readonly error: string | null;
+}
+
+export interface AutonomousFileEffect {
+  readonly path: string;
+  readonly existedBefore: boolean;
+  readonly existsAfter: boolean;
+  readonly beforeSha256: string | null;
+  readonly afterSha256: string | null;
+}
+
+export interface AutonomousVerificationRun {
+  readonly command: string;
+  readonly exitCode: number;
+  readonly stdoutSha256: string;
+  readonly stderrSha256: string;
+  readonly durationMs: number;
+}
+
+export interface AutonomousArtifactEvidence {
+  readonly id: string;
+  readonly kind: "file-hash-proof";
+  readonly path: string;
+  readonly content: string;
+  readonly sha256: string;
+}
+
+export interface AutonomousExecutionEvidence {
+  readonly objectiveProfile: AutonomousObjectiveProfile;
+  readonly receipts: readonly AutonomousActionReceipt[];
+  readonly fileEffects: readonly AutonomousFileEffect[];
+  readonly verificationRuns: readonly AutonomousVerificationRun[];
+  readonly artifacts: readonly AutonomousArtifactEvidence[];
+}
+
 export interface AutonomousCycleInput {
   readonly projectId: string;
   readonly objective: string;
+  readonly objectiveExecutionMode: AutonomousObjectiveExecutionMode;
+  readonly objectiveProfile: AutonomousObjectiveProfile;
   readonly cycleIndex: number;
   readonly maxCycles: number;
   readonly rootMissionId: string | null;
@@ -82,6 +136,56 @@ function boundedInteger(
   return value;
 }
 
+export function classifyAutonomousObjective(
+  objective: string,
+): {
+  readonly mode: AutonomousObjectiveExecutionMode;
+  readonly profile: AutonomousObjectiveProfile;
+} {
+  const normalized = objective.toLowerCase();
+  const hasProofTextFile = /\b[a-z0-9._-]*proof[a-z0-9._-]*\.txt\b/i.test(normalized);
+  const hasHash =
+    normalized.includes("sha-256") ||
+    normalized.includes("sha256") ||
+    normalized.includes("hash");
+  const hasReadback =
+    normalized.includes("lees") ||
+    normalized.includes("read");
+
+  if (hasProofTextFile && hasHash && hasReadback) {
+    return Object.freeze({
+      mode: "build-or-mutate" as const,
+      profile: "file-create-read-hash" as const,
+    });
+  }
+
+  const buildIndicators = [
+    " maak ",
+    "create ",
+    "write ",
+    "bestand",
+    "file",
+    "build",
+    "compile",
+    "wijzig",
+    "modify",
+    "implement code",
+  ];
+  const buildLikely = buildIndicators.some((token) => normalized.includes(token));
+
+  if (buildLikely) {
+    return Object.freeze({
+      mode: "build-or-mutate" as const,
+      profile: "generic-build" as const,
+    });
+  }
+
+  return Object.freeze({
+    mode: "analysis-only" as const,
+    profile: "generic-analysis" as const,
+  });
+}
+
 export function parseAutonomousCycleInput(
   input: Readonly<Record<string, unknown>>,
 ): AutonomousCycleInput {
@@ -108,9 +212,14 @@ export function parseAutonomousCycleInput(
     })
     .slice(0, 8);
 
+  const objective = textInput(input, "objective");
+  const classified = classifyAutonomousObjective(objective);
+
   return Object.freeze({
     projectId: textInput(input, "projectId", "forge-core"),
-    objective: textInput(input, "objective"),
+    objective,
+    objectiveExecutionMode: classified.mode,
+    objectiveProfile: classified.profile,
     cycleIndex,
     maxCycles,
     rootMissionId: optionalText(input, "rootMissionId"),
@@ -133,6 +242,9 @@ export class AutonomousOutputEvaluator {
     execution: AiExecutionRecord,
     options: {
       readonly requiredEvidenceId?: string | null;
+      readonly executionEvidence?: AutonomousExecutionEvidence | null;
+      readonly objectiveExecutionMode?: AutonomousObjectiveExecutionMode;
+      readonly objectiveProfile?: AutonomousObjectiveProfile;
     } = {},
   ): AutonomousEvaluation {
     const output = execution.outputText ?? "";
@@ -168,6 +280,57 @@ export class AutonomousOutputEvaluator {
         detail: "Output must not contain credential-shaped material.",
       },
     ];
+
+    if (options.objectiveExecutionMode === "build-or-mutate") {
+      const evidence = options.executionEvidence ?? null;
+      const hasReceipts = (evidence?.receipts.length ?? 0) > 0;
+      const hasArtifacts = (evidence?.artifacts.length ?? 0) > 0;
+      const hasFileEffects = (evidence?.fileEffects.length ?? 0) > 0;
+
+      checks.push(
+        {
+          id: "build-provider-capable",
+          passed: execution.providerId !== "manual-fallback",
+          detail:
+            execution.providerId === "manual-fallback"
+              ? "Build/mutate objective may not be accepted on manual-fallback."
+              : `Provider route: ${execution.providerId}`,
+        },
+        {
+          id: "execution-evidence-present",
+          passed: hasReceipts,
+          detail: `Action receipts: ${evidence?.receipts.length ?? 0}`,
+        },
+        {
+          id: "file-effects-present",
+          passed: hasFileEffects,
+          detail: `File effects: ${evidence?.fileEffects.length ?? 0}`,
+        },
+        {
+          id: "artifact-evidence-present",
+          passed: hasArtifacts,
+          detail: `Artifacts: ${evidence?.artifacts.length ?? 0}`,
+        },
+      );
+
+      if (options.objectiveProfile === "file-create-read-hash") {
+        const proof = evidence?.artifacts.find(
+          (artifact) => artifact.kind === "file-hash-proof",
+        );
+        checks.push({
+          id: "file-hash-proof-complete",
+          passed:
+            typeof proof?.path === "string" &&
+            proof.path.length > 0 &&
+            typeof proof.content === "string" &&
+            proof.content.length > 0 &&
+            /^[a-f0-9]{64}$/.test(proof?.sha256 ?? ""),
+          detail: proof
+            ? `Proof file: ${proof.path}`
+            : "Missing file-hash-proof artifact.",
+        });
+      }
+    }
 
     if (options.requiredEvidenceId) {
       checks.push(
