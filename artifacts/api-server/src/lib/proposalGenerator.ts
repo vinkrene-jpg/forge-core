@@ -299,46 +299,107 @@ export async function generateProposal(input: {
     throw err;
   }
 
-  let parsed: ParsedProposal;
-  try {
-    parsed = parseProposalResponse(gateway.response);
-  } catch (err) {
-    const message = err instanceof Error ? err.message : String(err);
-    const [failedRow] = (await db
-      .insert(proposalsTable)
-      .values({
-        sourceType: source.type,
-        sourceId: source.id,
-        prompt,
-        provider: gateway.provider,
-        model: gateway.model,
-        status: "failed",
-        errorMessage: message.slice(0, 1000),
-      })
-      .returning()) as unknown as ProposalRow[];
-    await audit({
-      actor: "proposal-generator",
-      action: "proposal_failed",
-      targetType: "proposal",
-      targetId: failedRow.id,
-      details: `Unusable AI response for ${source.type} #${source.id}: ${message.slice(0, 300)}`,
-      outcome: "blocked",
-    });
-    throw new GatewayError(`AI produced an unusable proposal: ${message}`);
+  function prepareProposal(response: string): {
+    parsed: ParsedProposal;
+    writable: { path: string; content: string }[];
+    blocked: string[];
+    packageFile: { path: string; content: string };
+  } {
+    const parsed = parseProposalResponse(response);
+    const writable: { path: string; content: string }[] = [];
+    const blocked: string[] = [];
+
+    for (const file of parsed.files) {
+      if (isUnsafeRelativePath(file.path) || isProtectedPath(file.path)) {
+        blocked.push(file.path);
+      } else {
+        writable.push(file);
+      }
+    }
+
+    const { packageFile } = normalizeProposalFiles(parsed, writable);
+    return { parsed, writable, blocked, packageFile };
   }
 
-  // Split files into writable and blocked (protected core paths / unsafe paths).
-  const writable: { path: string; content: string }[] = [];
-  const blocked: string[] = [];
-  for (const f of parsed.files) {
-    if (isUnsafeRelativePath(f.path) || isProtectedPath(f.path)) {
-      blocked.push(f.path);
-    } else {
-      writable.push(f);
+  let prepared: ReturnType<typeof prepareProposal>;
+
+  try {
+    prepared = prepareProposal(gateway.response);
+  } catch (firstError) {
+    const firstMessage = firstError instanceof Error ? firstError.message : String(firstError);
+    const repairPrompt = [
+      prompt,
+      "",
+      "CORRECTION REQUIRED â€” ONE FINAL REPAIR ATTEMPT ONLY.",
+      `The previous response failed validation with this exact error: ${firstMessage}`,
+      "Return a completely corrected JSON proposal, not an explanation.",
+      "It must include an executable JavaScript entry file, a JavaScript test file and a valid package.json.",
+      "The package.json must contain non-empty lint, typecheck, build and test scripts.",
+      "Do not repeat the invalid response.",
+    ].join("\n");
+
+    let repairedGateway;
+    try {
+      repairedGateway = await invokeGateway("codegeneration", repairPrompt);
+    } catch (repairGatewayError) {
+      const message =
+        repairGatewayError instanceof Error ? repairGatewayError.message : String(repairGatewayError);
+      const [failedRow] = (await db
+        .insert(proposalsTable)
+        .values({
+          sourceType: source.type,
+          sourceId: source.id,
+          prompt,
+          provider: gateway.provider,
+          model: gateway.model,
+          status: "failed",
+          errorMessage: `Repair attempt failed: ${message}`.slice(0, 1000),
+        })
+        .returning()) as unknown as ProposalRow[];
+      await audit({
+        actor: "proposal-generator",
+        action: "proposal_repair_failed",
+        targetType: "proposal",
+        targetId: failedRow.id,
+        details: `Single repair gateway attempt failed: ${message.slice(0, 300)}`,
+        outcome: "blocked",
+      });
+      throw new GatewayError(`AI proposal repair attempt failed: ${message}`);
+    }
+
+    gateway = repairedGateway;
+
+    try {
+      prepared = prepareProposal(gateway.response);
+    } catch (secondError) {
+      const secondMessage = secondError instanceof Error ? secondError.message : String(secondError);
+      const [failedRow] = (await db
+        .insert(proposalsTable)
+        .values({
+          sourceType: source.type,
+          sourceId: source.id,
+          prompt,
+          provider: gateway.provider,
+          model: gateway.model,
+          status: "failed",
+          errorMessage: `Proposal remained invalid after one repair: ${secondMessage}`.slice(0, 1000),
+        })
+        .returning()) as unknown as ProposalRow[];
+      await audit({
+        actor: "proposal-generator",
+        action: "proposal_repair_exhausted",
+        targetType: "proposal",
+        targetId: failedRow.id,
+        details: `Proposal blocked after exactly one repair attempt: ${secondMessage.slice(0, 300)}`,
+        outcome: "blocked",
+      });
+      throw new GatewayError(
+        `AI proposal remained invalid after exactly one repair attempt: ${secondMessage}`,
+      );
     }
   }
 
-  const { packageFile } = normalizeProposalFiles(parsed, writable);
+  const { parsed, writable, blocked, packageFile } = prepared;
 
   if (writable.length === 0) {
     const message = `AI proposal contained no writable files; all ${blocked.length} path(s) were unsafe or protected: ${blocked.slice(0, 10).join(", ")}`;
