@@ -381,6 +381,13 @@ if (writable.length === 0) {
     written.push(f.path);
   }
 
+  const packageTarget = path.resolve(dir, "package.json");
+  fs.writeFileSync(packageTarget, packageFile.content, "utf8");
+
+  const packageOnDisk = fs.readFileSync(packageTarget, "utf8");
+  if (packageOnDisk !== packageFile.content) {
+    throw new GatewayError("Repaired package.json was not persisted identically to the sandbox filesystem.");
+  }
   if (blocked.length > 0) {
     await audit({
       actor: "proposal-generator",
