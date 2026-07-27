@@ -106,6 +106,104 @@ interface ParsedProposal {
 
 export class ProposalParseError extends Error {}
 
+export function normalizeProposalFiles(
+  parsed: Pick<ParsedProposal, "moduleName">,
+  writable: { path: string; content: string }[],
+): { packageFile: { path: string; content: string }; entry: string; testFile: string } {
+  const existingEntry =
+    writable.find(
+      (f) =>
+        /\.(?:cjs|mjs|js)$/.test(f.path) &&
+        !/(?:^|[\\/])tests?(?:[\\/]|$)/i.test(f.path) &&
+        !/(?:^|[\\/]).*\.test\.(?:cjs|mjs|js)$/i.test(f.path),
+    )?.path ?? null;
+
+  const testFile =
+    writable.find((f) => /(?:^|[\\/]).*\.test\.(?:cjs|mjs|js)$/i.test(f.path))?.path ??
+    writable.find((f) => /(?:^|[\\/])test\.(?:cjs|mjs|js)$/i.test(f.path))?.path ??
+    null;
+
+  if (!existingEntry) {
+    throw new GatewayError(
+      "AI proposal remains invalid after one automatic normalization: no executable JavaScript entry file.",
+    );
+  }
+
+  if (!testFile) {
+    throw new GatewayError(
+      "AI proposal remains invalid after one automatic normalization: no JavaScript test file.",
+    );
+  }
+
+  let packageFile = writable.find((f) => f.path.replace(/\\/g, "/") === "package.json");
+  let packageJson: {
+    name?: unknown;
+    version?: unknown;
+    private?: unknown;
+    scripts?: Record<string, unknown>;
+    [key: string]: unknown;
+  };
+
+  if (packageFile) {
+    try {
+      packageJson = JSON.parse(packageFile.content) as typeof packageJson;
+    } catch {
+      packageJson = {};
+    }
+  } else {
+    packageJson = {};
+    packageFile = { path: "package.json", content: "" };
+    writable.push(packageFile);
+  }
+
+  packageJson.name =
+    typeof packageJson.name === "string" && packageJson.name.trim().length > 0
+      ? packageJson.name
+      : parsed.moduleName;
+  packageJson.version =
+    typeof packageJson.version === "string" && packageJson.version.trim().length > 0
+      ? packageJson.version
+      : "0.1.0";
+  packageJson.private = packageJson.private !== false;
+
+  const repairedScripts: Record<string, unknown> = {
+    ...(packageJson.scripts && typeof packageJson.scripts === "object" ? packageJson.scripts : {}),
+  };
+
+  repairedScripts.lint =
+    typeof repairedScripts.lint === "string" && repairedScripts.lint.trim().length > 0
+      ? repairedScripts.lint
+      : `node --check ${existingEntry}`;
+  repairedScripts.typecheck =
+    typeof repairedScripts.typecheck === "string" && repairedScripts.typecheck.trim().length > 0
+      ? repairedScripts.typecheck
+      : `node --check ${existingEntry}`;
+  repairedScripts.build =
+    typeof repairedScripts.build === "string" && repairedScripts.build.trim().length > 0
+      ? repairedScripts.build
+      : `node --check ${existingEntry}`;
+  repairedScripts.test =
+    typeof repairedScripts.test === "string" && repairedScripts.test.trim().length > 0
+      ? repairedScripts.test
+      : "node --test --test-isolation=none";
+
+  packageJson.scripts = repairedScripts;
+  packageFile.content = `${JSON.stringify(packageJson, null, 2)}\n`;
+
+  const requiredScripts = ["lint", "typecheck", "build", "test"] as const;
+  const missingScripts = requiredScripts.filter(
+    (name) => typeof packageJson.scripts?.[name] !== "string" || packageJson.scripts[name].trim().length === 0,
+  );
+
+  if (missingScripts.length > 0) {
+    throw new GatewayError(
+      `AI proposal remains invalid after one automatic normalization: missing scripts ${missingScripts.join(", ")}.`,
+    );
+  }
+
+  return { packageFile, entry: existingEntry, testFile };
+}
+
 export function parseProposalResponse(response: string): ParsedProposal {
   const start = response.indexOf("{");
   const end = response.lastIndexOf("}");
@@ -240,97 +338,9 @@ export async function generateProposal(input: {
     }
   }
 
-  const existingEntry =
-    writable.find(
-      (f) =>
-        /\.(?:cjs|mjs|js)$/.test(f.path) &&
-        !/(?:^|[\\/])tests?(?:[\\/]|$)/i.test(f.path) &&
-        !/(?:^|[\\/]).*\.test\.(?:cjs|mjs|js)$/i.test(f.path),
-    )?.path ?? null;
+  const { packageFile } = normalizeProposalFiles(parsed, writable);
 
-  const testFile =
-    writable.find((f) => /(?:^|[\\/]).*\.test\.(?:cjs|mjs|js)$/i.test(f.path))?.path ??
-    writable.find((f) => /(?:^|[\\/])test\.(?:cjs|mjs|js)$/i.test(f.path))?.path ??
-    null;
-
-  if (!existingEntry) {
-    throw new GatewayError(
-      "AI proposal remains invalid after one automatic normalization: no executable JavaScript entry file.",
-    );
-  }
-
-  if (!testFile) {
-    throw new GatewayError(
-      "AI proposal remains invalid after one automatic normalization: no JavaScript test file.",
-    );
-  }
-
-  let packageFile = writable.find((f) => f.path.replace(/\\/g, "/") === "package.json");
-  let packageJson: {
-    name?: unknown;
-    version?: unknown;
-    private?: unknown;
-    scripts?: Record<string, unknown>;
-    [key: string]: unknown;
-  };
-
-  if (packageFile) {
-    try {
-      packageJson = JSON.parse(packageFile.content) as typeof packageJson;
-    } catch {
-      packageJson = {};
-    }
-  } else {
-    packageJson = {};
-    packageFile = { path: "package.json", content: "" };
-    writable.push(packageFile);
-  }
-
-  packageJson.name =
-    typeof packageJson.name === "string" && packageJson.name.trim().length > 0
-      ? packageJson.name
-      : parsed.moduleName;
-  packageJson.version =
-    typeof packageJson.version === "string" && packageJson.version.trim().length > 0
-      ? packageJson.version
-      : "0.1.0";
-  packageJson.private = packageJson.private !== false;
-
-  const repairedScripts: Record<string, unknown> = {
-    ...(packageJson.scripts && typeof packageJson.scripts === "object" ? packageJson.scripts : {}),
-  };
-
-  repairedScripts.lint =
-    typeof repairedScripts.lint === "string" && repairedScripts.lint.trim().length > 0
-      ? repairedScripts.lint
-      : `node --check ${existingEntry}`;
-  repairedScripts.typecheck =
-    typeof repairedScripts.typecheck === "string" && repairedScripts.typecheck.trim().length > 0
-      ? repairedScripts.typecheck
-      : `node --check ${existingEntry}`;
-  repairedScripts.build =
-    typeof repairedScripts.build === "string" && repairedScripts.build.trim().length > 0
-      ? repairedScripts.build
-      : `node --check ${existingEntry}`;
-  repairedScripts.test =
-    typeof repairedScripts.test === "string" && repairedScripts.test.trim().length > 0
-      ? repairedScripts.test
-      : "node --test --test-isolation=none";
-
-  packageJson.scripts = repairedScripts;
-  packageFile.content = `${JSON.stringify(packageJson, null, 2)}\n`;
-
-  const requiredScripts = ["lint", "typecheck", "build", "test"] as const;
-  const missingScripts = requiredScripts.filter(
-    (name) => typeof packageJson.scripts?.[name] !== "string" || packageJson.scripts[name].trim().length === 0,
-  );
-
-  if (missingScripts.length > 0) {
-    throw new GatewayError(
-      `AI proposal remains invalid after one automatic normalization: missing scripts ${missingScripts.join(", ")}.`,
-    );
-  }
-if (writable.length === 0) {
+  if (writable.length === 0) {
     const message = `AI proposal contained no writable files; all ${blocked.length} path(s) were unsafe or protected: ${blocked.slice(0, 10).join(", ")}`;
     const [failedRow] = (await db
       .insert(proposalsTable)
