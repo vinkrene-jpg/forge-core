@@ -240,6 +240,28 @@ export async function generateProposal(input: {
     }
   }
 
+  const packageFile = writable.find((f) => f.path.replace(/\\/g, "/") === "package.json");
+  if (!packageFile) {
+    throw new GatewayError("AI proposal is missing package.json.");
+  }
+
+  let packageJson: { scripts?: Record<string, unknown> };
+  try {
+    packageJson = JSON.parse(packageFile.content) as { scripts?: Record<string, unknown> };
+  } catch {
+    throw new GatewayError("AI proposal package.json is not valid JSON.");
+  }
+
+  const requiredScripts = ["lint", "typecheck", "build", "test"] as const;
+  const missingScripts = requiredScripts.filter(
+    (name) => typeof packageJson.scripts?.[name] !== "string" || packageJson.scripts[name].trim().length === 0,
+  );
+
+  if (missingScripts.length > 0) {
+    throw new GatewayError(
+      `AI proposal package.json is missing required scripts: ${missingScripts.join(", ")}`,
+    );
+  }
   if (writable.length === 0) {
     const message = `AI proposal contained no writable files; all ${blocked.length} path(s) were unsafe or protected: ${blocked.slice(0, 10).join(", ")}`;
     const [failedRow] = (await db
