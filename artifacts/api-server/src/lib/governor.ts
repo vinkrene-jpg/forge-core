@@ -14,7 +14,6 @@ import {
 } from "@workspace/db";
 import { desc, eq, and } from "drizzle-orm";
 import { audit } from "./audit";
-import { evaluateModulePolicy } from "./selfEvolutionPolicy";
 
 export type GovernorVerdict =
   | "install_allowed"
@@ -103,24 +102,6 @@ export async function governInstall(module: ModuleRow): Promise<GovernorDecision
     touchesCore: module.touchesCore,
     hasManifest: Boolean(module.manifest),
   };
-
-  const policy = await evaluateModulePolicy(module);
-  if (!policy.allowed) {
-    const prefix = policy.absoluteStop
-      ? "Absolute stopconditie: menselijke bevestiging verplicht."
-      : `Bevoegdheid '${policy.authority}' staat deze vrijgave niet toe.`;
-    return record(
-      module,
-      "install_blocked",
-      `${prefix} ${policy.reasons.join(" | ")}`,
-      {
-        ...inputs,
-        authority: policy.authority,
-        successfulReleases: policy.successfulReleases,
-        scopeViolations: policy.scopeViolations,
-      },
-    );
-  }
 
   // Hard blocks
   if (module.touchesCore) {

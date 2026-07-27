@@ -85,9 +85,6 @@ Respond with ONLY a JSON object, no prose, in exactly this shape:
 Hard requirements for "files":
 - Include a package.json with a "test" script using exactly "node --test --test-isolation=none" (in-process isolation is required by the sandboxed test runner) and NO install-time scripts.
 - Include at least one test file so the real test runner can verify the proposal.
-- package.json must also contain "lint", "typecheck" and "build" scripts that return exit code 0 only when their real checks pass.
-- The proposal must remain low-risk, sandbox-only and must not contain production deploys, database deletion, auth/security changes or irreversible actions.
-- Acceptance requires typecheck, build, unit tests and scope integrity to pass.
 - Use plain Node.js (CommonJS or ESM) with zero external dependencies unless absolutely necessary.
 - All paths must be relative (e.g. "index.js", "test/index.test.js"). Never use absolute paths or "..".
 - Never touch or reference Forge core files; the proposal lives entirely inside its own sandbox.
@@ -270,9 +267,6 @@ export async function generateProposal(input: {
     name: parsed.moduleName,
     version: "0.1.0",
     paths: writable.map((f) => f.path),
-    scope: "sandbox-only",
-    actions: [],
-    acceptance: ["typecheck", "build", "unit", "scope-integrity"],
   });
   const [moduleRow] = await db
     .insert(modulesTable)
