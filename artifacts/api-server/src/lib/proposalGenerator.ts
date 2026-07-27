@@ -268,9 +268,18 @@ export async function generateProposal(input: {
   }
 
   // Create module (status: draft — never installed here) and sandbox.
+  const entry =
+    writable.find(
+      (f) =>
+        /\.(?:cjs|mjs|js|ts)$/.test(f.path) &&
+        !/(?:^|[\\/])tests?(?:[\\/]|$)/i.test(f.path) &&
+        !/(?:^|[\\/]).*\.test\.(?:cjs|mjs|js|ts)$/i.test(f.path),
+    )?.path ?? null;
+
   const manifest = JSON.stringify({
     name: parsed.moduleName,
     version: "0.1.0",
+    entry,
     paths: writable.map((f) => f.path),
     scope: "sandbox-only",
     actions: [],
