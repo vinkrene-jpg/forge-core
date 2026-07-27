@@ -1,4 +1,4 @@
-﻿// Real Code Execution Test Runner module.
+// Real Code Execution Test Runner module.
 // Executes actual commands (dependency install, lint, typecheck, build, unit,
 // integration) inside a sandbox directory with a restricted environment.
 // Built as a module on top of the Locked Core test pipeline â€” the core
@@ -121,7 +121,7 @@ function permissionNodeOptions(dir: string): string {
     `--allow-fs-write=${dir}/`,
     `--allow-fs-write=${cache}/`,
     "--allow-child-process",
-  ].join(" ");
+  ].map((option) => (option.includes(" ") ? `"${option}"` : option)).join(" ");
 }
 
 // Core integrity verification: checksum of the Locked Core implementation
