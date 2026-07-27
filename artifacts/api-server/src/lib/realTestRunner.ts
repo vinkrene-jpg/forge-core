@@ -157,6 +157,18 @@ export function computeCoreChecksum(): string {
   return hash.digest("hex");
 }
 
+function runPackageScript(
+  step: string,
+  script: string,
+  cwd: string,
+  env: NodeJS.ProcessEnv,
+): Promise<StepOutcome> {
+  if (process.platform === "win32") {
+    return runStep(step, process.env.ComSpec ?? "cmd.exe", ["/d", "/s", "/c", script], cwd, env);
+  }
+  return runStep(step, "/bin/sh", ["-lc", script], cwd, env);
+}
+
 function runStep(
   step: string,
   cmd: string,
@@ -383,13 +395,13 @@ export async function executeRealTestRun(input: {
       case "lint":
         steps.push(
           scripts.lint
-            ? await runStep("lint", "npm", ["run", "lint"], dir, execEnv)
+            ? await runPackageScript("lint", scripts.lint, dir, execEnv)
             : skipped("lint", "No 'lint' script in package.json."),
         );
         break;
       case "typecheck":
         if (scripts.typecheck) {
-          steps.push(await runStep("typecheck", "npm", ["run", "typecheck"], dir, execEnv));
+          steps.push(await runPackageScript("typecheck", scripts.typecheck, dir, execEnv));
         } else if (hasTsconfig && pkg) {
           steps.push(await runStep("typecheck", "npx", ["--no-install", "tsc", "--noEmit"], dir, execEnv));
         } else {
@@ -399,7 +411,7 @@ export async function executeRealTestRun(input: {
       case "build":
         steps.push(
           scripts.build
-            ? await runStep("build", "npm", ["run", "build"], dir, execEnv)
+            ? await runPackageScript("build", scripts.build, dir, execEnv)
             : skipped("build", "No 'build' script in package.json."),
         );
         break;
@@ -407,7 +419,7 @@ export async function executeRealTestRun(input: {
         const script = scripts["test:unit"] ? "test:unit" : scripts.test ? "test" : null;
         steps.push(
           script
-            ? await runStep("unit", "npm", ["run", script], dir, execEnv)
+            ? await runPackageScript("unit", scripts[script]!, dir, execEnv)
             : failedStep("unit", "Tests are mandatory: no 'test' or 'test:unit' script found in package.json."),
         );
         break;
@@ -415,7 +427,7 @@ export async function executeRealTestRun(input: {
       case "integration":
         steps.push(
           scripts["test:integration"]
-            ? await runStep("integration", "npm", ["run", "test:integration"], dir, execEnv)
+            ? await runPackageScript("integration", scripts["test:integration"], dir, execEnv)
             : skipped("integration", "No 'test:integration' script in package.json."),
         );
         break;
