@@ -17,6 +17,8 @@ import {
   sandboxFilesTable,
   proposalsTable,
   type ProposalRow,
+  type ModuleRow,
+  type SandboxRow,
 } from "@workspace/db";
 import { invokeGateway, GatewayError } from "./aiGateway";
 import { isProtectedPath } from "./corelock";
@@ -175,7 +177,7 @@ export async function generateProposal(input: {
     gateway = await invokeGateway("codegeneration", prompt);
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err);
-    const [failedRow] = await db
+    const [failedRow] = (await db
       .insert(proposalsTable)
       .values({
         sourceType: source.type,
@@ -184,7 +186,7 @@ export async function generateProposal(input: {
         status: "failed",
         errorMessage: message.slice(0, 1000),
       })
-      .returning();
+      .returning()) as unknown as ProposalRow[];
     await audit({
       actor: "proposal-generator",
       action: "proposal_failed",
@@ -201,7 +203,7 @@ export async function generateProposal(input: {
     parsed = parseProposalResponse(gateway.response);
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err);
-    const [failedRow] = await db
+    const [failedRow] = (await db
       .insert(proposalsTable)
       .values({
         sourceType: source.type,
@@ -212,7 +214,7 @@ export async function generateProposal(input: {
         status: "failed",
         errorMessage: message.slice(0, 1000),
       })
-      .returning();
+      .returning()) as unknown as ProposalRow[];
     await audit({
       actor: "proposal-generator",
       action: "proposal_failed",
@@ -237,7 +239,7 @@ export async function generateProposal(input: {
 
   if (writable.length === 0) {
     const message = `AI proposal contained no writable files; all ${blocked.length} path(s) were unsafe or protected: ${blocked.slice(0, 10).join(", ")}`;
-    const [failedRow] = await db
+    const [failedRow] = (await db
       .insert(proposalsTable)
       .values({
         sourceType: source.type,
@@ -250,7 +252,7 @@ export async function generateProposal(input: {
         blockedFiles: blocked,
         errorMessage: message.slice(0, 1000),
       })
-      .returning();
+      .returning()) as unknown as ProposalRow[];
     await audit({
       actor: "proposal-generator",
       action: "proposal_failed",
@@ -268,7 +270,7 @@ export async function generateProposal(input: {
     version: "0.1.0",
     paths: writable.map((f) => f.path),
   });
-  const [moduleRow] = await db
+  const [moduleRow] = (await db
     .insert(modulesTable)
     .values({
       name: parsed.moduleName,
@@ -278,16 +280,16 @@ export async function generateProposal(input: {
       ownerAgent: "proposal-generator",
       manifest,
     })
-    .returning();
+    .returning()) as unknown as ModuleRow[];
 
-  const [sandboxRow] = await db
+  const [sandboxRow] = (await db
     .insert(sandboxesTable)
     .values({
       moduleId: moduleRow.id,
       name: `proposal-${parsed.moduleName}`.slice(0, 100),
       purpose: `Generated proposal for ${source.type} #${source.id}`,
     })
-    .returning();
+    .returning()) as unknown as SandboxRow[];
   const dir = ensureSandboxDir(sandboxRow.id);
   await db.update(sandboxesTable).set({ storagePath: dir }).where(eq(sandboxesTable.id, sandboxRow.id));
 
@@ -316,7 +318,7 @@ export async function generateProposal(input: {
     });
   }
 
-  const [proposalRow] = await db
+  const [proposalRow] = (await db
     .insert(proposalsTable)
     .values({
       sourceType: source.type,
@@ -332,7 +334,7 @@ export async function generateProposal(input: {
       filesGenerated: written,
       blockedFiles: blocked,
     })
-    .returning();
+    .returning()) as unknown as ProposalRow[];
 
   await audit({
     actor: "proposal-generator",

@@ -27,7 +27,7 @@ async function record(
   rationale: string,
   inputs: Record<string, unknown>,
 ): Promise<GovernorDecisionRow> {
-  const [row] = await db
+  const insertedDecisionRows = await db
     .insert(governorDecisionsTable)
     .values({
       moduleId: module.id,
@@ -36,6 +36,8 @@ async function record(
       inputs: JSON.stringify(inputs),
     })
     .returning();
+  const row = (insertedDecisionRows as unknown as GovernorDecisionRow[])[0];
+  if (!row) throw new Error("Governor decision insert returned no row");
   await audit({
     actor: "governor",
     action: "install_decision",
