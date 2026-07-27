@@ -3,7 +3,7 @@
 // so Forge stays portable and independent of any specific runtime.
 
 import { db, aiCallsTable, memoryItemsTable } from "@workspace/db";
-import { ilike, or, desc } from "drizzle-orm";
+import { sql, or, desc } from "drizzle-orm";
 import { logger } from "./logger";
 
 export const TASK_TYPES = [
@@ -84,7 +84,12 @@ export async function getMemoryContext(query: string, limit = 3): Promise<string
   const items = await db
     .select()
     .from(memoryItemsTable)
-    .where(or(ilike(memoryItemsTable.title, pattern), ilike(memoryItemsTable.content, pattern)))
+    .where(
+      or(
+        sql`lower(${memoryItemsTable.title}) like lower(${pattern})`,
+        sql`lower(${memoryItemsTable.content}) like lower(${pattern})`,
+      ),
+    )
     .orderBy(desc(memoryItemsTable.createdAt))
     .limit(limit);
   if (items.length === 0) return "";
