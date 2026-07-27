@@ -164,13 +164,17 @@ function runStep(
   cwd: string,
   env: NodeJS.ProcessEnv,
 ): Promise<StepOutcome> {
-  const command = [cmd, ...args].join(" ");
+  const executable =
+    process.platform === "win32" && (cmd === "npm" || cmd === "npx")
+      ? `${cmd}.cmd`
+      : cmd;
+  const command = [executable, ...args].join(" ");
   const started = Date.now();
   return new Promise((resolve) => {
     let stdout = "";
     let stderr = "";
     let settled = false;
-    const child = spawn(cmd, args, { cwd, env, shell: false });
+    const child = spawn(executable, args, { cwd, env, shell: false });
     const timeout = setTimeout(() => {
       if (settled) return;
       settled = true;
