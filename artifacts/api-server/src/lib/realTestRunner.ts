@@ -1,7 +1,7 @@
-// Real Code Execution Test Runner module.
+﻿// Real Code Execution Test Runner module.
 // Executes actual commands (dependency install, lint, typecheck, build, unit,
 // integration) inside a sandbox directory with a restricted environment.
-// Built as a module on top of the Locked Core test pipeline — the core
+// Built as a module on top of the Locked Core test pipeline â€” the core
 // testRunner, Guardian and Governor are not modified.
 
 import { spawn } from "child_process";
@@ -174,7 +174,7 @@ function runStep(
     let stdout = "";
     let stderr = "";
     let settled = false;
-    const child = spawn(executable, args, { cwd, env, shell: false });
+    const child = spawn(executable, args, { cwd, env, shell: process.platform === "win32" });
     const timeout = setTimeout(() => {
       if (settled) return;
       settled = true;
@@ -453,7 +453,7 @@ export async function executeRealTestRun(input: {
   const summary = steps.map((s) => ({
     type: s.step,
     status: s.status,
-    details: `${s.command} → exit ${s.exitCode ?? "n/a"} in ${s.durationMs}ms${s.status === "skipped" ? ` (${s.stderr})` : ""}`,
+    details: `${s.command} â†’ exit ${s.exitCode ?? "n/a"} in ${s.durationMs}ms${s.status === "skipped" ? ` (${s.stderr})` : ""}`,
   }));
 
   const insertedRows = (await db
@@ -500,10 +500,11 @@ export async function executeRealTestRun(input: {
     action: "real_test_run",
     targetType: module ? "module" : "sandbox",
     targetId: module?.id ?? sandbox.id,
-    details: `Real execution (${input.types.join(", ")}) — ${passed} passed, ${failed} failed in ${durationMs}ms${module ? ` [module v${module.version}]` : ""}`,
+    details: `Real execution (${input.types.join(", ")}) â€” ${passed} passed, ${failed} failed in ${durationMs}ms${module ? ` [module v${module.version}]` : ""}`,
     outcome: status === "failed" ? "blocked" : "allowed",
   });
 
   logger.info({ testRunId: row.id, status, durationMs, sandboxId: sandbox.id }, "Real test run finished");
   return row;
 }
+
