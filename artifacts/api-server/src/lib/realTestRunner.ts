@@ -452,7 +452,7 @@ export async function executeRealTestRun(input: {
     details: `${s.command} → exit ${s.exitCode ?? "n/a"} in ${s.durationMs}ms${s.status === "skipped" ? ` (${s.stderr})` : ""}`,
   }));
 
-  const [row] = await db
+  const insertedRows = (await db
     .insert(testRunsTable)
     .values({
       moduleId: module?.id ?? null,
@@ -466,7 +466,10 @@ export async function executeRealTestRun(input: {
       moduleVersion: module?.version ?? null,
       durationMs,
     })
-    .returning();
+    .returning()) as unknown as TestRunRow[];
+
+  const row = insertedRows[0];
+  if (!row) throw new Error("Test run insert returned no row.");
 
   if (steps.length > 0) {
     await db.insert(testRunStepsTable).values(
