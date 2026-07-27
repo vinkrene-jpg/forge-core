@@ -137,7 +137,12 @@ async function callAnthropic(p: ProviderConfig, prompt: string, context: string)
   };
 }
 
-async function callOpenAiCompatible(p: ProviderConfig, prompt: string, context: string): Promise<InvokeOutcome> {
+async function callOpenAiCompatible(
+  p: ProviderConfig,
+  prompt: string,
+  context: string,
+  taskType: TaskType,
+): Promise<InvokeOutcome> {
   const res = await fetch(`${p.baseUrl}/chat/completions`, {
     method: "POST",
     headers: {
@@ -150,6 +155,9 @@ async function callOpenAiCompatible(p: ProviderConfig, prompt: string, context: 
         ...(context ? [{ role: "system", content: `Relevant Forge memory:\n${context}` }] : []),
         { role: "user", content: prompt },
       ],
+      ...(taskType === "codegeneration"
+        ? { response_format: { type: "json_object" } }
+        : {}),
     }),
   });
   if (!res.ok) throw new Error(`${p.name} error ${res.status}: ${(await res.text()).slice(0, 300)}`);
@@ -169,9 +177,14 @@ async function callOpenAiCompatible(p: ProviderConfig, prompt: string, context: 
   };
 }
 
-async function callProvider(p: ProviderConfig, prompt: string, context: string): Promise<InvokeOutcome> {
+async function callProvider(
+  p: ProviderConfig,
+  prompt: string,
+  context: string,
+  taskType: TaskType,
+): Promise<InvokeOutcome> {
   if (p.name === "anthropic") return callAnthropic(p, prompt, context);
-  return callOpenAiCompatible(p, prompt, context);
+  return callOpenAiCompatible(p, prompt, context, taskType);
 }
 
 export async function invokeGateway(
@@ -210,7 +223,7 @@ export async function invokeGateway(
 
   for (const p of chain) {
     try {
-      const outcome = await callProvider(p, prompt, memoryContext);
+      const outcome = await callProvider(p, prompt, memoryContext, taskType);
       const [row] = (await db
         .insert(aiCallsTable)
         .values({
