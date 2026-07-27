@@ -11,6 +11,7 @@ import {
 import { desc, eq } from "drizzle-orm";
 import { validateManifest, isProtectedPath } from "./corelock";
 import { audit } from "./audit";
+import { evaluateModulePolicy, recordPolicyViolation } from "./selfEvolutionPolicy";
 
 export interface GuardianResult {
   id: number;
@@ -25,6 +26,18 @@ export interface GuardianResult {
 
 export async function runGuardian(module: ModuleRow): Promise<GuardianResult> {
   const findings: GuardianFindingData[] = [];
+
+  const policy = await evaluateModulePolicy(module);
+  if (!policy.allowed) {
+    for (const reason of policy.reasons) {
+      findings.push({
+        category: "self-evolution-policy",
+        severity: "critical",
+        message: reason,
+      });
+    }
+    await recordPolicyViolation(module, policy.reasons);
+  }
 
   // 1. Core protection
   if (module.touchesCore) {
