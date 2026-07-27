@@ -140,6 +140,26 @@ const ddl = [
     updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY (sandbox_id) REFERENCES sandboxes(id) ON DELETE CASCADE
   );`,
+`CREATE TABLE IF NOT EXISTS proposals (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    source_type TEXT NOT NULL,
+    source_id INTEGER NOT NULL,
+    prompt TEXT NOT NULL,
+    provider TEXT,
+    model TEXT,
+    status TEXT NOT NULL DEFAULT 'generated',
+    summary TEXT,
+    risk_estimate TEXT NOT NULL DEFAULT 'medium',
+    module_id INTEGER,
+    sandbox_id INTEGER,
+    files_generated TEXT NOT NULL DEFAULT '[]',
+    blocked_files TEXT NOT NULL DEFAULT '[]',
+    error_message TEXT,
+    created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (module_id) REFERENCES modules(id) ON DELETE SET NULL,
+    FOREIGN KEY (sandbox_id) REFERENCES sandboxes(id) ON DELETE SET NULL
+  );`,
+
   `CREATE TABLE IF NOT EXISTS test_runs (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     module_id INTEGER,

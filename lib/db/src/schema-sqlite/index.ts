@@ -146,6 +146,24 @@ export const sandboxFilesTable = sqliteTable("sandbox_files", {
   updatedAt: text("updated_at").notNull().default(sql`CURRENT_TIMESTAMP`),
 });
 
+export const proposalsTable = sqliteTable("proposals", {
+  id: integer("id").primaryKey({ autoIncrement: true }),
+  sourceType: text("source_type").notNull(),
+  sourceId: integer("source_id").notNull(),
+  prompt: text("prompt").notNull(),
+  provider: text("provider"),
+  model: text("model"),
+  status: text("status").notNull().default("generated"),
+  summary: text("summary"),
+  riskEstimate: text("risk_estimate").notNull().default("medium"),
+  moduleId: integer("module_id").references(() => modulesTable.id, { onDelete: "set null" }),
+  sandboxId: integer("sandbox_id").references(() => sandboxesTable.id, { onDelete: "set null" }),
+  filesGenerated: text("files_generated", { mode: "json" }).$type<string[]>().notNull().default(sql`'[]'`),
+  blockedFiles: text("blocked_files", { mode: "json" }).$type<string[]>().notNull().default(sql`'[]'`),
+  errorMessage: text("error_message"),
+  createdAt: text("created_at").notNull().default(sql`CURRENT_TIMESTAMP`),
+});
+
 export const testRunsTable = sqliteTable("test_runs", {
   id: integer("id").primaryKey({ autoIncrement: true }),
   moduleId: integer("module_id").references(() => modulesTable.id, { onDelete: "cascade" }),
@@ -258,6 +276,7 @@ export type ModuleRow = typeof modulesTable.$inferSelect;
 export type ModuleSnapshotRow = typeof moduleSnapshotsTable.$inferSelect;
 export type SandboxRow = typeof sandboxesTable.$inferSelect;
 export type SandboxFileRow = typeof sandboxFilesTable.$inferSelect;
+export type ProposalRow = typeof proposalsTable.$inferSelect;
 export type TestRunRow = typeof testRunsTable.$inferSelect;
 export type TestRunStepRow = typeof testRunStepsTable.$inferSelect;
 export type ApprovalRow = typeof approvalsTable.$inferSelect;

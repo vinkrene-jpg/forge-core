@@ -70,6 +70,7 @@ export const modulesTable = tables.modulesTable;
 export const moduleSnapshotsTable = tables.moduleSnapshotsTable;
 export const sandboxesTable = tables.sandboxesTable;
 export const sandboxFilesTable = tables.sandboxFilesTable;
+export const proposalsTable = tables.proposalsTable;
 export const testRunsTable = tables.testRunsTable;
 export const testRunStepsTable = tables.testRunStepsTable;
 export const approvalsTable = tables.approvalsTable;
