@@ -245,12 +245,49 @@ export async function generateProposal(input: {
     throw new GatewayError("AI proposal is missing package.json.");
   }
 
-  let packageJson: { scripts?: Record<string, unknown> };
+  let packageJson: {
+    scripts?: Record<string, unknown>;
+    [key: string]: unknown;
+  };
+
   try {
-    packageJson = JSON.parse(packageFile.content) as { scripts?: Record<string, unknown> };
+    packageJson = JSON.parse(packageFile.content) as {
+      scripts?: Record<string, unknown>;
+      [key: string]: unknown;
+    };
   } catch {
     throw new GatewayError("AI proposal package.json is not valid JSON.");
   }
+
+  const existingEntry =
+    writable.find(
+      (f) =>
+        /\.(?:cjs|mjs|js)$/.test(f.path) &&
+        !/(?:^|[\\/])tests?(?:[\\/]|$)/i.test(f.path) &&
+        !/(?:^|[\\/]).*\.test\.(?:cjs|mjs|js)$/i.test(f.path),
+    )?.path ?? null;
+
+  const testFile =
+    writable.find((f) => /(?:^|[\\/]).*\.test\.(?:cjs|mjs|js)$/i.test(f.path))?.path ??
+    writable.find((f) => /(?:^|[\\/])test\.(?:cjs|mjs|js)$/i.test(f.path))?.path ??
+    null;
+
+  const repairedScripts: Record<string, unknown> = {
+    ...(packageJson.scripts ?? {}),
+  };
+
+  if (existingEntry) {
+    repairedScripts.lint ??= `node --check ${existingEntry}`;
+    repairedScripts.typecheck ??= `node --check ${existingEntry}`;
+    repairedScripts.build ??= `node --check ${existingEntry}`;
+  }
+
+  if (testFile) {
+    repairedScripts.test ??= `node --test ${testFile}`;
+  }
+
+  packageJson.scripts = repairedScripts;
+  packageFile.content = `${JSON.stringify(packageJson, null, 2)}\n`;
 
   const requiredScripts = ["lint", "typecheck", "build", "test"] as const;
   const missingScripts = requiredScripts.filter(
@@ -259,10 +296,10 @@ export async function generateProposal(input: {
 
   if (missingScripts.length > 0) {
     throw new GatewayError(
-      `AI proposal package.json is missing required scripts: ${missingScripts.join(", ")}`,
+      `AI proposal package.json still misses required scripts after one automatic repair: ${missingScripts.join(", ")}`,
     );
   }
-  if (writable.length === 0) {
+if (writable.length === 0) {
     const message = `AI proposal contained no writable files; all ${blocked.length} path(s) were unsafe or protected: ${blocked.slice(0, 10).join(", ")}`;
     const [failedRow] = (await db
       .insert(proposalsTable)
