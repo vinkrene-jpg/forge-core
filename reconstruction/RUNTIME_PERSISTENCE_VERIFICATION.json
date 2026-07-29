@@ -1,0 +1,153 @@
+{
+    "verifiedAt":  "2026-07-12T15:52:14.7495088+02:00",
+    "sourceCommit":  "66f8d263aa432d3ded746dab6117b88ebd71c141",
+    "test":  "forced-container-kill-and-recovery",
+    "stateFile":  "/app/storage/forge-runtime/runtime-state.json",
+    "before":  {
+                   "kernel":  {
+                                  "status":  "running",
+                                  "revision":  2,
+                                  "startedAt":  "2026-07-12T13:52:04.562Z",
+                                  "updatedAt":  "2026-07-12T13:52:04.562Z",
+                                  "lastError":  null
+                              },
+                   "health":  {
+                                  "status":  "ok",
+                                  "kernelStatus":  "running",
+                                  "checkedAt":  "2026-07-12T13:52:06.281Z",
+                                  "startedAt":  "2026-07-12T13:52:04.562Z",
+                                  "uptimeMs":  1719,
+                                  "eventCount":  3
+                              },
+                   "persistence":  {
+                                       "version":  1,
+                                       "runtimeId":  "fe1f0a1f-7c34-401f-9e77-ac0fc9b0a442",
+                                       "sessionId":  "7576c71a-6d4e-40c9-b841-f0998330cae2",
+                                       "restartCount":  1,
+                                       "recoveryCount":  0,
+                                       "lastKnownKernelStatus":  "running",
+                                       "lastStartedAt":  "2026-07-12T13:52:04.562Z",
+                                       "lastStoppedAt":  null,
+                                       "updatedAt":  "2026-07-12T13:52:04.562Z",
+                                       "lastShutdownClean":  false,
+                                       "recoveredFromStatus":  null,
+                                       "lastError":  null
+                                   },
+                   "events":  [
+                                  {
+                                      "sequence":  1,
+                                      "type":  "runtime.state.initialized",
+                                      "occurredAt":  "2026-07-12T13:52:04.560Z",
+                                      "payload":  {
+                                                      "runtimeId":  "fe1f0a1f-7c34-401f-9e77-ac0fc9b0a442",
+                                                      "restartCount":  0,
+                                                      "recoveryCount":  0
+                                                  }
+                                  },
+                                  {
+                                      "sequence":  2,
+                                      "type":  "kernel.starting",
+                                      "occurredAt":  "2026-07-12T13:52:04.562Z",
+                                      "payload":  {
+
+                                                  }
+                                  },
+                                  {
+                                      "sequence":  3,
+                                      "type":  "kernel.started",
+                                      "occurredAt":  "2026-07-12T13:52:04.562Z",
+                                      "payload":  {
+                                                      "startedAt":  "2026-07-12T13:52:04.562Z"
+                                                  }
+                                  }
+                              ]
+               },
+    "after":  {
+                  "kernel":  {
+                                 "status":  "running",
+                                 "revision":  2,
+                                 "startedAt":  "2026-07-12T13:52:12.825Z",
+                                 "updatedAt":  "2026-07-12T13:52:12.825Z",
+                                 "lastError":  null
+                             },
+                  "health":  {
+                                 "status":  "ok",
+                                 "kernelStatus":  "running",
+                                 "checkedAt":  "2026-07-12T13:52:14.562Z",
+                                 "startedAt":  "2026-07-12T13:52:12.825Z",
+                                 "uptimeMs":  1737,
+                                 "eventCount":  4
+                             },
+                  "persistence":  {
+                                      "version":  1,
+                                      "runtimeId":  "fe1f0a1f-7c34-401f-9e77-ac0fc9b0a442",
+                                      "sessionId":  "1371dcd3-c251-4585-b9bc-f585e116d7c1",
+                                      "restartCount":  2,
+                                      "recoveryCount":  1,
+                                      "lastKnownKernelStatus":  "running",
+                                      "lastStartedAt":  "2026-07-12T13:52:12.825Z",
+                                      "lastStoppedAt":  null,
+                                      "updatedAt":  "2026-07-12T13:52:12.825Z",
+                                      "lastShutdownClean":  false,
+                                      "recoveredFromStatus":  "running",
+                                      "lastError":  null
+                                  },
+                  "events":  [
+                                 {
+                                     "sequence":  1,
+                                     "type":  "runtime.state.loaded",
+                                     "occurredAt":  "2026-07-12T13:52:12.824Z",
+                                     "payload":  {
+                                                     "runtimeId":  "fe1f0a1f-7c34-401f-9e77-ac0fc9b0a442",
+                                                     "restartCount":  1,
+                                                     "recoveryCount":  0
+                                                 }
+                                 },
+                                 {
+                                     "sequence":  2,
+                                     "type":  "runtime.recovery.detected",
+                                     "occurredAt":  "2026-07-12T13:52:12.824Z",
+                                     "payload":  {
+                                                     "runtimeId":  "fe1f0a1f-7c34-401f-9e77-ac0fc9b0a442",
+                                                     "previousSessionId":  "7576c71a-6d4e-40c9-b841-f0998330cae2",
+                                                     "recoveredFromStatus":  "running"
+                                                 }
+                                 },
+                                 {
+                                     "sequence":  3,
+                                     "type":  "kernel.starting",
+                                     "occurredAt":  "2026-07-12T13:52:12.825Z",
+                                     "payload":  {
+
+                                                 }
+                                 },
+                                 {
+                                     "sequence":  4,
+                                     "type":  "kernel.started",
+                                     "occurredAt":  "2026-07-12T13:52:12.825Z",
+                                     "payload":  {
+                                                     "startedAt":  "2026-07-12T13:52:12.825Z"
+                                                 }
+                                 }
+                             ]
+              },
+    "persistedAfter":  {
+                           "version":  1,
+                           "runtimeId":  "fe1f0a1f-7c34-401f-9e77-ac0fc9b0a442",
+                           "sessionId":  "1371dcd3-c251-4585-b9bc-f585e116d7c1",
+                           "restartCount":  2,
+                           "recoveryCount":  1,
+                           "lastKnownKernelStatus":  "running",
+                           "lastStartedAt":  "2026-07-12T13:52:12.825Z",
+                           "lastStoppedAt":  null,
+                           "updatedAt":  "2026-07-12T13:52:12.825Z",
+                           "lastShutdownClean":  false,
+                           "recoveredFromStatus":  "running",
+                           "lastError":  null
+                       },
+    "healthAfter":  {
+                        "status":  "ok",
+                        "database":  "ok",
+                        "storage":  "ok"
+                    }
+}

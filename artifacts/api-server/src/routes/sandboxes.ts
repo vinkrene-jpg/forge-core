@@ -127,19 +127,15 @@ router.post("/sandboxes/:id/files", async (req, res): Promise<void> => {
     .from(sandboxFilesTable)
     .where(and(eq(sandboxFilesTable.sandboxId, sandbox.id), eq(sandboxFilesTable.path, body.data.path)));
   const row = existing
-    ? (
-        await db
-          .update(sandboxFilesTable)
-          .set({ content: body.data.content, updatedAt: new Date() })
-          .where(eq(sandboxFilesTable.id, existing.id))
-          .returning()
-      )[0]
-    : (
-        await db
-          .insert(sandboxFilesTable)
-          .values({ sandboxId: sandbox.id, path: body.data.path, content: body.data.content })
-          .returning()
-      )[0];
+    ? ((await db
+        .update(sandboxFilesTable)
+        .set({ content: body.data.content, updatedAt: new Date() })
+        .where(eq(sandboxFilesTable.id, existing.id))
+        .returning()) as any[])[0]
+    : ((await db
+        .insert(sandboxFilesTable)
+        .values({ sandboxId: sandbox.id, path: body.data.path, content: body.data.content })
+        .returning()) as any[])[0];
   // Mirror to the sandbox storage directory
   try {
     const dir = ensureSandboxDir(sandbox.id);

@@ -1,0 +1,35 @@
+{
+    "milestone":  "FG-004.000",
+    "title":  "Learning Engine Evidence Foundation",
+    "verifiedAt":  "2026-07-12T20:59:33.0567566+02:00",
+    "sourceParentCommit":  "8ef44e8",
+    "patchSha256":  "50cbe1bb37672820da6603a857d92e7b021992059368cdb8f176bc5f37512c59",
+    "live":  {
+                 "observations":  2,
+                 "profiles":  22,
+                 "proposals":  2,
+                 "observationIds":  [
+                                        "bd4d1898-5c65-4636-850a-b14fa41cf32e",
+                                        "fc8a2d20-fb56-4397-9bdf-e833dd7b9db9"
+                                    ],
+                 "proposalIds":  [
+                                     "2961abf5-855d-450f-965c-5365105d2baf",
+                                     "16555735-f88d-4d6e-828e-5aa0d9deb39b"
+                                 ],
+                 "importedExistingR3Evidence":  true,
+                 "providerCallsRequiredForMigration":  0,
+                 "restartPersistence":  true
+             },
+    "governance":  {
+                       "proposalsDoNotExecuteAutomatically":  true,
+                       "schedulingUsesMissionCapabilityAndGovernancePath":  true,
+                       "deterministicIntegrationTest":  "passed"
+                   },
+    "verification":  {
+                         "runtimeTests":  "passed",
+                         "fullTypecheck":  "passed",
+                         "productionBuild":  "passed",
+                         "liveApi":  "passed",
+                         "secretPersisted":  false
+                     }
+}

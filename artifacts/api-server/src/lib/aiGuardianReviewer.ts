@@ -179,7 +179,7 @@ export async function runAiGuardianReview(module: ModuleRow): Promise<GuardianRe
     ...ai.findings.map((f) => ({ ...f, message: `[ai] ${f.message}` })),
   ];
 
-  const [row] = await db
+  const insertedRows = (await db
     .insert(guardianReviewsTable)
     .values({
       moduleId: module.id,
@@ -189,7 +189,10 @@ export async function runAiGuardianReview(module: ModuleRow): Promise<GuardianRe
       summary: ai.summary || null,
       model: `${gatewayResult.provider}/${gatewayResult.model}`,
     })
-    .returning();
+    .returning()) as unknown as GuardianReviewRow[];
+
+  const row = insertedRows[0];
+  if (!row) throw new Error("AI Guardian review insert returned no row");
 
   if (finalOutcome === "fail") {
     await db.update(modulesTable).set({ status: "guardian_failed" }).where(eq(modulesTable.id, module.id));

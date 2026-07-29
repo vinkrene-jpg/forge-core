@@ -1,6 +1,6 @@
 # Forge Core — Installation & Operations
 
-Forge Core is fully portable: it runs anywhere Node.js 24+ and PostgreSQL are available. All configuration lives in `.env` — there are no hosting-platform dependencies for core functionality.
+Forge Core is fully portable: it runs anywhere Node.js 24+ is available. By default, Forge starts with a local SQLite database when `DATABASE_URL` is not set; PostgreSQL remains supported when explicitly configured.
 
 Related documents:
 
@@ -15,8 +15,22 @@ Related documents:
 |---|---|---|
 | Node.js | **24.x** (minimum 24.0) | includes corepack |
 | pnpm | **9.x or 10.x** | via `corepack enable` (repo pins the exact version in `package.json` / lockfile) |
-| PostgreSQL | **14+** (16 recommended) | local, Docker, or managed |
+| PostgreSQL | **14+** (16 recommended) | optional: local, Docker, or managed |
 | Docker | **24+** with Docker Compose **v2.24+** | only for the Docker Compose option (compose ≥ 2.24 is needed for optional `env_file`) |
+
+## pnpm Build-Approval (clean install)
+
+Forge uses pnpm's official build-approval policy for native packages.
+
+- `better-sqlite3` is pre-approved in workspace policy (`onlyBuiltDependencies`) so normal `pnpm install` runs without interactive prompts.
+- If your local pnpm cache/policy state still blocks builds, run once:
+
+```sh
+pnpm approve-builds better-sqlite3
+pnpm install
+```
+
+This is the official pnpm build-approval workflow and prevents surprise native-build failures on first bootstrap.
 
 ## Option 1 — Docker Compose (easiest)
 
@@ -59,7 +73,8 @@ corepack enable
 # 2. Install
 ./scripts/src/install.sh        # pnpm install, .env from template, schema push, storage dir
 
-# 3. Edit .env — at minimum DATABASE_URL
+# 3. Edit .env (optional for local-first startup)
+# If DATABASE_URL is unset, Forge auto-creates storage/forge.sqlite
 ```
 
 ### Start / stop / restart (manual)
@@ -72,6 +87,9 @@ pnpm --filter @workspace/forge-core run dev     # Dashboard (Vite dev server)
 # Production (single bundle, serves API):
 pnpm run build
 node artifacts/api-server/dist/index.mjs        # start
+
+# Autonomous local runtime outside VS Code (recommended):
+pnpm forge:start                                # builds and starts Forge + Desktop shell on :5000
 # stop: Ctrl+C (or kill <pid>); restart: run the command again
 
 # As a systemd service (recommended for servers): create
@@ -91,7 +109,80 @@ sudo systemctl status forge-core
 ```sh
 curl -fsS http://localhost:5000/api/healthz     # {"status":"ok",...} — checks DB + storage
 psql "$DATABASE_URL" -c "SELECT 1"              # database reachable
+curl -fsS http://localhost:5000/api/autonomy    # autonomous mission-loop state
 ```
+
+## Autonomous runtime controls
+
+The standalone command `pnpm forge:start` enables the local autonomous loop by default.
+
+### Browser mission intake (outside VS Code)
+
+After startup, open `http://127.0.0.1:5000` and go to **Operator Core**.
+
+Mission Console is the default operator interface and is available directly at `http://127.0.0.1:5000/`.
+This is now the standard way to submit Forge missions instead of issuing commands through VS Code.
+
+Use **Opdrachtinvoer** to start new missions directly in Forge:
+
+- enter one mission command in the text field;
+- review pre-start preview:
+	- begrepen doel;
+	- gekozen missietype;
+	- governance-status;
+- click **Start missie**;
+- track post-start state in the same panel:
+	- missie-ID;
+	- status;
+	- voortgang;
+	- resultaat of blokkade.
+
+Every entered command and Forge interpretation is persisted in Project Memory and Memory Bridge.
+Forge asks for additional human input only when a hard governance boundary requires approval.
+
+Important environment variables:
+
+| Variable | Purpose |
+|---|---|
+| `FORGE_AUTONOMY_ENABLED` | `true/false` toggle for continuous autonomous mission loop (default `true` in `pnpm forge:start`) |
+| `FORGE_BUDGET_USD_PER_RUN` | Soft budget for model-call spend before auto-routing to local/manual fallback |
+| `FORGE_AI_PROVIDER` | Optional preferred provider (`openai-responses`, `local-model`, `manual-fallback`) |
+| `FORGE_LOCAL_MODEL_ENABLED` | Enable local model route (`true` by default) |
+| `FORGE_LOCAL_MODEL_BASE_URL` | OpenAI-compatible local endpoint, default `http://127.0.0.1:11434/v1` |
+| `FORGE_LOCAL_MODEL_NAME` | Local model name, default `qwen2.5-coder:7b` |
+
+Governance behavior remains strict: hard boundaries (high/critical risk approvals) are never auto-approved.
+
+## Forge Memory Bridge (durable memory)
+
+Forge persists durable knowledge outside chat history through the local Memory Bridge.
+
+- Default path in standalone launcher: `D:\\Forge\\memory`
+- Override with: `FORGE_MEMORY_BRIDGE_ROOT`
+- Runtime fallback (if unset): `storage/memory-bridge`
+
+Persisted categories:
+
+- decisions
+- capabilities
+- lessons learned
+- durable knowledge
+- current context snapshot
+
+Automatic behavior:
+
+- After each mission, Forge captures durable mission outcome knowledge.
+- Before each autonomous provider cycle, Forge injects relevant durable context into the composed prompt.
+
+API endpoints:
+
+- `GET /api/memory-bridge` summary + current context
+- `GET /api/memory-bridge/context?query=...&limit=...` relevant context selection
+- `GET /api/memory-bridge/search?query=...&limit=...` durable memory search
+- `POST /api/memory-bridge/decisions` durable decision registration
+- `POST /api/memory-bridge/learning` lesson learned registration
+- `POST /api/memory-bridge/capabilities` capability evidence registration
+- `PUT /api/memory-bridge/current-context` update active context
 
 ## Option 3 — Windows + WSL
 
@@ -127,7 +218,7 @@ See `.env.example` for the full annotated list. Key entries:
 
 | Variable | Purpose |
 |---|---|
-| `DATABASE_URL` | PostgreSQL connection string (required) |
+| `DATABASE_URL` | PostgreSQL connection string (optional; when unset Forge uses local SQLite at `storage/forge.sqlite`) |
 | `PORT` | API server port (default 5000) |
 | `STORAGE_DIR` | Directory for sandboxes, snapshots, backups |
 | `SESSION_SECRET` | Random string for session signing |

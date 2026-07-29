@@ -3,7 +3,7 @@
 // so Forge stays portable and independent of any specific runtime.
 
 import { db, aiCallsTable, memoryItemsTable } from "@workspace/db";
-import { ilike, or, desc } from "drizzle-orm";
+import { sql, or, desc } from "drizzle-orm";
 import { logger } from "./logger";
 
 export const TASK_TYPES = [
@@ -84,11 +84,16 @@ export async function getMemoryContext(query: string, limit = 3): Promise<string
   const items = await db
     .select()
     .from(memoryItemsTable)
-    .where(or(ilike(memoryItemsTable.title, pattern), ilike(memoryItemsTable.content, pattern)))
+    .where(
+      or(
+        sql`lower(${memoryItemsTable.title}) like lower(${pattern})`,
+        sql`lower(${memoryItemsTable.content}) like lower(${pattern})`,
+      ),
+    )
     .orderBy(desc(memoryItemsTable.createdAt))
     .limit(limit);
   if (items.length === 0) return "";
-  return items.map((i) => `[memory:${i.category}] ${i.title}: ${i.content}`).join("\n");
+  return items.map((i: any) => `[memory:${i.category}] ${i.title}: ${i.content}`).join("\n");
 }
 
 interface InvokeOutcome {
@@ -132,7 +137,12 @@ async function callAnthropic(p: ProviderConfig, prompt: string, context: string)
   };
 }
 
-async function callOpenAiCompatible(p: ProviderConfig, prompt: string, context: string): Promise<InvokeOutcome> {
+async function callOpenAiCompatible(
+  p: ProviderConfig,
+  prompt: string,
+  context: string,
+  taskType: TaskType,
+): Promise<InvokeOutcome> {
   const res = await fetch(`${p.baseUrl}/chat/completions`, {
     method: "POST",
     headers: {
@@ -145,6 +155,9 @@ async function callOpenAiCompatible(p: ProviderConfig, prompt: string, context: 
         ...(context ? [{ role: "system", content: `Relevant Forge memory:\n${context}` }] : []),
         { role: "user", content: prompt },
       ],
+      ...(taskType === "codegeneration"
+        ? { response_format: { type: "json_object" } }
+        : {}),
     }),
   });
   if (!res.ok) throw new Error(`${p.name} error ${res.status}: ${(await res.text()).slice(0, 300)}`);
@@ -164,9 +177,14 @@ async function callOpenAiCompatible(p: ProviderConfig, prompt: string, context: 
   };
 }
 
-async function callProvider(p: ProviderConfig, prompt: string, context: string): Promise<InvokeOutcome> {
+async function callProvider(
+  p: ProviderConfig,
+  prompt: string,
+  context: string,
+  taskType: TaskType,
+): Promise<InvokeOutcome> {
   if (p.name === "anthropic") return callAnthropic(p, prompt, context);
-  return callOpenAiCompatible(p, prompt, context);
+  return callOpenAiCompatible(p, prompt, context, taskType);
 }
 
 export async function invokeGateway(
@@ -184,7 +202,7 @@ export async function invokeGateway(
     .filter((p): p is ProviderConfig => Boolean(p && p.configured));
 
   if (chain.length === 0) {
-    const [row] = await db
+    const [row] = (await db
       .insert(aiCallsTable)
       .values({
         provider: primaryName,
@@ -193,7 +211,7 @@ export async function invokeGateway(
         status: "error",
         errorMessage: "No AI provider configured. Set OPENAI_API_KEY / ANTHROPIC_API_KEY / CUSTOM_AI_API_KEY in .env",
       })
-      .returning();
+      .returning()) as any[];
     logger.warn({ taskType, callId: row?.id }, "AI invoke without configured provider");
     throw new GatewayError(
       "No AI provider is configured. Add OPENAI_API_KEY, ANTHROPIC_API_KEY or CUSTOM_AI_API_KEY to your .env file.",
@@ -205,8 +223,8 @@ export async function invokeGateway(
 
   for (const p of chain) {
     try {
-      const outcome = await callProvider(p, prompt, memoryContext);
-      const [row] = await db
+      const outcome = await callProvider(p, prompt, memoryContext, taskType);
+      const [row] = (await db
         .insert(aiCallsTable)
         .values({
           provider: outcome.provider,
@@ -217,7 +235,7 @@ export async function invokeGateway(
           tokensOut: outcome.tokensOut,
           costIndication: outcome.costIndication,
         })
-        .returning();
+        .returning()) as any[];
       return { id: row.id, ...outcome };
     } catch (err) {
       lastError = err instanceof Error ? err : new Error(String(err));

@@ -76,10 +76,10 @@ router.post("/modules", async (req, res): Promise<void> => {
     }
     touchesCore = touchesCore || check.touchesCore;
   }
-  const [row] = await db
+  const [row] = (await db
     .insert(modulesTable)
     .values({ ...body.data, touchesCore, dependencies: body.data.dependencies ?? [] })
-    .returning();
+    .returning()) as any[];
   await audit({
     actor: "module-manager",
     action: "module_created",
@@ -207,7 +207,10 @@ router.delete("/modules/:id", async (req, res): Promise<void> => {
     res.status(400).json({ error: params.error.message });
     return;
   }
-  const [row] = await db.delete(modulesTable).where(eq(modulesTable.id, params.data.id)).returning();
+  const [row] = (await db
+    .delete(modulesTable)
+    .where(eq(modulesTable.id, params.data.id))
+    .returning()) as any[];
   if (!row) {
     res.status(404).json({ error: "Module not found" });
     return;
@@ -265,7 +268,7 @@ router.post("/modules/:id/install", async (req, res): Promise<void> => {
     res.status(404).json({ error: "Module not found" });
     return;
   }
-  const decision = await governInstall(module);
+  const decision = await governInstall(module as any);
   res.json(InstallModuleResponse.parse(jsonSafe({ ...decision, moduleName: module.name })));
 });
 
@@ -349,7 +352,7 @@ router.post("/modules/:id/guardian-review", async (req, res): Promise<void> => {
     res.status(404).json({ error: "Module not found" });
     return;
   }
-  const review = await runGuardian(module);
+  const review = await runGuardian(module as any);
   res.json(RunGuardianReviewResponse.parse(jsonSafe({ ...review, moduleName: module.name })));
 });
 
@@ -365,7 +368,7 @@ router.post("/modules/:id/ai-guardian-review", async (req, res): Promise<void> =
     return;
   }
   try {
-    const review = await runAiGuardianReview(module);
+    const review = await runAiGuardianReview(module as any);
     res.json(RunAiGuardianReviewResponse.parse(jsonSafe({ ...review, moduleName: module.name })));
   } catch (err) {
     if (err instanceof GatewayError) {

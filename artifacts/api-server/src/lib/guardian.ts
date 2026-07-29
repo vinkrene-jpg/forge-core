@@ -7,10 +7,12 @@ import {
   modulesTable,
   type ModuleRow,
   type GuardianFindingData,
+  type GuardianReviewRow,
 } from "@workspace/db";
 import { desc, eq } from "drizzle-orm";
 import { validateManifest, isProtectedPath } from "./corelock";
 import { audit } from "./audit";
+import { evaluateModulePolicy, recordPolicyViolation } from "./selfEvolutionPolicy";
 
 export interface GuardianResult {
   id: number;
@@ -25,6 +27,23 @@ export interface GuardianResult {
 
 export async function runGuardian(module: ModuleRow): Promise<GuardianResult> {
   const findings: GuardianFindingData[] = [];
+
+  const isSelfEvolution =
+    module.ownerAgent === "proposal-generator" || module.ownerAgent === "policy-control";
+
+  if (isSelfEvolution) {
+    const policy = await evaluateModulePolicy(module);
+    if (!policy.allowed) {
+      for (const reason of policy.reasons) {
+        findings.push({
+          category: "self-evolution-policy",
+          severity: "critical",
+          message: reason,
+        });
+      }
+      await recordPolicyViolation(module, policy.reasons);
+    }
+  }
 
   // 1. Core protection
   if (module.touchesCore) {
@@ -116,10 +135,12 @@ export async function runGuardian(module: ModuleRow): Promise<GuardianResult> {
   const hasWarn = findings.length > 0;
   const outcome: "pass" | "warning" | "fail" = hasCritical ? "fail" : hasWarn ? "warning" : "pass";
 
-  const [row] = await db
+  const insertedReviewRows = await db
     .insert(guardianReviewsTable)
     .values({ moduleId: module.id, outcome, findings })
     .returning();
+  const row = (insertedReviewRows as unknown as GuardianReviewRow[])[0];
+  if (!row) throw new Error("Guardian review insert returned no row");
 
   await db
     .update(modulesTable)

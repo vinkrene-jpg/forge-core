@@ -1,18 +1,30 @@
 {
-  "name": "workspace",
-  "version": "0.0.0",
-  "license": "MIT",
-  "scripts": {
-    "preinstall": "sh -c 'rm -f package-lock.json yarn.lock; case \"$npm_config_user_agent\" in pnpm/*) ;; *) echo \"Use pnpm instead\" >&2; exit 1 ;; esac'",
-    "build": "pnpm run typecheck && pnpm -r --if-present run build",
-    "typecheck:libs": "tsc --build",
-    "typecheck": "pnpm run typecheck:libs && pnpm -r --filter \"./artifacts/**\" --filter \"./scripts\" --if-present run typecheck",
-    "forge:self-review": "pnpm --filter @workspace/scripts run forge:self-review",
-    "forge:self-review:test": "pnpm --filter @workspace/scripts run forge:self-review:test"
-  },
-  "private": true,
-  "devDependencies": {
-    "prettier": "^3.8.4",
-    "typescript": "~5.9.3"
-  }
+    "name":  "workspace",
+    "version":  "0.0.0",
+    "license":  "MIT",
+    "scripts":  {
+                    "preinstall":  "node ./scripts/enforce-pnpm.mjs",
+                    "build":  "pnpm run typecheck \u0026\u0026 pnpm -r --if-present run build",
+                    "forge:start":  "node ./scripts/forge-start-root.mjs",
+                    "typecheck:libs":  "tsc --build",
+                    "typecheck":  "pnpm run typecheck:libs \u0026\u0026 pnpm -r --filter \"./artifacts/**\" --filter \"./scripts\" --if-present run typecheck"
+                },
+    "private":  true,
+    "devDependencies":  {
+                            "prettier":  "^3.8.4",
+                            "typescript":  "~5.9.3"
+                        },
+    "optionalDependencies":  {
+                                 "@rollup/rollup-win32-x64-msvc":  "4.62.2",
+                                 "@tailwindcss/oxide-win32-x64-msvc":  "4.3.1",
+                                 "lightningcss-win32-x64-msvc":  "1.32.0",
+                                 "@rollup/rollup-linux-x64-musl":  "4.62.2",
+                                 "@tailwindcss/oxide-linux-x64-musl":  "4.3.1",
+                                 "lightningcss-linux-x64-musl":  "1.32.0"
+                             },
+    "packageManager":  "pnpm@11.10.0",
+    "engines":  {
+                    "node":  "\u003e=24 \u003c25",
+                    "pnpm":  "\u003e=11 \u003c12"
+                }
 }

@@ -1,0 +1,20 @@
+﻿{
+    "missionId":  "f1f7598f-803b-4ff9-8163-79ef6957490e",
+    "approvalId":  "cad11692-6d1c-489a-baa5-f9575fca42c9",
+    "status":  "failed",
+    "startedAt":  "2026-07-15T17:24:46.368Z",
+    "completedAt":  "2026-07-15T17:24:46.508Z",
+    "durationMs":  140,
+    "missionResultStatus":  "failed",
+    "missionResultCause":  "execution",
+    "executionId":  null,
+    "evaluationId":  null,
+    "evaluationDecision":  null,
+    "evaluationScore":  null,
+    "evidenceMemoryId":  null,
+    "outputSha256":  null,
+    "proofFileCount":  0,
+    "proofFiles":  [
+
+                   ]
+}

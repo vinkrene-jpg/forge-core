@@ -1,7 +1,7 @@
 // Real Code Execution Test Runner module.
 // Executes actual commands (dependency install, lint, typecheck, build, unit,
 // integration) inside a sandbox directory with a restricted environment.
-// Built as a module on top of the Locked Core test pipeline — the core
+// Built as a module on top of the Locked Core test pipeline â€” the core
 // testRunner, Guardian and Governor are not modified.
 
 import { spawn } from "child_process";
@@ -121,7 +121,7 @@ function permissionNodeOptions(dir: string): string {
     `--allow-fs-write=${dir}/`,
     `--allow-fs-write=${cache}/`,
     "--allow-child-process",
-  ].join(" ");
+  ].map((option) => (option.includes(" ") ? `"${option}"` : option)).join(" ");
 }
 
 // Core integrity verification: checksum of the Locked Core implementation
@@ -157,6 +157,18 @@ export function computeCoreChecksum(): string {
   return hash.digest("hex");
 }
 
+function runPackageScript(
+  step: string,
+  script: string,
+  cwd: string,
+  env: NodeJS.ProcessEnv,
+): Promise<StepOutcome> {
+  if (process.platform === "win32") {
+    return runStep(step, process.env.ComSpec ?? "cmd.exe", ["/d", "/s", "/c", script], cwd, env);
+  }
+  return runStep(step, "/bin/sh", ["-lc", script], cwd, env);
+}
+
 function runStep(
   step: string,
   cmd: string,
@@ -164,13 +176,17 @@ function runStep(
   cwd: string,
   env: NodeJS.ProcessEnv,
 ): Promise<StepOutcome> {
-  const command = [cmd, ...args].join(" ");
+  const executable =
+    process.platform === "win32" && (cmd === "npm" || cmd === "npx")
+      ? `${cmd}.cmd`
+      : cmd;
+  const command = [executable, ...args].join(" ");
   const started = Date.now();
   return new Promise((resolve) => {
     let stdout = "";
     let stderr = "";
     let settled = false;
-    const child = spawn(cmd, args, { cwd, env, shell: false });
+    const child = spawn(executable, args, { cwd, env, shell: process.platform === "win32" });
     const timeout = setTimeout(() => {
       if (settled) return;
       settled = true;
@@ -271,24 +287,30 @@ export async function executeRealTestRun(input: {
   let sandbox: SandboxRow | undefined;
 
   if (input.moduleId != null) {
-    [module] = await db.select().from(modulesTable).where(eq(modulesTable.id, input.moduleId));
+    [module] = (await db.select().from(modulesTable).where(eq(modulesTable.id, input.moduleId))) as ModuleRow[];
     if (!module) throw new TestTargetError("Module not found");
-    [sandbox] = await db
+    [sandbox] = (await db
       .select()
       .from(sandboxesTable)
       .where(eq(sandboxesTable.moduleId, module.id))
       .orderBy(desc(sandboxesTable.createdAt))
-      .limit(1);
+      .limit(1)) as SandboxRow[];
     if (!sandbox) {
       throw new TestTargetError(
         "Real execution requires a sandbox linked to this module. Create a sandbox with moduleId set and add the module code there.",
       );
     }
   } else if (input.sandboxId != null) {
-    [sandbox] = await db.select().from(sandboxesTable).where(eq(sandboxesTable.id, input.sandboxId));
+    [sandbox] = (await db
+      .select()
+      .from(sandboxesTable)
+      .where(eq(sandboxesTable.id, input.sandboxId))) as SandboxRow[];
     if (!sandbox) throw new TestTargetError("Sandbox not found");
     if (sandbox.moduleId != null) {
-      [module] = await db.select().from(modulesTable).where(eq(modulesTable.id, sandbox.moduleId));
+      [module] = (await db
+        .select()
+        .from(modulesTable)
+        .where(eq(modulesTable.id, sandbox.moduleId))) as ModuleRow[];
     }
   } else {
     throw new TestTargetError("Provide moduleId or sandboxId");
@@ -373,13 +395,13 @@ export async function executeRealTestRun(input: {
       case "lint":
         steps.push(
           scripts.lint
-            ? await runStep("lint", "npm", ["run", "lint"], dir, execEnv)
+            ? await runPackageScript("lint", scripts.lint, dir, execEnv)
             : skipped("lint", "No 'lint' script in package.json."),
         );
         break;
       case "typecheck":
         if (scripts.typecheck) {
-          steps.push(await runStep("typecheck", "npm", ["run", "typecheck"], dir, execEnv));
+          steps.push(await runPackageScript("typecheck", scripts.typecheck, dir, execEnv));
         } else if (hasTsconfig && pkg) {
           steps.push(await runStep("typecheck", "npx", ["--no-install", "tsc", "--noEmit"], dir, execEnv));
         } else {
@@ -389,7 +411,7 @@ export async function executeRealTestRun(input: {
       case "build":
         steps.push(
           scripts.build
-            ? await runStep("build", "npm", ["run", "build"], dir, execEnv)
+            ? await runPackageScript("build", scripts.build, dir, execEnv)
             : skipped("build", "No 'build' script in package.json."),
         );
         break;
@@ -397,7 +419,7 @@ export async function executeRealTestRun(input: {
         const script = scripts["test:unit"] ? "test:unit" : scripts.test ? "test" : null;
         steps.push(
           script
-            ? await runStep("unit", "npm", ["run", script], dir, execEnv)
+            ? await runPackageScript("unit", scripts[script]!, dir, execEnv)
             : failedStep("unit", "Tests are mandatory: no 'test' or 'test:unit' script found in package.json."),
         );
         break;
@@ -405,7 +427,7 @@ export async function executeRealTestRun(input: {
       case "integration":
         steps.push(
           scripts["test:integration"]
-            ? await runStep("integration", "npm", ["run", "test:integration"], dir, execEnv)
+            ? await runPackageScript("integration", scripts["test:integration"], dir, execEnv)
             : skipped("integration", "No 'test:integration' script in package.json."),
         );
         break;
@@ -443,10 +465,10 @@ export async function executeRealTestRun(input: {
   const summary = steps.map((s) => ({
     type: s.step,
     status: s.status,
-    details: `${s.command} → exit ${s.exitCode ?? "n/a"} in ${s.durationMs}ms${s.status === "skipped" ? ` (${s.stderr})` : ""}`,
+    details: `${s.command} â†’ exit ${s.exitCode ?? "n/a"} in ${s.durationMs}ms${s.status === "skipped" ? ` (${s.stderr})` : ""}`,
   }));
 
-  const [row] = await db
+  const insertedRows = (await db
     .insert(testRunsTable)
     .values({
       moduleId: module?.id ?? null,
@@ -460,7 +482,10 @@ export async function executeRealTestRun(input: {
       moduleVersion: module?.version ?? null,
       durationMs,
     })
-    .returning();
+    .returning()) as unknown as TestRunRow[];
+
+  const row = insertedRows[0];
+  if (!row) throw new Error("Test run insert returned no row.");
 
   if (steps.length > 0) {
     await db.insert(testRunStepsTable).values(
@@ -487,10 +512,11 @@ export async function executeRealTestRun(input: {
     action: "real_test_run",
     targetType: module ? "module" : "sandbox",
     targetId: module?.id ?? sandbox.id,
-    details: `Real execution (${input.types.join(", ")}) — ${passed} passed, ${failed} failed in ${durationMs}ms${module ? ` [module v${module.version}]` : ""}`,
+    details: `Real execution (${input.types.join(", ")}) â€” ${passed} passed, ${failed} failed in ${durationMs}ms${module ? ` [module v${module.version}]` : ""}`,
     outcome: status === "failed" ? "blocked" : "allowed",
   });
 
   logger.info({ testRunId: row.id, status, durationMs, sandboxId: sandbox.id }, "Real test run finished");
   return row;
 }
+

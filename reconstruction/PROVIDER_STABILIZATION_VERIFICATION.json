@@ -1,0 +1,76 @@
+{
+  "chapter": "FG-005.120",
+  "title": "Provider-backed autonomous execution stabilization",
+  "verifiedAt": "2026-07-15T15:13:30Z",
+  "status": "verified",
+  "diagnosis": {
+    "activeRuntimeApiBaseUrl": "http://127.0.0.1:5000/api",
+    "isolatedRuntimeApiBaseUrl": "http://127.0.0.1:5001/api",
+    "providerSummary": {
+      "openaiConfigured": false,
+      "anthropicConfigured": false,
+      "customConfigured": false
+    },
+    "localModelPreflight": {
+      "url": "http://127.0.0.1:11434/v1/models",
+      "httpCode": "000",
+      "result": "unreachable"
+    },
+    "stabilizationRoute": {
+      "FORGE_AI_PROVIDER": "manual-fallback",
+      "FORGE_LOCAL_MODEL_ENABLED": "false",
+      "reason": "Ensure one deterministic accepted cycle without secret exposure while preserving governance and evidence flow"
+    }
+  },
+  "governedMission": {
+    "title": "FG-005.120 MANUAL ACCEPT 2026-07-15T15:11Z",
+    "missionId": "c22ef824-0f35-4f87-ac44-ccd9620e9ebd",
+    "approvalId": "22a6b516-a72a-45d5-bb27-d80d38848d7c",
+    "executionId": "12aab1a3-3001-4e4c-862a-70c04fc66943",
+    "evaluationId": "d1e6c73b-2dae-44ea-bd09-5f5d4c36275a",
+    "evidenceMemoryId": "f52c0819-f66a-4556-b855-0b86fe6efc23",
+    "finalMissionStatus": "succeeded",
+    "providerId": "manual-fallback",
+    "evaluationDecision": "accepted",
+    "evaluationScore": 100,
+    "outputSha256": "1009edeb78786d02f506189e59547b2298e9d090fb4bac046616484dc8bd4fb3",
+    "capabilityResult": "gap",
+    "missionResult": {
+      "status": "completed",
+      "cause": "execution",
+      "message": "Mission completed successfully"
+    }
+  },
+  "checks": [
+    {
+      "id": "diagnosis-provider-routing",
+      "result": "pass",
+      "detail": "Live API diagnostics confirmed external provider routes were unconfigured and local model route was unreachable in the active environment."
+    },
+    {
+      "id": "governed-approval-boundary",
+      "result": "pass",
+      "detail": "Mission creation returned awaiting_approval and execution only started after explicit approval."
+    },
+    {
+      "id": "accepted-evaluation-path",
+      "result": "pass",
+      "detail": "Mission output persisted accepted evaluation (decision accepted, score 100) with execution, evaluation and evidence IDs."
+    },
+    {
+      "id": "classified-terminal-result",
+      "result": "pass",
+      "detail": "Terminal mission output includes missionResult.status=completed and missionResult.cause=execution."
+    },
+    {
+      "id": "learning-linkage-persisted",
+      "result": "pass",
+      "detail": "Learning engine persisted observation/proposal linkage with matching mission, execution, evaluation and evidence identifiers."
+    }
+  ],
+  "constraintsRespected": [
+    "No provider secret was printed or persisted in evidence files.",
+    "No destructive operation and no history rewrite.",
+    "No automatic provider retry was performed."
+  ]
+}

@@ -1,7 +1,7 @@
 import { Router, type IRouter } from "express";
 import { jsonSafe } from "../lib/jsonSafe";
 import { eq, desc } from "drizzle-orm";
-import { db, projectsTable, goalsTable, backlogItemsTable } from "@workspace/db";
+import { db, projectsTable, goalsTable, backlogItemsTable, type ProjectRow, type GoalRow, type BacklogItemRow } from "@workspace/db";
 import {
   ListProjectsResponse,
   CreateProjectBody,
@@ -44,7 +44,9 @@ router.post("/projects", async (req, res): Promise<void> => {
     res.status(400).json({ error: body.error.message });
     return;
   }
-  const [row] = await db.insert(projectsTable).values(body.data).returning();
+  const insertedRows = await db.insert(projectsTable).values(body.data).returning();
+  const row = (insertedRows as unknown as ProjectRow[])[0];
+  if (!row) throw new Error("Project insert returned no row");
   await audit({ actor: "owner", action: "project_created", targetType: "project", targetId: row.id, details: row.name });
   res.status(201).json(CreateProjectResponse.parse(jsonSafe(row)));
 });
@@ -92,7 +94,8 @@ router.delete("/projects/:id", async (req, res): Promise<void> => {
     res.status(400).json({ error: params.error.message });
     return;
   }
-  const [row] = await db.delete(projectsTable).where(eq(projectsTable.id, params.data.id)).returning();
+  const deletedRows = await db.delete(projectsTable).where(eq(projectsTable.id, params.data.id)).returning();
+  const row = (deletedRows as unknown as ProjectRow[])[0];
   if (!row) {
     res.status(404).json({ error: "Project not found" });
     return;
@@ -119,7 +122,8 @@ router.post("/goals", async (req, res): Promise<void> => {
     res.status(400).json({ error: body.error.message });
     return;
   }
-  const [row] = await db.insert(goalsTable).values(body.data).returning();
+  const goalInsertRows = await db.insert(goalsTable).values(body.data).returning();
+  const row = (goalInsertRows as unknown as GoalRow[])[0];
   res.status(201).json(CreateGoalResponse.parse(jsonSafe(row)));
 });
 
@@ -134,7 +138,8 @@ router.patch("/goals/:id", async (req, res): Promise<void> => {
     res.status(400).json({ error: body.error.message });
     return;
   }
-  const [row] = await db.update(goalsTable).set(body.data).where(eq(goalsTable.id, params.data.id)).returning();
+  const goalUpdateRows = await db.update(goalsTable).set(body.data).where(eq(goalsTable.id, params.data.id)).returning();
+  const row = (goalUpdateRows as unknown as GoalRow[])[0];
   if (!row) {
     res.status(404).json({ error: "Goal not found" });
     return;
@@ -148,7 +153,8 @@ router.delete("/goals/:id", async (req, res): Promise<void> => {
     res.status(400).json({ error: params.error.message });
     return;
   }
-  const [row] = await db.delete(goalsTable).where(eq(goalsTable.id, params.data.id)).returning();
+  const goalDeleteRows = await db.delete(goalsTable).where(eq(goalsTable.id, params.data.id)).returning();
+  const row = (goalDeleteRows as unknown as GoalRow[])[0];
   if (!row) {
     res.status(404).json({ error: "Goal not found" });
     return;
@@ -174,7 +180,8 @@ router.post("/backlog-items", async (req, res): Promise<void> => {
     res.status(400).json({ error: body.error.message });
     return;
   }
-  const [row] = await db.insert(backlogItemsTable).values(body.data).returning();
+  const backlogInsertRows = await db.insert(backlogItemsTable).values(body.data).returning();
+  const row = (backlogInsertRows as unknown as BacklogItemRow[])[0];
   res.status(201).json(CreateBacklogItemResponse.parse(jsonSafe(row)));
 });
 
@@ -189,11 +196,12 @@ router.patch("/backlog-items/:id", async (req, res): Promise<void> => {
     res.status(400).json({ error: body.error.message });
     return;
   }
-  const [row] = await db
+  const backlogUpdateRows = await db
     .update(backlogItemsTable)
     .set(body.data)
     .where(eq(backlogItemsTable.id, params.data.id))
     .returning();
+  const row = (backlogUpdateRows as unknown as BacklogItemRow[])[0];
   if (!row) {
     res.status(404).json({ error: "Backlog item not found" });
     return;
@@ -207,7 +215,8 @@ router.delete("/backlog-items/:id", async (req, res): Promise<void> => {
     res.status(400).json({ error: params.error.message });
     return;
   }
-  const [row] = await db.delete(backlogItemsTable).where(eq(backlogItemsTable.id, params.data.id)).returning();
+  const backlogDeleteRows = await db.delete(backlogItemsTable).where(eq(backlogItemsTable.id, params.data.id)).returning();
+  const row = (backlogDeleteRows as unknown as BacklogItemRow[])[0];
   if (!row) {
     res.status(404).json({ error: "Backlog item not found" });
     return;

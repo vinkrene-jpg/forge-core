@@ -1,0 +1,28 @@
+﻿{
+    "schemaVersion":  1,
+    "verifiedAt":  "2026-07-13T05:16:28.4748523Z",
+    "implementationCommit":  "780923c25888961aae786c3d913280ba65e94929",
+    "branch":  "reconstruct/forge-core-v1",
+    "deterministicVerification":  {
+                                      "runtimeTypecheck":  "passed",
+                                      "runtimeTests":  15,
+                                      "repositoryTypecheck":  "passed",
+                                      "productionBuild":  "passed",
+                                      "bridgeSuccessAndRollbackTests":  "passed",
+                                      "providerPlannerBoundaryTests":  "passed"
+                                  },
+    "bridge":  {
+                   "status":  "running",
+                   "hostProcessId":  4568,
+                   "transport":  "authenticated-hmac-sha256-file-bridge",
+                   "secretPersistedInGitOrEvidence":  false
+               },
+    "liveProvider":  {
+                         "outcome":  "failed",
+                         "planningMissionId":  "dc3ce7ed-4a11-4c91-ac62-1a6c0ffa7718",
+                         "executionMissionId":  null,
+                         "executionCommit":  null,
+                         "automaticRetry":  false,
+                         "error":  "Providerplanning faalde: Workspace provider planning failed: Provider response contains no output text"
+                     }
+}

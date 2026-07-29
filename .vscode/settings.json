@@ -1,0 +1,24 @@
+{
+    "chat.tools.terminal.autoApprove": {
+        "/^cmd /c curl -s http://127\\.0\\.0\\.1:5000/api/ai/providers$/": {
+            "approve": true,
+            "matchCommandLine": true
+        },
+        "/^cmd /c curl -s http://127\\.0\\.0\\.1:5000/api/missions$/": {
+            "approve": true,
+            "matchCommandLine": true
+        },
+        "/^cmd /c \"cd /d C:\\\\Forge\\\\forge-core && pnpm run typecheck:libs\"$/": {
+            "approve": true,
+            "matchCommandLine": true
+        },
+        "/^cmd /c \"cd /d C:\\\\Forge\\\\forge-core && pnpm --filter @workspace/forge-runtime exec node --import tsx --test src/autonomous-provider-loop\\.test\\.ts src/learning-engine\\.test\\.ts\"$/": {
+            "approve": true,
+            "matchCommandLine": true
+        },
+        "/^cmd /c \"cd /d C:\\\\Forge\\\\forge-core && pnpm --filter @workspace/forge-runtime exec node --import tsx --test src/learning-engine\\.test\\.ts\"$/": {
+            "approve": true,
+            "matchCommandLine": true
+        }
+    }
+}

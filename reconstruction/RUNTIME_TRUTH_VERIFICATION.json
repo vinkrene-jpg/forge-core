@@ -1,0 +1,45 @@
+{
+  "chapter": "FG-005.150",
+  "title": "Runtime truth verification for live evaluator behavior",
+  "verifiedAt": "2026-07-15T16:15:00Z",
+  "status": "verified",
+  "liveRuntimeObserved": {
+    "apiBaseUrl": "http://127.0.0.1:5000/api",
+    "providerSummary": [
+      { "name": "openai", "configured": false },
+      { "name": "anthropic", "configured": false },
+      { "name": "custom", "configured": false }
+    ],
+    "missionEvidence": {
+      "missionId": "a599e855-014f-4c6c-aed1-e4635489cbed",
+      "executionId": "3b625297-da21-4d25-96a1-2f62a92668c9",
+      "evaluationId": "e36ffada-5ea6-47d0-9a02-f00719dcc31b",
+      "score": 33,
+      "decision": "rejected",
+      "providerId": "local-model",
+      "providerError": "fetch failed",
+      "outputSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    }
+  },
+  "sourceUsedByPatchedRuntime": {
+    "file": "lib/forge-runtime/src/ai-gateway-engine.ts",
+    "behavior": "local-model route requires explicit FORGE_LOCAL_MODEL_ENABLED=true opt-in",
+    "selectedProviderWhenUnconfigured": "manual-fallback"
+  },
+  "evaluationChain": [
+    "Mission -> Execution -> Evaluation -> Decision",
+    "provider-succeeded false",
+    "mission-linked true",
+    "output-substantive false",
+    "assumptions-explicit false",
+    "verification-explicit false",
+    "secret-free true",
+    "score 33"
+  ],
+  "rootCause": "The live 5000 runtime is still executing an older build that prefers local-model without explicit opt-in, so it continues to emit empty provider output and deterministic score 33. The patched code now changes selection behavior, but that code is not yet what the live 5000 process is running.",
+  "requiredFix": "Restart/redeploy the live 5000 runtime so it loads the patched evaluator/provider-selection code path, then rerun a governed autonomous mission in that exact runtime.",
+  "notes": [
+    "This file documents live-runtime truth only.",
+    "No evaluator bypass or hardcoded acceptance was used."
+  ]
+}

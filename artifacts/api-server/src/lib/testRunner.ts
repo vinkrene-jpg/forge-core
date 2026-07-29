@@ -113,16 +113,19 @@ export async function executeTestRun(input: {
   let sandbox: SandboxRow | undefined;
 
   if (input.moduleId != null) {
-    [module] = await db.select().from(modulesTable).where(eq(modulesTable.id, input.moduleId));
+    [module] = (await db.select().from(modulesTable).where(eq(modulesTable.id, input.moduleId))) as ModuleRow[];
     if (!module) throw new TestTargetError("Module not found");
     results = runChecksForModule(module, input.types);
   } else if (input.sandboxId != null) {
-    [sandbox] = await db.select().from(sandboxesTable).where(eq(sandboxesTable.id, input.sandboxId));
+    [sandbox] = (await db
+      .select()
+      .from(sandboxesTable)
+      .where(eq(sandboxesTable.id, input.sandboxId))) as SandboxRow[];
     if (!sandbox) throw new TestTargetError("Sandbox not found");
-    const files = await db
+    const files = (await db
       .select()
       .from(sandboxFilesTable)
-      .where(eq(sandboxFilesTable.sandboxId, sandbox.id));
+      .where(eq(sandboxFilesTable.sandboxId, sandbox.id))) as { path: string; content: string }[];
     results = runChecksForSandbox(sandbox, files, input.types);
   } else {
     throw new TestTargetError("Provide moduleId or sandboxId");

@@ -11,6 +11,7 @@ import {
   tasksTable,
   modulesTable,
   type EvolutionRunRow,
+  type ModuleRow,
 } from "@workspace/db";
 import { runIntrospection, refreshCapabilities, scanSelf } from "./selfAwareness";
 import { analyzeGaps } from "./gapAnalysis";
@@ -80,7 +81,7 @@ export async function executeEvolutionRun(trigger: "api" | "scheduler" = "api"):
       governorDecision: state.governorDecision,
       errorMessage: state.errorMessage,
     });
-    report.push(`LEARN — ${lessons.length} lesson(s) stored in memory.`);
+    report.push(`LEARN â€” ${lessons.length} lesson(s) stored in memory.`);
 
     // Refresh the capability map so NEXT reflects evidence produced during
     // this iteration (plans, proposals, tests, reviews, lessons).
@@ -90,7 +91,7 @@ export async function executeEvolutionRun(trigger: "api" | "scheduler" = "api"):
     const nextStep = next
       ? `Next gap: '${next.name}' (${next.capabilityKey}), impact ${next.impactScore}. ${next.reason}`
       : "All capabilities working: monitor, refine maturity and take on backlog improvements.";
-    report.push(`NEXT — ${nextStep}`);
+    report.push(`NEXT â€” ${nextStep}`);
 
     const [finished] = await db
       .update(evolutionRunsTable)
@@ -129,7 +130,7 @@ export async function executeEvolutionRun(trigger: "api" | "scheduler" = "api"):
     const snapshot = await runIntrospection();
     state.snapshotId = snapshot.id;
     report.push(
-      `OBSERVE — snapshot #${snapshot.id}: ${snapshot.sourceFiles} files, ${snapshot.endpoints} endpoints, ${snapshot.dbTables} tables, ${snapshot.docs} docs.`,
+      `OBSERVE â€” snapshot #${snapshot.id}: ${snapshot.sourceFiles} files, ${snapshot.endpoints} endpoints, ${snapshot.dbTables} tables, ${snapshot.docs} docs.`,
     );
 
     // 2. Evaluate & prioritize: gap analysis. When all capabilities are
@@ -142,7 +143,7 @@ export async function executeEvolutionRun(trigger: "api" | "scheduler" = "api"):
     if (analysis.gaps.length > 0) {
       const gap = analysis.gaps[0];
       state.capabilityKey = gap.capabilityKey;
-      report.push(`EVALUATE — top gap: '${gap.name}' (impact ${gap.impactScore}): ${gap.reason}`);
+      report.push(`EVALUATE â€” top gap: '${gap.name}' (impact ${gap.impactScore}): ${gap.reason}`);
 
       // 3. Design/plan.
       phase = "plan";
@@ -152,7 +153,7 @@ export async function executeEvolutionRun(trigger: "api" | "scheduler" = "api"):
       state.taskId = plan.taskId ?? undefined;
       workTaskId = plan.taskId ?? undefined;
       workInstructions = `Follow this approved plan. Design: ${plan.design}\nSteps: ${plan.steps.join("; ")}\nTest strategy: ${plan.testStrategy}`;
-      report.push(`PLAN — plan #${plan.id} (source: ${plan.source}, risk: ${plan.risk}); task #${plan.taskId}.`);
+      report.push(`PLAN â€” plan #${plan.id} (source: ${plan.source}, risk: ${plan.risk}); task #${plan.taskId}.`);
     } else {
       const proposedTaskIds = (await db.select({ id: proposalsTable.sourceId, t: proposalsTable.sourceType }).from(proposalsTable))
         .filter((p) => p.t === "task")
@@ -162,7 +163,7 @@ export async function executeEvolutionRun(trigger: "api" | "scheduler" = "api"):
       ).filter((t) => !proposedTaskIds.includes(t.id));
       const workTask = backlog[0];
       if (!workTask) {
-        report.push("EVALUATE — no open gaps and no unproposed planned tasks; nothing to build this iteration.");
+        report.push("EVALUATE â€” no open gaps and no unproposed planned tasks; nothing to build this iteration.");
         status = "completed";
         phase = "done";
         return await finish();
@@ -173,7 +174,7 @@ export async function executeEvolutionRun(trigger: "api" | "scheduler" = "api"):
       state.taskId = workTask.id;
       workTaskId = workTask.id;
       workInstructions = `Backlog-driven evolution. Goal: ${workTask.goal}\nAcceptance criteria: ${workTask.acceptanceCriteria ?? "all mandatory tests pass"}`;
-      report.push(`EVALUATE — no capability gaps; picked planned backlog task #${workTask.id}: ${workTask.title}`);
+      report.push(`EVALUATE â€” no capability gaps; picked planned backlog task #${workTask.id}: ${workTask.title}`);
       const [existingPlan] = await db
         .select()
         .from(evolutionPlansTable)
@@ -181,7 +182,7 @@ export async function executeEvolutionRun(trigger: "api" | "scheduler" = "api"):
       if (existingPlan) {
         state.planId = existingPlan.id;
         state.planSource = existingPlan.source;
-        report.push(`PLAN — reusing existing plan #${existingPlan.id} (source: ${existingPlan.source}).`);
+        report.push(`PLAN â€” reusing existing plan #${existingPlan.id} (source: ${existingPlan.source}).`);
       }
     }
 
@@ -190,7 +191,7 @@ export async function executeEvolutionRun(trigger: "api" | "scheduler" = "api"):
     if (!getProviders().some((p) => p.configured)) {
       status = "blocked";
       state.errorMessage = "No AI provider configured: proposal generation requires an AI key. Plan and task are ready; rerun once a key is set.";
-      report.push(`GENERATE — blocked: ${state.errorMessage}`);
+      report.push(`GENERATE â€” blocked: ${state.errorMessage}`);
       phase = "blocked-no-ai";
       return await finish();
     }
@@ -200,14 +201,14 @@ export async function executeEvolutionRun(trigger: "api" | "scheduler" = "api"):
     } catch (err) {
       status = "blocked";
       state.errorMessage = err instanceof Error ? err.message : String(err);
-      report.push(`GENERATE — failed: ${state.errorMessage}`);
+      report.push(`GENERATE â€” failed: ${state.errorMessage}`);
       phase = "generate-failed";
       return await finish();
     }
     state.proposalId = proposal.id;
     state.blockedFiles = proposal.blockedFiles;
     report.push(
-      `GENERATE — proposal #${proposal.id}: module #${proposal.moduleId}, sandbox #${proposal.sandboxId}, ${proposal.filesGenerated.length} file(s)${proposal.blockedFiles.length > 0 ? `, ${proposal.blockedFiles.length} blocked` : ""}.`,
+      `GENERATE â€” proposal #${proposal.id}: module #${proposal.moduleId}, sandbox #${proposal.sandboxId}, ${proposal.filesGenerated.length} file(s)${proposal.blockedFiles.length > 0 ? `, ${proposal.blockedFiles.length} blocked` : ""}.`,
     );
 
     // 5. Test: real execution in the sandbox.
@@ -215,23 +216,25 @@ export async function executeEvolutionRun(trigger: "api" | "scheduler" = "api"):
     const testRun = await executeRealTestRun({ sandboxId: proposal.sandboxId!, types: ["lint", "typecheck", "unit"] });
     state.testRunId = testRun.id;
     state.testStatus = testRun.status;
-    report.push(`TEST — run #${testRun.id}: ${testRun.status} (${testRun.passed} passed, ${testRun.failed} failed).`);
+    report.push(`TEST â€” run #${testRun.id}: ${testRun.status} (${testRun.passed} passed, ${testRun.failed} failed).`);
 
     // 6. Review: Guardian.
     phase = "review";
-    const [moduleRow] = await db.select().from(modulesTable).where(eq(modulesTable.id, proposal.moduleId!));
+    const moduleRows = await db.select().from(modulesTable).where(eq(modulesTable.id, proposal.moduleId!));
+    const moduleRow = moduleRows[0] as ModuleRow | undefined;
+    if (!moduleRow) throw new Error(`Module #${proposal.moduleId} not found`);
     const review = await runGuardian(moduleRow);
     state.guardianVerdict = review.outcome;
-    report.push(`REVIEW — Guardian: ${review.outcome} (${review.findings.length} finding(s)).`);
+    report.push(`REVIEW â€” Guardian: ${review.outcome} (${review.findings.length} finding(s)).`);
 
     // 7. Govern: Governor decision (may auto-install only when low-risk all-green,
-    // otherwise creates an approval for the owner — existing pipeline).
+    // otherwise creates an approval for the owner â€” existing pipeline).
     phase = "govern";
     const decision = await governInstall(moduleRow);
     state.governorDecision = decision.decision;
-    report.push(`GOVERN — Governor: ${decision.decision}. ${decision.rationale}`);
+    report.push(`GOVERN â€” Governor: ${decision.decision}. ${decision.rationale}`);
     if (decision.decision !== "install_allowed") {
-      report.push("OWNER — approval/intervention required before installation (governance pipeline).");
+      report.push("OWNER â€” approval/intervention required before installation (governance pipeline).");
     }
 
     phase = "done";
@@ -240,7 +243,7 @@ export async function executeEvolutionRun(trigger: "api" | "scheduler" = "api"):
   } catch (err) {
     status = "failed";
     state.errorMessage = err instanceof Error ? err.message : String(err);
-    report.push(`ERROR — ${state.errorMessage}`);
+    report.push(`ERROR â€” ${state.errorMessage}`);
     logger.error({ runId: run.id, err: state.errorMessage }, "Evolution run failed");
     return await finish();
   }

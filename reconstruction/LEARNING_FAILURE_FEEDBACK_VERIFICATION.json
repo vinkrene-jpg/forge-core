@@ -1,0 +1,36 @@
+{
+    "milestone":  "FG-004.100",
+    "title":  "Governed Learning Failure Feedback",
+    "verifiedAt":  "2026-07-12T21:43:37.7087171+02:00",
+    "sourceParentCommit":  "0c93507",
+    "recoveryPatchSha256":  "5a400524e6be3e076189838c008fd23831ca36c5e48b152c3021002e14e8f0ff",
+    "incident":  {
+                     "proposalId":  "2961abf5-855d-450f-965c-5365105d2baf",
+                     "missionId":  "5ffb6924-6dae-4019-a20a-d0d58a9bc01c",
+                     "executionId":  "9abe95eb-9232-4213-87b3-9cf8905b8183",
+                     "providerExecutionSucceeded":  true,
+                     "evaluationDecision":  "rejected",
+                     "evaluationScore":  83,
+                     "failedCheck":  "assumptions-explicit",
+                     "outputClaimedExecution":  false
+                 },
+    "recovery":  {
+                     "failedProposalStatus":  "failed",
+                     "learningObservationId":  "f80e5d15-330d-4394-a8da-c10dda0eaa5a",
+                     "targetCapabilityId":  "software.unverified.autonomy",
+                     "scoreBefore":  7,
+                     "scoreAfter":  0,
+                     "nextProposalId":  "2f7c317f-30b6-4378-bc15-44948b42f344",
+                     "nextProposalStatus":  "proposed",
+                     "newProviderExecutions":  0,
+                     "restartPersistence":  true
+                 },
+    "verification":  {
+                         "runtimeTests":  "passed",
+                         "fullTypecheck":  "passed",
+                         "productionBuild":  "passed",
+                         "duplicateRecoveryBlocked":  true,
+                         "secretFreeCheckPassed":  true,
+                         "secretPersisted":  false
+                     }
+}

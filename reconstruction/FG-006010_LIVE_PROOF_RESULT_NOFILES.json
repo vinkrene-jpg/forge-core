@@ -1,0 +1,21 @@
+﻿{
+    "missionId":  "2738d77b-5ef7-47d6-9cc2-c038c6a83cd1",
+    "approvalId":  "6119776f-efbd-4ecc-afba-6d5b87f7f9b3",
+    "status":  "succeeded",
+    "startedAt":  "2026-07-15T17:25:56.450Z",
+    "completedAt":  "2026-07-15T17:25:56.864Z",
+    "durationMs":  414,
+    "missionResultStatus":  "completed",
+    "missionResultCause":  "execution",
+    "missionResultMessage":  "Mission completed successfully",
+    "executionId":  "5bc96980-1659-4de0-bc7e-61194570b021",
+    "evaluationId":  "d5beb1ff-7a0e-4482-b2b4-0c8c1fd87e73",
+    "evaluationDecision":  "accepted",
+    "evaluationScore":  100,
+    "evidenceMemoryId":  "48def2a0-7802-48fe-b48d-9c7e9e932def",
+    "outputSha256":  "1b34df7e219eef1bbd2c1648acc454d3302c89919e4bd35ef7883df012013dbe",
+    "proofFileCount":  0,
+    "proofFiles":  [
+
+                   ]
+}

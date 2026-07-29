@@ -1,0 +1,20 @@
+$ pnpm run typecheck:libs && pnpm -r --filter "./artifacts/**" --filter "./scripts" --if-present run typecheck
+$ tsc --build
+Scope: 4 of 10 workspace projects
+artifacts/api-server typecheck$ tsc -p tsconfig.json --noEmit
+artifacts/forge-core typecheck$ tsc -p tsconfig.json --noEmit
+artifacts/mockup-sandbox typecheck$ tsc -p tsconfig.json --noEmit
+scripts typecheck$ tsc -p tsconfig.json --noEmit
+scripts typecheck: Done
+artifacts/api-server typecheck: src/lib/guardian.ts(132,9): error TS2488: Type 'any[] | QueryResult<never>' must have a '[Symbol.iterator]()' method that returns an iterator.
+artifacts/api-server typecheck: src/scripts/firstSelfEvolutionCycle.ts(86,35): error TS2769: No overload matches this call.
+artifacts/api-server typecheck:   Overload 1 of 2, '(value: { sourceType: string | SQL<unknown> | Placeholder<string, any>; sourceId: number | SQL<unknown> | Placeholder<string, any>; prompt: string | SQL<unknown> | Placeholder<...>; ... 11 more ...; errorMessage?: string | ... 3 more ... | undefined; }): PgInsertBase<...>', gave the following error.
+artifacts/api-server typecheck:     Argument of type '{ sourceType: string; sourceId: number; status: string; summary: string; riskEstimate: string; moduleId: number; sandboxId: any; filesGenerated: string[]; blockedFiles: never[]; }' is not assignable to parameter of type '{ sourceType: string | SQL<unknown> | Placeholder<string, any>; sourceId: number | SQL<unknown> | Placeholder<string, any>; prompt: string | SQL<unknown> | Placeholder<...>; ... 11 more ...; errorMessage?: string | ... 3 more ... | undefined; }'.
+artifacts/api-server typecheck:       Property 'prompt' is missing in type '{ sourceType: string; sourceId: number; status: string; summary: string; riskEstimate: string; moduleId: number; sandboxId: any; filesGenerated: string[]; blockedFiles: never[]; }' but required in type '{ sourceType: string | SQL<unknown> | Placeholder<string, any>; sourceId: number | SQL<unknown> | Placeholder<string, any>; prompt: string | SQL<unknown> | Placeholder<...>; ... 11 more ...; errorMessage?: string | ... 3 more ... | undefined; }'.
+artifacts/api-server typecheck:   Overload 2 of 2, '(values: { sourceType: string | SQL<unknown> | Placeholder<string, any>; sourceId: number | SQL<unknown> | Placeholder<string, any>; prompt: string | SQL<unknown> | Placeholder<...>; ... 11 more ...; errorMessage?: string | ... 3 more ... | undefined; }[]): PgInsertBase<...>', gave the following error.
+artifacts/api-server typecheck:     Object literal may only specify known properties, and 'sourceType' does not exist in type '{ sourceType: string | SQL<unknown> | Placeholder<string, any>; sourceId: number | SQL<unknown> | Placeholder<string, any>; prompt: string | SQL<unknown> | Placeholder<...>; ... 11 more ...; errorMessage?: string | ... 3 more ... | undefined; }[]'.
+artifacts/api-server typecheck: Failed
+C:\Forge\forge-core\artifacts\api-server:
+[ERR_PNPM_RECURSIVE_RUN_FIRST_FAIL] @workspace/api-server@0.0.0 typecheck: `tsc -p tsconfig.json --noEmit`
+Exit status 1
+[ELIFECYCLE] Command failed with exit code 1.

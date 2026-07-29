@@ -1,5 +1,12 @@
 import { Router, type IRouter } from "express";
 import healthRouter from "./health";
+import runtimeRouter from "./runtime";
+import missionsRouter from "./missions";
+import runtimeGovernanceRouter from "./runtimeGovernance";
+import capabilitiesRouter from "./capabilities";
+import operatorRouter from "./operator";
+import aiGatewayLiveRouter from "./aiGatewayLive";
+import learningRouter from "./learning";
 import dashboardRouter from "./dashboard";
 import coreRouter from "./core";
 import aiRouter from "./ai";
@@ -13,10 +20,19 @@ import dailyLoopRouter from "./dailyLoop";
 import proposalsRouter from "./proposals";
 import evolutionRouter from "./evolution";
 import analysisRouter from "./analysis";
+import autonomyRouter from "./autonomy";
+import memoryBridgeRouter from "./memoryBridge";
 
 const router: IRouter = Router();
 
 router.use(healthRouter);
+router.use(runtimeRouter);
+router.use(missionsRouter);
+router.use(runtimeGovernanceRouter);
+router.use(capabilitiesRouter);
+router.use(operatorRouter);
+router.use(aiGatewayLiveRouter);
+router.use(learningRouter);
 router.use(dashboardRouter);
 router.use(coreRouter);
 router.use(aiRouter);
@@ -30,5 +46,7 @@ router.use(dailyLoopRouter);
 router.use(proposalsRouter);
 router.use(evolutionRouter);
 router.use(analysisRouter);
+router.use(autonomyRouter);
+router.use(memoryBridgeRouter);
 
 export default router;

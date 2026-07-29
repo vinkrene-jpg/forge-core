@@ -17,6 +17,8 @@ import {
   sandboxFilesTable,
   proposalsTable,
   type ProposalRow,
+  type ModuleRow,
+  type SandboxRow,
 } from "@workspace/db";
 import { invokeGateway, GatewayError } from "./aiGateway";
 import { isProtectedPath } from "./corelock";
@@ -85,6 +87,9 @@ Respond with ONLY a JSON object, no prose, in exactly this shape:
 Hard requirements for "files":
 - Include a package.json with a "test" script using exactly "node --test --test-isolation=none" (in-process isolation is required by the sandboxed test runner) and NO install-time scripts.
 - Include at least one test file so the real test runner can verify the proposal.
+- package.json must also contain "lint", "typecheck" and "build" scripts that fail when their real checks fail.
+- Never call external or paid APIs, never purchase anything and never perform a production deploy.
+- Acceptance requires typecheck, build, unit tests and scope integrity to pass.
 - Use plain Node.js (CommonJS or ESM) with zero external dependencies unless absolutely necessary.
 - All paths must be relative (e.g. "index.js", "test/index.test.js"). Never use absolute paths or "..".
 - Never touch or reference Forge core files; the proposal lives entirely inside its own sandbox.
@@ -100,6 +105,104 @@ interface ParsedProposal {
 }
 
 export class ProposalParseError extends Error {}
+
+export function normalizeProposalFiles(
+  parsed: Pick<ParsedProposal, "moduleName">,
+  writable: { path: string; content: string }[],
+): { packageFile: { path: string; content: string }; entry: string; testFile: string } {
+  const existingEntry =
+    writable.find(
+      (f) =>
+        /\.(?:cjs|mjs|js)$/.test(f.path) &&
+        !/(?:^|[\\/])tests?(?:[\\/]|$)/i.test(f.path) &&
+        !/(?:^|[\\/]).*\.test\.(?:cjs|mjs|js)$/i.test(f.path),
+    )?.path ?? null;
+
+  const testFile =
+    writable.find((f) => /(?:^|[\\/]).*\.test\.(?:cjs|mjs|js)$/i.test(f.path))?.path ??
+    writable.find((f) => /(?:^|[\\/])test\.(?:cjs|mjs|js)$/i.test(f.path))?.path ??
+    null;
+
+  if (!existingEntry) {
+    throw new GatewayError(
+      "AI proposal remains invalid after one automatic normalization: no executable JavaScript entry file.",
+    );
+  }
+
+  if (!testFile) {
+    throw new GatewayError(
+      "AI proposal remains invalid after one automatic normalization: no JavaScript test file.",
+    );
+  }
+
+  let packageFile = writable.find((f) => f.path.replace(/\\/g, "/") === "package.json");
+  let packageJson: {
+    name?: unknown;
+    version?: unknown;
+    private?: unknown;
+    scripts?: Record<string, unknown>;
+    [key: string]: unknown;
+  };
+
+  if (packageFile) {
+    try {
+      packageJson = JSON.parse(packageFile.content) as typeof packageJson;
+    } catch {
+      packageJson = {};
+    }
+  } else {
+    packageJson = {};
+    packageFile = { path: "package.json", content: "" };
+    writable.push(packageFile);
+  }
+
+  packageJson.name =
+    typeof packageJson.name === "string" && packageJson.name.trim().length > 0
+      ? packageJson.name
+      : parsed.moduleName;
+  packageJson.version =
+    typeof packageJson.version === "string" && packageJson.version.trim().length > 0
+      ? packageJson.version
+      : "0.1.0";
+  packageJson.private = packageJson.private !== false;
+
+  const repairedScripts: Record<string, unknown> = {
+    ...(packageJson.scripts && typeof packageJson.scripts === "object" ? packageJson.scripts : {}),
+  };
+
+  repairedScripts.lint =
+    typeof repairedScripts.lint === "string" && repairedScripts.lint.trim().length > 0
+      ? repairedScripts.lint
+      : `node --check ${existingEntry}`;
+  repairedScripts.typecheck =
+    typeof repairedScripts.typecheck === "string" && repairedScripts.typecheck.trim().length > 0
+      ? repairedScripts.typecheck
+      : `node --check ${existingEntry}`;
+  repairedScripts.build =
+    typeof repairedScripts.build === "string" && repairedScripts.build.trim().length > 0
+      ? repairedScripts.build
+      : `node --check ${existingEntry}`;
+  repairedScripts.test =
+    typeof repairedScripts.test === "string" && repairedScripts.test.trim().length > 0
+      ? repairedScripts.test
+      : "node --test --test-isolation=none";
+
+  packageJson.scripts = repairedScripts;
+  packageFile.content = `${JSON.stringify(packageJson, null, 2)}\n`;
+
+  const requiredScripts = ["lint", "typecheck", "build", "test"] as const;
+  const missingScripts = requiredScripts.filter(
+    (name) => typeof packageJson.scripts?.[name] !== "string" || packageJson.scripts[name].trim().length === 0,
+  );
+
+  if (missingScripts.length > 0) {
+    throw new GatewayError(
+      `AI proposal remains invalid after one automatic normalization: missing scripts ${missingScripts.join(", ")}.`,
+    );
+  }
+
+  return { packageFile, entry: existingEntry, testFile };
+}
 
 export function parseProposalResponse(response: string): ParsedProposal {
   const start = response.indexOf("{");
@@ -175,7 +278,7 @@ export async function generateProposal(input: {
     gateway = await invokeGateway("codegeneration", prompt);
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err);
-    const [failedRow] = await db
+    const [failedRow] = (await db
       .insert(proposalsTable)
       .values({
         sourceType: source.type,
@@ -184,7 +287,7 @@ export async function generateProposal(input: {
         status: "failed",
         errorMessage: message.slice(0, 1000),
       })
-      .returning();
+      .returning()) as unknown as ProposalRow[];
     await audit({
       actor: "proposal-generator",
       action: "proposal_failed",
@@ -196,48 +299,111 @@ export async function generateProposal(input: {
     throw err;
   }
 
-  let parsed: ParsedProposal;
-  try {
-    parsed = parseProposalResponse(gateway.response);
-  } catch (err) {
-    const message = err instanceof Error ? err.message : String(err);
-    const [failedRow] = await db
-      .insert(proposalsTable)
-      .values({
-        sourceType: source.type,
-        sourceId: source.id,
-        prompt,
-        provider: gateway.provider,
-        model: gateway.model,
-        status: "failed",
-        errorMessage: message.slice(0, 1000),
-      })
-      .returning();
-    await audit({
-      actor: "proposal-generator",
-      action: "proposal_failed",
-      targetType: "proposal",
-      targetId: failedRow.id,
-      details: `Unusable AI response for ${source.type} #${source.id}: ${message.slice(0, 300)}`,
-      outcome: "blocked",
-    });
-    throw new GatewayError(`AI produced an unusable proposal: ${message}`);
+  function prepareProposal(response: string): {
+    parsed: ParsedProposal;
+    writable: { path: string; content: string }[];
+    blocked: string[];
+    packageFile: { path: string; content: string };
+  } {
+    const parsed = parseProposalResponse(response);
+    const writable: { path: string; content: string }[] = [];
+    const blocked: string[] = [];
+
+    for (const file of parsed.files) {
+      if (isUnsafeRelativePath(file.path) || isProtectedPath(file.path)) {
+        blocked.push(file.path);
+      } else {
+        writable.push(file);
+      }
+    }
+
+    const { packageFile } = normalizeProposalFiles(parsed, writable);
+    return { parsed, writable, blocked, packageFile };
   }
 
-  // Split files into writable and blocked (protected core paths / unsafe paths).
-  const writable: { path: string; content: string }[] = [];
-  const blocked: string[] = [];
-  for (const f of parsed.files) {
-    if (isUnsafeRelativePath(f.path) || isProtectedPath(f.path)) {
-      blocked.push(f.path);
-    } else {
-      writable.push(f);
+  let prepared: ReturnType<typeof prepareProposal>;
+
+  try {
+    prepared = prepareProposal(gateway.response);
+  } catch (firstError) {
+    const firstMessage = firstError instanceof Error ? firstError.message : String(firstError);
+    const repairPrompt = [
+      prompt,
+      "",
+      "CORRECTION REQUIRED â€” ONE FINAL REPAIR ATTEMPT ONLY.",
+      `The previous response failed validation with this exact error: ${firstMessage}`,
+      "Return a completely corrected JSON proposal, not an explanation.",
+      "It must include an executable JavaScript entry file, a JavaScript test file and a valid package.json.",
+      "The package.json must contain non-empty lint, typecheck, build and test scripts.",
+      "Do not repeat the invalid response.",
+    ].join("\n");
+
+    let repairedGateway;
+    try {
+      repairedGateway = await invokeGateway("codegeneration", repairPrompt);
+    } catch (repairGatewayError) {
+      const message =
+        repairGatewayError instanceof Error ? repairGatewayError.message : String(repairGatewayError);
+      const [failedRow] = (await db
+        .insert(proposalsTable)
+        .values({
+          sourceType: source.type,
+          sourceId: source.id,
+          prompt,
+          provider: gateway.provider,
+          model: gateway.model,
+          status: "failed",
+          errorMessage: `Repair attempt failed: ${message}`.slice(0, 1000),
+        })
+        .returning()) as unknown as ProposalRow[];
+      await audit({
+        actor: "proposal-generator",
+        action: "proposal_repair_failed",
+        targetType: "proposal",
+        targetId: failedRow.id,
+        details: `Single repair gateway attempt failed: ${message.slice(0, 300)}`,
+        outcome: "blocked",
+      });
+      throw new GatewayError(`AI proposal repair attempt failed: ${message}`);
+    }
+
+    gateway = repairedGateway;
+
+    try {
+      prepared = prepareProposal(gateway.response);
+    } catch (secondError) {
+      const secondMessage = secondError instanceof Error ? secondError.message : String(secondError);
+      const [failedRow] = (await db
+        .insert(proposalsTable)
+        .values({
+          sourceType: source.type,
+          sourceId: source.id,
+          prompt,
+          provider: gateway.provider,
+          model: gateway.model,
+          status: "failed",
+          errorMessage: `Proposal remained invalid after one repair: ${secondMessage}`.slice(0, 1000),
+        })
+        .returning()) as unknown as ProposalRow[];
+      await audit({
+        actor: "proposal-generator",
+        action: "proposal_repair_exhausted",
+        targetType: "proposal",
+        targetId: failedRow.id,
+        details: `Proposal blocked after exactly one repair attempt: ${secondMessage.slice(0, 300)}`,
+        outcome: "blocked",
+      });
+      throw new GatewayError(
+        `AI proposal remained invalid after exactly one repair attempt: ${secondMessage}`,
+      );
     }
   }
 
+  const { parsed, writable, blocked, packageFile } = prepared;
+
   if (writable.length === 0) {
     const message = `AI proposal contained no writable files; all ${blocked.length} path(s) were unsafe or protected: ${blocked.slice(0, 10).join(", ")}`;
-    const [failedRow] = await db
+    const [failedRow] = (await db
       .insert(proposalsTable)
       .values({
         sourceType: source.type,
@@ -250,7 +416,7 @@ export async function generateProposal(input: {
         blockedFiles: blocked,
         errorMessage: message.slice(0, 1000),
       })
-      .returning();
+      .returning()) as unknown as ProposalRow[];
     await audit({
       actor: "proposal-generator",
       action: "proposal_failed",
@@ -263,12 +429,24 @@ export async function generateProposal(input: {
   }
 
   // Create module (status: draft — never installed here) and sandbox.
+  const entry =
+    writable.find(
+      (f) =>
+        /\.(?:cjs|mjs|js|ts)$/.test(f.path) &&
+        !/(?:^|[\\/])tests?(?:[\\/]|$)/i.test(f.path) &&
+        !/(?:^|[\\/]).*\.test\.(?:cjs|mjs|js|ts)$/i.test(f.path),
+    )?.path ?? null;
+
   const manifest = JSON.stringify({
     name: parsed.moduleName,
     version: "0.1.0",
+    entry,
     paths: writable.map((f) => f.path),
+    scope: "sandbox-only",
+    actions: [],
+    acceptance: ["typecheck", "build", "unit", "scope-integrity"],
   });
-  const [moduleRow] = await db
+  const [moduleRow] = (await db
     .insert(modulesTable)
     .values({
       name: parsed.moduleName,
@@ -278,16 +456,16 @@ export async function generateProposal(input: {
       ownerAgent: "proposal-generator",
       manifest,
     })
-    .returning();
+    .returning()) as unknown as ModuleRow[];
 
-  const [sandboxRow] = await db
+  const [sandboxRow] = (await db
     .insert(sandboxesTable)
     .values({
       moduleId: moduleRow.id,
       name: `proposal-${parsed.moduleName}`.slice(0, 100),
       purpose: `Generated proposal for ${source.type} #${source.id}`,
     })
-    .returning();
+    .returning()) as unknown as SandboxRow[];
   const dir = ensureSandboxDir(sandboxRow.id);
   await db.update(sandboxesTable).set({ storagePath: dir }).where(eq(sandboxesTable.id, sandboxRow.id));
 
@@ -305,6 +483,13 @@ export async function generateProposal(input: {
     written.push(f.path);
   }
 
+  const packageTarget = path.resolve(dir, "package.json");
+  fs.writeFileSync(packageTarget, packageFile.content, "utf8");
+
+  const packageOnDisk = fs.readFileSync(packageTarget, "utf8");
+  if (packageOnDisk !== packageFile.content) {
+    throw new GatewayError("Repaired package.json was not persisted identically to the sandbox filesystem.");
+  }
   if (blocked.length > 0) {
     await audit({
       actor: "proposal-generator",
@@ -316,7 +501,7 @@ export async function generateProposal(input: {
     });
   }
 
-  const [proposalRow] = await db
+  const [proposalRow] = (await db
     .insert(proposalsTable)
     .values({
       sourceType: source.type,
@@ -332,7 +517,7 @@ export async function generateProposal(input: {
       filesGenerated: written,
       blockedFiles: blocked,
     })
-    .returning();
+    .returning()) as unknown as ProposalRow[];
 
   await audit({
     actor: "proposal-generator",

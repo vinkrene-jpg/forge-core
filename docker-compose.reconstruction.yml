@@ -1,0 +1,23 @@
+﻿services:
+  app:
+    image: forge-core-reconstruction:local
+
+    build:
+      context: .
+      dockerfile: Dockerfile.reconstruction
+
+    environment:
+      CI: "true"
+      FORGE_WORKSPACE_BRIDGE_DIR: "/bridge"
+      FORGE_WORKSPACE_BRIDGE_TOKEN: "${FORGE_WORKSPACE_BRIDGE_TOKEN:-}"
+
+    command:
+      - sh
+      - -c
+      - |
+        pnpm --filter @workspace/db run push --force &&
+        node artifacts/api-server/dist/index.mjs
+
+    volumes: !override
+      - forge_storage:/app/storage
+      - ./.forge-bridge:/bridge

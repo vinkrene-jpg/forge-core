@@ -1,0 +1,109 @@
+{
+  "chapter": "FG-005.140",
+  "title": "Unblock autonomous evaluation",
+  "verifiedAt": "2026-07-15T16:02:30Z",
+  "status": "verified",
+  "problem": {
+    "observedPattern": {
+      "missionStatus": "failed",
+      "missionResultStatus": "rejected",
+      "missionResultCause": "evaluation",
+      "evaluationScore": 33
+    },
+    "deterministicReason": {
+      "passedChecks": [
+        "mission-linked",
+        "secret-free"
+      ],
+      "failedChecks": [
+        "provider-succeeded",
+        "output-substantive",
+        "assumptions-explicit",
+        "verification-explicit"
+      ],
+      "scoreMath": "2/6 checks => 33"
+    }
+  },
+  "rootCause": {
+    "type": "provider-route-selection",
+    "description": "Local model route was treated as enabled by default and preferred for medium-budget autonomous cycles, even when no reachable local model endpoint was available.",
+    "blockedFiles": [
+      "lib/forge-runtime/src/ai-gateway-engine.ts"
+    ],
+    "technicalImpact": "AI executions failed with fetch failed and empty outputText; evaluator then rejected with deterministic score 33."
+  },
+  "minimalFix": {
+    "scope": "single-behavior correction",
+    "changes": [
+      {
+        "file": "lib/forge-runtime/src/ai-gateway-engine.ts",
+        "detail": "Local model routing now requires explicit FORGE_LOCAL_MODEL_ENABLED=true opt-in in both status and provider selection paths."
+      },
+      {
+        "file": "lib/forge-runtime/src/autonomous-provider-loop.test.ts",
+        "detail": "Added regression test proving fallback-route acceptance when local model is not explicitly enabled."
+      }
+    ],
+    "nonGoals": [
+      "No evaluator bypass",
+      "No hardcoded acceptance",
+      "No temporary route override"
+    ]
+  },
+  "postFixVerification": {
+    "tests": {
+      "command": "pnpm --filter @workspace/forge-runtime test",
+      "result": "pass"
+    },
+    "liveMission": {
+      "runtimeApiBaseUrl": "http://127.0.0.1:5002/api",
+      "missionId": "ce073e66-8054-4598-ad3f-d57a273604fa",
+      "approvalId": "ce3d8b9e-37c3-4dda-bb5f-c80425117cf8",
+      "executionId": "1f0082c5-f223-445a-80f3-b0c9e91ae43a",
+      "evaluationId": "48a99c9f-67af-4af7-8306-9081b7894efb",
+      "evidenceMemoryId": "bd3ae575-c4fd-4197-b84b-9bb1ef33e31b",
+      "finalMissionStatus": "succeeded",
+      "evaluationDecision": "accepted",
+      "evaluationScore": 100,
+      "evaluationChecks": [
+        {
+          "id": "provider-succeeded",
+          "passed": true
+        },
+        {
+          "id": "mission-linked",
+          "passed": true
+        },
+        {
+          "id": "output-substantive",
+          "passed": true
+        },
+        {
+          "id": "assumptions-explicit",
+          "passed": true
+        },
+        {
+          "id": "verification-explicit",
+          "passed": true
+        },
+        {
+          "id": "secret-free",
+          "passed": true
+        }
+      ],
+      "outputSha256": "4fdeafea0fb9dd44a41a51ac754873916893877ded193724a13b8fc8ade61c6f",
+      "missionResult": {
+        "status": "completed",
+        "cause": "execution",
+        "message": "Mission completed successfully"
+      }
+    },
+    "learningEvidenceLinkage": {
+      "missionId": "ce073e66-8054-4598-ad3f-d57a273604fa",
+      "executionId": "1f0082c5-f223-445a-80f3-b0c9e91ae43a",
+      "evaluationId": "48a99c9f-67af-4af7-8306-9081b7894efb",
+      "evidenceMemoryId": "bd3ae575-c4fd-4197-b84b-9bb1ef33e31b"
+    }
+  },
+  "conclusion": "Autonomous evaluation is unblocked. Decisions remain evidence-based and deterministic; acceptance occurs when provider execution and output satisfy evaluator checks."
+}

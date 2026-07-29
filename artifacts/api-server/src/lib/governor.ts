@@ -14,6 +14,7 @@ import {
 } from "@workspace/db";
 import { desc, eq, and } from "drizzle-orm";
 import { audit } from "./audit";
+import { evaluateModulePolicy } from "./selfEvolutionPolicy";
 
 export type GovernorVerdict =
   | "install_allowed"
@@ -27,7 +28,7 @@ async function record(
   rationale: string,
   inputs: Record<string, unknown>,
 ): Promise<GovernorDecisionRow> {
-  const [row] = await db
+  const insertedDecisionRows = await db
     .insert(governorDecisionsTable)
     .values({
       moduleId: module.id,
@@ -36,6 +37,8 @@ async function record(
       inputs: JSON.stringify(inputs),
     })
     .returning();
+  const row = (insertedDecisionRows as unknown as GovernorDecisionRow[])[0];
+  if (!row) throw new Error("Governor decision insert returned no row");
   await audit({
     actor: "governor",
     action: "install_decision",
@@ -103,6 +106,29 @@ export async function governInstall(module: ModuleRow): Promise<GovernorDecision
     hasManifest: Boolean(module.manifest),
   };
 
+  const isSelfEvolution =
+    module.ownerAgent === "proposal-generator" || module.ownerAgent === "policy-control";
+
+  if (isSelfEvolution) {
+    const policy = await evaluateModulePolicy(module);
+    if (!policy.allowed) {
+      const prefix = policy.absoluteStop
+        ? "Absolute stopconditie: menselijke bevestiging verplicht."
+        : `Bevoegdheid '${policy.authority}' staat deze vrijgave niet toe.`;
+
+      return record(
+        module,
+        "install_blocked",
+        `${prefix} ${policy.reasons.join(" | ")}`,
+        {
+          ...inputs,
+          authority: policy.authority,
+          successfulReleases: policy.successfulReleases,
+          scopeViolations: policy.scopeViolations,
+        },
+      );
+    }
+  }
   // Hard blocks
   if (module.touchesCore) {
     return record(module, "install_blocked", "Module touches the Locked Core. Core modifications are forbidden.", inputs);

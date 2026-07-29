@@ -1,0 +1,68 @@
+{
+  "chapter": "FG-005.110",
+  "title": "Live verification of restored mission output pipeline",
+  "verifiedAt": "2026-07-15T14:59:30Z",
+  "status": "verified",
+  "runtime": {
+    "apiBaseUrl": "http://127.0.0.1:5000/api",
+    "sourceOfTruth": [
+      "storage/forge-runtime/missions.json",
+      "storage/forge-runtime/operator-core.json",
+      "D:/Forge/memory/lessons.jsonl"
+    ]
+  },
+  "manualGovernedMission": {
+    "title": "FG-005.110 MANUAL VERIFY 2026-07-15T14:47Z",
+    "missionId": "7ca0e69b-7e14-4570-8b0e-34c2b52c3749",
+    "approvalId": "f82a9dda-3572-4362-83b4-d0f2a06f9199",
+    "governanceDecision": "require_approval",
+    "finalStatus": "failed",
+    "missionResult": {
+      "status": "rejected",
+      "cause": "evaluation",
+      "message": "Autonomous output rejected by evaluation c8bc3e60-1774-4003-b4f2-7c15e048bad3 with score 33"
+    },
+    "evaluation": {
+      "id": "c8bc3e60-1774-4003-b4f2-7c15e048bad3",
+      "decision": "rejected",
+      "score": 33,
+      "executionId": "e2fe7785-ed48-4dcd-811d-7a55462eadda"
+    },
+    "output": {
+      "isNull": false,
+      "outputSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "evidenceMemoryId": "3dd17224-8d07-42b9-acd7-d598ebbe688b"
+    }
+  },
+  "checks": [
+    {
+      "id": "governed-start",
+      "result": "pass",
+      "detail": "Mission creation returned awaiting_approval with explicit approval record."
+    },
+    {
+      "id": "classified-terminal-output",
+      "result": "pass",
+      "detail": "Terminal mission persisted non-null output including missionResult.status=rejected and missionResult.cause=evaluation."
+    },
+    {
+      "id": "operator-evidence-link",
+      "result": "pass",
+      "detail": "Operator evidence entry stored autonomous-cycle source and matching mission/evaluation IDs."
+    },
+    {
+      "id": "memory-fallback-removed",
+      "result": "pass",
+      "detail": "Recent lesson entries record structured JSON mission output for rejected missions instead of the fallback text 'No mission output was produced.'."
+    },
+    {
+      "id": "desktop-mission-console-live",
+      "result": "pass",
+      "detail": "Desktop root route serves Mission Console as primary interface; source includes explicit fields Result status, Cause and Message for missionResult rendering."
+    }
+  ],
+  "notes": [
+    "Provider remained unavailable during verification; rejection path is expected and was used to verify classified terminal output behavior.",
+    "No automatic provider retry was performed."
+  ]
+}
