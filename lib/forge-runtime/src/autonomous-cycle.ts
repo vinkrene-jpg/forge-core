@@ -159,20 +159,42 @@ export function classifyAutonomousObjective(
     });
   }
 
+  const normalizedForIntent = ` ${normalized.replace(/\s+/g, " ").trim()} `;
+  const explicitReadOnly = [
+    /\bwijzig\s+geen\b/,
+    /\bgeen\s+bestanden?\s+(?:wijzigen|aanpassen|schrijven|veranderen)\b/,
+    /\bverander\s+geen\b/,
+    /\bpas\s+geen\b/,
+    /\bschrijf\s+geen\b/,
+    /\bdo\s+not\s+(?:modify|change|write|create|edit|delete)\b/,
+    /\bwithout\s+(?:modifying|changing|writing|creating|editing|deleting)\b/,
+    /\bread[- ]only\b/,
+    /\banalyseer\s+uitsluitend\b/,
+    /\banalyze\s+only\b/,
+    /\binspect\s+only\b/,
+  ].some((pattern) => pattern.test(normalizedForIntent));
+
   const buildIndicators = [
-    "bouw ",
-    " maak ",
-    "create ",
-    "write ",
-    "bestand",
-    "file",
-    "build",
-    "compile",
-    "wijzig",
-    "modify",
-    "implement code",
+    /\bbouw\b/,
+    /\bmaak\b/,
+    /\bvoeg\s+toe\b/,
+    /\bimplementeer\b/,
+    /\bwijzig\b/,
+    /\bherstel\b/,
+    /\bverwijder\b/,
+    /\bcreate\b/,
+    /\bbuild\b/,
+    /\badd\b/,
+    /\bimplement\b/,
+    /\bmodify\b/,
+    /\bfix\b/,
+    /\bremove\b/,
+    /\bwrite\b/,
+    /\bcompile\b/,
   ];
-  const buildLikely = buildIndicators.some((token) => normalized.includes(token));
+  const buildLikely =
+    !explicitReadOnly &&
+    buildIndicators.some((pattern) => pattern.test(normalizedForIntent));
 
   if (buildLikely) {
     return Object.freeze({
