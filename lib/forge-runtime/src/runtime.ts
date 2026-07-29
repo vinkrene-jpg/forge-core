@@ -235,6 +235,11 @@ interface MissionExecutionFailure extends Error {
   missionOutput?: Readonly<Record<string, unknown>>;
 }
 
+interface WorkspaceChangeMissionOutput extends WorkspaceExecutionResult {
+  readonly evidenceMemoryId: string;
+  readonly executionEvidence: AutonomousExecutionEvidence;
+}
+
 function sha256Text(value: string): string {
   return createHash("sha256").update(value, "utf8").digest("hex");
 }
@@ -624,8 +629,24 @@ export class ForgeRuntime {
         throw blocked;
       }
 
-      // Call the existing workspace planner (AI taskType:"coding") to produce a
-      // validated workspace change plan for the explicit target files.
+      const missionApproval = this.#governanceEngine.findByMissionId(mission.id);
+      if (missionApproval?.status !== "approved") {
+        const blocked = new Error(
+          "generic-build requires explicit approved governance approval before workspace mutation.",
+        ) as MissionExecutionFailure;
+        blocked.missionResultStatus = "blocked";
+        blocked.missionResultCause = "approval-required";
+        blocked.missionOutput = Object.freeze({
+          cycleIndex: input.cycleIndex,
+          maxCycles: input.maxCycles,
+          rootMissionId: input.rootMissionId ?? mission.id,
+          previousMissionId: input.previousMissionId,
+          objectiveExecutionMode: input.objectiveExecutionMode,
+          objectiveProfile: input.objectiveProfile,
+        });
+        throw blocked;
+      }
+
       let planResult: Readonly<Record<string, unknown>>;
       try {
         planResult = await this.#executeWorkspacePlan(mission, signal);
@@ -649,100 +670,24 @@ export class ForgeRuntime {
       }
 
       const plan = planResult.plan as WorkspaceChangePlan;
-      const buildProjectId =
-        typeof mission.input.projectId === "string"
-          ? mission.input.projectId
-          : "forge-core";
-      const buildProject = this.#operatorCore.getProject(buildProjectId);
-
-      if (!buildProject) {
-        throw new Error(`Project not found for generic-build: ${buildProjectId}`);
-      }
-
-      // Execute the validated plan via the existing WorkspaceExecutor (mutations,
-      // verification, rollback on failure, artifacts).
-      let wsExecution: WorkspaceExecutionResult;
-      try {
-        wsExecution = await this.#workspaceExecutor.execute(
-          buildProject.rootPath,
-          mission.id,
-          plan.request,
-          signal,
-        );
-      } catch (error) {
-        if (error instanceof WorkspaceExecutionError) {
-          await this.#operatorCore.addMemory(buildProjectId, {
-            kind: "evidence",
-            source: `workspace-execution:${mission.id}`,
-            tags: ["workspace-execution", error.result.status, "failed"],
-            content: JSON.stringify(error.result, null, 2),
-          });
-        }
-        throw error;
-      }
-
-      // Persist execution evidence to project memory.
-      await this.#operatorCore.addMemory(buildProjectId, {
-        kind: "evidence",
-        source: `workspace-execution:${mission.id}`,
-        tags: ["workspace-execution", wsExecution.status, wsExecution.branch],
-        content: JSON.stringify(wsExecution, null, 2),
+      const workspaceMission: MissionRecord = Object.freeze({
+        ...mission,
+        input: Object.freeze({
+          ...mission.input,
+          sourcePlanningMissionId: mission.id,
+          sourcePlanId: plan.id,
+          providerOutputSha256: plan.providerOutputSha256,
+          changes: plan.request.changes,
+          verification: plan.request.verification,
+          commit: plan.request.commit,
+        }),
       });
+      const workspaceResult = await this.#executeWorkspaceChange(
+        workspaceMission,
+        signal,
+      ) as unknown as WorkspaceChangeMissionOutput;
 
-      // Map WorkspaceExecutionResult to AutonomousExecutionEvidence so the
-      // existing evaluator can verify receipts, file effects, verification runs
-      // and artifacts — identical surface to #executeWorkspaceProof.
-      const receiptAt = new Date().toISOString();
-      executionEvidence = Object.freeze({
-        objectiveProfile: "generic-build" as const,
-        receipts: Object.freeze(
-          wsExecution.changedFiles.map((f) =>
-            Object.freeze({
-              id: randomUUID(),
-              action: "write-file" as const,
-              targetPath: f.path,
-              startedAt: receiptAt,
-              completedAt: receiptAt,
-              durationMs: 1,
-              ok: true,
-              error: null,
-            }),
-          ),
-        ),
-        fileEffects: Object.freeze(
-          wsExecution.changedFiles.map((f) =>
-            Object.freeze({
-              path: f.path,
-              existedBefore: f.beforeSha256 !== null,
-              existsAfter: true,
-              beforeSha256: f.beforeSha256,
-              afterSha256: f.afterSha256,
-            }),
-          ),
-        ),
-        verificationRuns: Object.freeze(
-          wsExecution.verification.map((v) =>
-            Object.freeze({
-              command: v.command,
-              exitCode: v.exitCode,
-              stdoutSha256: v.stdoutSha256,
-              stderrSha256: v.stderrSha256,
-              durationMs: v.durationMs,
-            }),
-          ),
-        ),
-        artifacts: Object.freeze(
-          wsExecution.changedFiles.map((f) =>
-            Object.freeze({
-              id: randomUUID(),
-              kind: "file-hash-proof" as const,
-              path: f.path,
-              content: f.afterSha256,
-              sha256: f.afterSha256,
-            }),
-          ),
-        ),
-      });
+      executionEvidence = workspaceResult.executionEvidence;
     }
 
     if (learningProposalId && targetCapabilityId) {
@@ -1269,10 +1214,12 @@ export class ForgeRuntime {
         tags: ["workspace-execution", execution.status, execution.branch],
         content: JSON.stringify(execution, null, 2),
       });
+      const executionEvidence = this.#workspaceExecutionEvidence(execution);
 
       return Object.freeze({
         ...execution,
         evidenceMemoryId: evidence.id,
+        executionEvidence,
       });
     } catch (error) {
       if (error instanceof WorkspaceExecutionError) {
@@ -1286,6 +1233,63 @@ export class ForgeRuntime {
 
       throw error;
     }
+  }
+
+  #workspaceExecutionEvidence(
+    execution: WorkspaceExecutionResult,
+  ): AutonomousExecutionEvidence {
+    const receiptAt = new Date().toISOString();
+
+    return Object.freeze({
+      objectiveProfile: "generic-build",
+      receipts: Object.freeze(
+        execution.changedFiles.map((file) =>
+          Object.freeze({
+            id: randomUUID(),
+            action: "write-file" as const,
+            targetPath: file.path,
+            startedAt: receiptAt,
+            completedAt: receiptAt,
+            durationMs: 1,
+            ok: true,
+            error: null,
+          }),
+        ),
+      ),
+      fileEffects: Object.freeze(
+        execution.changedFiles.map((file) =>
+          Object.freeze({
+            path: file.path,
+            existedBefore: file.beforeSha256 !== null,
+            existsAfter: true,
+            beforeSha256: file.beforeSha256,
+            afterSha256: file.afterSha256,
+          }),
+        ),
+      ),
+      verificationRuns: Object.freeze(
+        execution.verification.map((verification) =>
+          Object.freeze({
+            command: verification.command,
+            exitCode: verification.exitCode,
+            stdoutSha256: verification.stdoutSha256,
+            stderrSha256: verification.stderrSha256,
+            durationMs: verification.durationMs,
+          }),
+        ),
+      ),
+      artifacts: Object.freeze(
+        execution.changedFiles.map((file) =>
+          Object.freeze({
+            id: randomUUID(),
+            kind: "file-hash-proof" as const,
+            path: file.path,
+            content: file.afterSha256,
+            sha256: file.afterSha256,
+          }),
+        ),
+      ),
+    });
   }
 
   async #executeWorkspacePlan(

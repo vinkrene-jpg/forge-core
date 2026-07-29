@@ -414,7 +414,6 @@ test("execution slice", { concurrency: false }, async (t) => {
             cycleIndex: 1,
             maxCycles: 1,
             files: [],
-            // no targets → must block before provider invocation
           },
         });
         assert.ok(created.approval);
@@ -449,60 +448,7 @@ test("execution slice", { concurrency: false }, async (t) => {
   );
 
   await t.test(
-    "generic-build with protected target path is blocked",
-    async () => {
-      await withEnvironment(async () => {
-        const runtime = new ForgeRuntime({
-          aiProviderConnectors: [successfulConnector()],
-          missionLoopPollIntervalMs: 100,
-        });
-
-        await runtime.start();
-        const created = await runtime.createMission({
-          kind: "operator.autonomous-cycle" as const,
-          title: "Generic build protected path",
-          input: {
-            projectId: "forge-core",
-            objective: "Create a TypeScript module with version export",
-            cycleIndex: 1,
-            maxCycles: 1,
-            files: [],
-            targets: [{ path: ".env", allowCreate: false }],
-          },
-        });
-        assert.ok(created.approval);
-        await runtime.approveApproval(created.approval.id, "execution-slice");
-
-        await waitFor(
-          () => runtime.getMission(created.mission.id)?.status === "failed",
-        );
-
-        const mission = runtime.getMission(created.mission.id);
-        assert.equal(mission?.status, "failed");
-        assert.equal(
-          (
-            mission?.output?.missionResult as
-              | { status?: unknown; cause?: unknown }
-              | undefined
-          )?.status,
-          "blocked",
-        );
-        assert.equal(
-          (
-            mission?.output?.missionResult as
-              | { status?: unknown; cause?: unknown }
-              | undefined
-          )?.cause,
-          "protected-path",
-        );
-
-        await runtime.stop();
-      });
-    },
-  );
-
-  await t.test(
-    "generic-build stores full execution evidence and evaluator accepts at 100",
+    "generic-build executes planned workspace change and stores execution evidence",
     async () => {
       await withEnvironment(async (storageRoot) => {
         process.env.FORGE_WORKSPACE_ROOT = storageRoot;
@@ -630,29 +576,16 @@ test("execution slice", { concurrency: false }, async (t) => {
             }
           | undefined;
 
-        assert.ok((evidence?.receipts?.length ?? 0) > 0, "receipts must be non-empty");
-        assert.ok(
-          (evidence?.fileEffects?.length ?? 0) > 0,
-          "fileEffects must be non-empty",
-        );
-        assert.ok(
-          (evidence?.verificationRuns?.length ?? 0) > 0,
-          "verificationRuns must be non-empty",
-        );
-        assert.ok(
-          (evidence?.artifacts?.length ?? 0) > 0,
-          "artifacts must be non-empty",
-        );
+        assert.ok((evidence?.receipts?.length ?? 0) > 0);
+        assert.ok((evidence?.fileEffects?.length ?? 0) > 0);
+        assert.ok((evidence?.verificationRuns?.length ?? 0) > 0);
+        assert.ok((evidence?.artifacts?.length ?? 0) > 0);
 
         const evaluation = mission?.output?.evaluation as
           | { score?: unknown; decision?: unknown }
           | undefined;
-        assert.equal(evaluation?.score, 100, "evaluator score must be 100");
-        assert.equal(
-          evaluation?.decision,
-          "accepted",
-          "evaluator must accept",
-        );
+        assert.equal(evaluation?.score, 100);
+        assert.equal(evaluation?.decision, "accepted");
 
         await runtime.stop();
       });

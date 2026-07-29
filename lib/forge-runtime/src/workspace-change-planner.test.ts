@@ -9,9 +9,59 @@ import {
   parseWorkspaceProviderPlan,
   type AiProviderConnector,
 } from "./index.js";
+import type { WorkspaceChangeExecutor } from "./workspace-bridge.js";
+import type { WorkspaceExecutionResult } from "./workspace-executor.js";
 
 function sha256(content: string): string {
   return createHash("sha256").update(content, "utf8").digest("hex");
+}
+
+function buildExecutionResult(input: {
+  missionId: string;
+  path: string;
+  beforeSha: string;
+  afterSha: string;
+}): WorkspaceExecutionResult {
+  const now = new Date().toISOString();
+
+  return Object.freeze({
+    id: "workspace-plan-execution",
+    missionId: input.missionId,
+    status: "verified",
+    branch: "planner-test",
+    changedFiles: Object.freeze([
+      Object.freeze({
+        path: input.path,
+        beforeSha256: input.beforeSha,
+        afterSha256: input.afterSha,
+      }),
+    ]),
+    verification: Object.freeze([
+      Object.freeze({
+        command: "pnpm run typecheck",
+        exitCode: 0,
+        stdoutChars: 2,
+        stderrChars: 0,
+        stdoutSha256: sha256("ok"),
+        stderrSha256: sha256(""),
+        durationMs: 1,
+      }),
+      Object.freeze({
+        command: "pnpm run test",
+        exitCode: 0,
+        stdoutChars: 2,
+        stderrChars: 0,
+        stdoutSha256: sha256("ok"),
+        stderrSha256: sha256(""),
+        durationMs: 1,
+      }),
+    ]),
+    rollbackPerformed: false,
+    commitSha: null,
+    error: null,
+    startedAt: now,
+    completedAt: now,
+  });
 }
 
 async function waitFor(
@@ -78,8 +128,23 @@ test("provider workspace planner", { concurrency: false }, async (t) => {
         });
       },
     };
+    const stubExecutor: WorkspaceChangeExecutor = {
+      async execute(rootPath, missionId, request) {
+        const change = request.changes.find((candidate) => candidate.path === "sample.txt");
+        const nextContent = change?.content ?? source;
+        await writeFile(path.join(rootPath, "sample.txt"), nextContent, "utf8");
+
+        return buildExecutionResult({
+          missionId,
+          path: "sample.txt",
+          beforeSha: sha256(source),
+          afterSha: sha256(nextContent),
+        });
+      },
+    };
     const runtime = new ForgeRuntime({
       aiProviderConnectors: [connector],
+      workspaceChangeExecutor: stubExecutor,
       missionLoopPollIntervalMs: 100,
     });
 
@@ -117,6 +182,31 @@ test("provider workspace planner", { concurrency: false }, async (t) => {
           (event) => event.type === "workspace.plan.scheduled",
         ),
       );
+      await runtime.approveApproval(
+        scheduled.executionMission.approval.id,
+        "planner-test",
+      );
+      await waitFor(
+        () =>
+          runtime.getMission(scheduled.executionMission.mission.id)?.status ===
+          "succeeded",
+      );
+
+      const executed = runtime.getMission(scheduled.executionMission.mission.id);
+      assert.equal(executed?.status, "succeeded");
+      assert.equal(await readFile(path.join(root, "sample.txt"), "utf8"), "after\n");
+      const executionEvidence = executed?.output?.executionEvidence as
+        | {
+            receipts?: readonly unknown[];
+            fileEffects?: readonly unknown[];
+            verificationRuns?: readonly unknown[];
+            artifacts?: readonly unknown[];
+          }
+        | undefined;
+      assert.ok((executionEvidence?.receipts?.length ?? 0) > 0);
+      assert.ok((executionEvidence?.fileEffects?.length ?? 0) > 0);
+      assert.ok((executionEvidence?.verificationRuns?.length ?? 0) > 0);
+      assert.ok((executionEvidence?.artifacts?.length ?? 0) > 0);
       await runtime.stop();
     } finally {
       for (const [key, value] of original) {
