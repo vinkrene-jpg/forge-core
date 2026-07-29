@@ -249,6 +249,7 @@ export class AutonomousOutputEvaluator {
     } = {},
   ): AutonomousEvaluation {
     const output = execution.outputText ?? "";
+    const executionMode = options.objectiveExecutionMode ?? "analysis-only";
     const checks: AutonomousEvaluationCheck[] = [
       {
         id: "provider-succeeded",
@@ -266,23 +267,35 @@ export class AutonomousOutputEvaluator {
         detail: `Output characters: ${output.trim().length}`,
       },
       {
-        id: "assumptions-explicit",
-        passed: /assumptions?|aannames?/i.test(output),
-        detail: "Output must state assumptions explicitly.",
-      },
-      {
-        id: "verification-explicit",
-        passed: /verif|tests?|controle|bewijs/i.test(output),
-        detail: "Output must contain verification guidance.",
-      },
-      {
         id: "secret-free",
         passed: !secretPatterns.some((pattern) => pattern.test(output)),
         detail: "Output must not contain credential-shaped material.",
       },
     ];
 
-    if (options.objectiveExecutionMode === "build-or-mutate") {
+    if (executionMode === "analysis-only") {
+      const groundedReference =
+        /(?:[A-Za-z0-9._-]+[\\/])+[A-Za-z0-9._-]+|(?:^|\s)(?:bron|bronnen|evidence|source|bestand|file|regel|line|codeverwijzing|code reference)(?:\s|:|$)/im;
+      checks.push({
+        id: "analysis-grounded",
+        passed: groundedReference.test(output),
+        detail: "Analysis output must cite a source, file, line, code reference, or repository path.",
+      });
+    }
+
+    if (executionMode === "build-or-mutate") {
+      checks.push(
+        {
+          id: "assumptions-explicit",
+          passed: /assumptions?|aannames?/i.test(output),
+          detail: "Build output must state assumptions explicitly.",
+        },
+        {
+          id: "verification-explicit",
+          passed: /verif|tests?|controle|bewijs/i.test(output),
+          detail: "Build output must contain verification guidance.",
+        },
+      );
       const evidence = options.executionEvidence ?? null;
       const hasReceipts = (evidence?.receipts.length ?? 0) > 0;
       const hasArtifacts = (evidence?.artifacts.length ?? 0) > 0;
