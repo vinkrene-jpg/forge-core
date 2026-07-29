@@ -1,0 +1,17 @@
+{
+  "name": "@workspace/forge-runtime",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": "./src/runtime.ts"
+  },
+  "scripts": {
+    "test": "tsx --test ./src/runtime.test.ts",
+    "typecheck": "tsc -p tsconfig.json --noEmit"
+  },
+  "devDependencies": {
+    "@types/node": "catalog:",
+    "tsx": "catalog:"
+  }
+}
