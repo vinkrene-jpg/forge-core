@@ -160,6 +160,7 @@ export function classifyAutonomousObjective(
   }
 
   const buildIndicators = [
+    "bouw ",
     " maak ",
     "create ",
     "write ",
