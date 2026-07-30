@@ -1,13 +1,18 @@
 import assert from "node:assert/strict";
-import { mkdtemp, rm } from "node:fs/promises";
+import { execFile } from "node:child_process";
+import { mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
 import test from "node:test";
+import { promisify } from "node:util";
 import {
   ForgeRuntime,
   type AiProviderConnector,
   type MissionRecord,
+  type WorkspaceVerificationRunner,
 } from "./index.js";
+
+const exec = promisify(execFile);
 
 const environmentKeys = [
   "STORAGE_DIR",
@@ -99,7 +104,8 @@ function autonomousRequest(maxCycles: number) {
     title: `Autonomous provider loop 1/${maxCycles}`,
     input: {
       projectId: "forge-core",
-      objective: "Identify the next evidence-backed Forge implementation step.",
+      objective:
+        "Identify the next evidence-backed Forge implementation step without modifying files.",
       cycleIndex: 1,
       maxCycles,
       files: [],
@@ -122,10 +128,73 @@ function proofRequest() {
   };
 }
 
+async function createWorkspaceRepository(): Promise<string> {
+  const root = await mkdtemp(path.join(os.tmpdir(), "forge-generic-build-"));
+  await exec("git", ["init", "-b", "test/generic-build"], { cwd: root });
+  await exec("git", ["config", "user.name", "Forge Test"], { cwd: root });
+  await exec("git", ["config", "user.email", "forge-test@example.invalid"], {
+    cwd: root,
+  });
+  await writeFile(path.join(root, "README.txt"), "baseline\n", "utf8");
+  await exec("git", ["add", "README.txt"], { cwd: root });
+  await exec("git", ["commit", "-m", "test baseline"], { cwd: root });
+  return root;
+}
+
+const successfulWorkspaceRunner: WorkspaceVerificationRunner = {
+  async run(step) {
+    return Object.freeze({
+      command: `fake ${step}`,
+      exitCode: 0,
+      stdout: "passed",
+      stderr: "",
+      durationMs: 1,
+    });
+  },
+};
+
 function autonomousMissions(runtime: ForgeRuntime): MissionRecord[] {
   return runtime
     .listMissions()
     .filter((mission) => mission.kind === "operator.autonomous-cycle");
+}
+
+function assertNoExecutionEvidence(value: unknown): void {
+  if (Array.isArray(value)) {
+    for (const item of value) {
+      assertNoExecutionEvidence(item);
+    }
+    return;
+  }
+
+  if (typeof value !== "object" || value === null) {
+    return;
+  }
+
+  const record = value as Readonly<Record<string, unknown>>;
+  const evidenceKeys = [
+    "receipts",
+    "fileEffects",
+    "verificationRuns",
+    "artifacts",
+  ] as const;
+
+  if ("executionEvidence" in record) {
+    assert.equal(record.executionEvidence, null);
+  }
+
+  for (const key of evidenceKeys) {
+    if (key in record) {
+      assert.ok(
+        !Array.isArray(record[key]) || record[key].length === 0,
+        `${key} must be empty before workspace approval`,
+      );
+    }
+  }
+
+  for (const nested of Object.values(record)) {
+    assertNoExecutionEvidence(nested);
+  }
 }
 
 test("autonomous provider loop", { concurrency: false }, async (t) => {
@@ -142,6 +211,7 @@ test("autonomous provider loop", { concurrency: false }, async (t) => {
             outputText: [
               "# Evidence-backed implementation step",
               "Inspect the current integration boundary and implement only the missing link while preserving the authoritative runtime state.",
+              "Source: lib/forge-runtime/src/runtime.ts.",
               "",
               "## Assumptions",
               "The supplied repository state and persistent project memory are authoritative. No unreported code or test result is assumed.",
@@ -178,6 +248,17 @@ test("autonomous provider loop", { concurrency: false }, async (t) => {
 
       await waitFor(() => {
         const missions = autonomousMissions(runtime);
+
+        if (missions.some((mission) => mission.status === "failed")) {
+          const detail = JSON.stringify(
+            missions.map((mission) => ({
+              status: mission.status,
+              error: mission.lastError,
+            })),
+          );
+          throw new Error(`Autonomous continuation failed: ${detail}`);
+        }
+
         return (
           missions.length === 2 &&
           missions.every((mission) => mission.status === "succeeded")
@@ -260,6 +341,7 @@ test("autonomous provider loop", { concurrency: false }, async (t) => {
               outputText: [
                 "# Evidence-backed implementation step",
                 "Inspect the current integration boundary and implement only the missing link while preserving the authoritative runtime state.",
+                "Source: lib/forge-runtime/src/runtime.ts.",
                 "",
                 "## Assumptions",
                 "The supplied repository state and persistent project memory are authoritative. No unreported code or test result is assumed.",
@@ -296,6 +378,16 @@ test("autonomous provider loop", { concurrency: false }, async (t) => {
 
         await waitFor(() => {
           const missions = autonomousMissions(runtime);
+
+          if (missions.some((mission) => mission.status === "failed")) {
+            const detail = JSON.stringify(
+              missions.map((mission) => ({
+                status: mission.status,
+                error: mission.lastError,
+              })),
+            );
+            throw new Error(`Learning exercise setup failed: ${detail}`);
+          }
 
           return (
             missions.length === 2 &&
@@ -452,6 +544,192 @@ test("autonomous provider loop", { concurrency: false }, async (t) => {
         );
         assert.match(mission?.lastError ?? "", /manual-fallback/i);
 
+        await runtime.stop();
+      });
+    },
+  );
+
+  await t.test(
+    "routes generic build through plan, approval, executor, and evaluator",
+    async () => {
+      await withEnvironment(async () => {
+        const root = await createWorkspaceRepository();
+        process.env.FORGE_WORKSPACE_ROOT = root;
+        let providerCalls = 0;
+        const connector: AiProviderConnector = {
+          id: "openai-responses",
+          async execute() {
+            providerCalls += 1;
+            return Object.freeze({
+              providerResponseId: "generic-build-plan",
+              outputText: JSON.stringify({
+                schemaVersion: 1,
+                summary:
+                  "Assumptions: the approved target is a new sandbox file and no other repository content may change. Verification guidance: run the required typecheck and inspect the committed file, recorded hashes, action receipts, file effects, verification runs, and artifact evidence before accepting the result.",
+                changes: [{
+                  path: "generated.txt",
+                  expectedSha256: null,
+                  content: "generated by governed generic build\n",
+                }],
+                verification: ["typecheck"],
+                commit: {
+                  message: "test: generic build workspace execution",
+                  push: false,
+                },
+              }),
+              usage: Object.freeze({
+                inputTokens: 20,
+                outputTokens: 30,
+                totalTokens: 50,
+              }),
+            });
+          },
+        };
+        const runtime = new ForgeRuntime({
+          aiProviderConnectors: [connector],
+          workspaceVerificationRunner: successfulWorkspaceRunner,
+          missionLoopPollIntervalMs: 100,
+        });
+
+        try {
+          await runtime.start();
+          const created = await runtime.createMission({
+            kind: "operator.autonomous-cycle",
+            title: "Governed generic sandbox build",
+            input: {
+              projectId: "forge-core",
+              objective:
+                "Bouw een nieuw generated.txt bestand in de sandbox met gecontroleerde workspace-mutatie.",
+              cycleIndex: 1,
+              maxCycles: 1,
+              files: [],
+              targets: [{ path: "generated.txt", allowCreate: true }],
+            },
+          });
+          assert.ok(created.approval);
+          await runtime.approveApproval(created.approval.id, "integration-test");
+
+          await waitFor(
+            () => runtime.getMission(created.mission.id)?.status === "succeeded",
+          );
+
+          const planningMission = runtime.getMission(created.mission.id);
+          const executionMissionId = String(
+            planningMission?.output?.workspaceExecutionMissionId ?? "",
+          );
+          const executionApprovalId = String(
+            planningMission?.output?.workspaceExecutionApprovalId ?? "",
+          );
+          assert.equal(providerCalls, 1);
+          assert.ok(executionMissionId);
+          assert.ok(executionApprovalId);
+          assert.equal(
+            runtime.getMission(executionMissionId)?.status,
+            "awaiting_approval",
+          );
+          await assert.rejects(readFile(path.join(root, "generated.txt"), "utf8"));
+          assertNoExecutionEvidence(
+            runtime.listMissions().map((candidate) => candidate.output),
+          );
+          assertNoExecutionEvidence(
+            runtime.snapshot().events.map((event) => event.payload),
+          );
+          assert.equal(
+            runtime.snapshot().events.some(
+              (event) =>
+                event.type === "autonomous.cycle.evaluated" ||
+                event.type.startsWith("workspace.execution."),
+            ),
+            false,
+          );
+
+          for (const memory of runtime.listProjectMemories(
+            "forge-core",
+            "evidence",
+          )) {
+            assertNoExecutionEvidence(JSON.parse(memory.content));
+          }
+
+          await runtime.approveApproval(executionApprovalId, "integration-test");
+          await waitFor(
+            () => runtime.getMission(executionMissionId)?.status === "succeeded",
+          );
+
+          const executionMission = runtime.getMission(executionMissionId);
+          const evaluation = executionMission?.output?.evaluation as
+            | { readonly score?: unknown; readonly decision?: unknown }
+            | undefined;
+          const evidence = executionMission?.output?.executionEvidence as
+            | {
+                readonly receipts?: readonly unknown[];
+                readonly fileEffects?: readonly unknown[];
+                readonly verificationRuns?: readonly unknown[];
+                readonly artifacts?: readonly unknown[];
+              }
+            | undefined;
+
+          assert.equal(
+            await readFile(path.join(root, "generated.txt"), "utf8"),
+            "generated by governed generic build\n",
+          );
+          assert.equal(evaluation?.score, 100);
+          assert.equal(evaluation?.decision, "accepted");
+          assert.ok((evidence?.receipts?.length ?? 0) > 0);
+          assert.ok((evidence?.fileEffects?.length ?? 0) > 0);
+          assert.ok((evidence?.verificationRuns?.length ?? 0) > 0);
+          assert.ok((evidence?.artifacts?.length ?? 0) > 0);
+          assert.equal(providerCalls, 1);
+          await runtime.stop();
+        } finally {
+          await rm(root, { recursive: true, force: true });
+        }
+      });
+    },
+  );
+
+  await t.test(
+    "blocks generic build without targets before provider execution",
+    async () => {
+      await withEnvironment(async () => {
+        let providerCalls = 0;
+        const connector: AiProviderConnector = {
+          id: "openai-responses",
+          async execute() {
+            providerCalls += 1;
+            throw new Error("Provider must not execute without targets");
+          },
+        };
+        const runtime = new ForgeRuntime({
+          aiProviderConnectors: [connector],
+          missionLoopPollIntervalMs: 100,
+        });
+
+        await runtime.start();
+        const created = await runtime.createMission({
+          kind: "operator.autonomous-cycle",
+          title: "Targetless generic build",
+          input: {
+            projectId: "forge-core",
+            objective: "Bouw een nieuwe generieke runtimefunctie.",
+            cycleIndex: 1,
+            maxCycles: 1,
+            files: [],
+          },
+        });
+        assert.ok(created.approval);
+        await runtime.approveApproval(created.approval.id, "integration-test");
+        await waitFor(
+          () => runtime.getMission(created.mission.id)?.status === "failed",
+        );
+
+        const mission = runtime.getMission(created.mission.id);
+        assert.equal(providerCalls, 0);
+        assert.equal(
+          (mission?.output?.missionResult as { status?: unknown } | undefined)
+            ?.status,
+          "blocked",
+        );
+        assert.match(mission?.lastError ?? "", /validated target files/i);
         await runtime.stop();
       });
     },

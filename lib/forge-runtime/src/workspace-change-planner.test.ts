@@ -58,7 +58,8 @@ test("provider workspace planner", { concurrency: false }, async (t) => {
           providerResponseId: "workspace-plan-response",
           outputText: JSON.stringify({
             schemaVersion: 1,
-            summary: "Update the approved sample",
+            summary:
+              "Assumptions: sample.txt is the only approved target and its supplied SHA-256 still identifies the current source. Verification guidance: run typecheck and tests, then inspect the committed file and persisted executor evidence before accepting this bounded update.",
             changes: [{
               path: "sample.txt",
               expectedSha256: sha256(source),
