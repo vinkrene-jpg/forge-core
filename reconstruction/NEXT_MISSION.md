@@ -1,30 +1,31 @@
 # Forge Next Mission
 
-## FG-005.150 - Validate evaluator stability across provider modes
+## Issue #4 follow-up - Live Mission Console verification
 
-Status: ready.
+Status: ready after source integration.
 
 ## Objective
 
-Demonstrate stable, evidence-based evaluator outcomes across both real-provider and fallback-provider routes, with explicit proof that accepted and rejected decisions match execution evidence.
+Verify the merged Mission Console workspace-execution linkage against the authoritative live runtime without bypassing either approval.
 
 ## Required chapters
 
-1. Run one governed autonomous mission on a real configured provider route (if available) and capture acceptance evidence.
-2. Run one governed autonomous mission on fallback route and capture acceptance or rejection evidence with full check breakdown.
-3. Verify evaluator checks map directly to provider execution state and output text characteristics (substantive content, assumptions, verification guidance, secret safety).
-4. Publish comparative evidence under `reconstruction/` with mission, execution, evaluation and memory IDs for both routes.
+1. Start one real `generic-build` mission for an explicitly allowed sandbox target.
+2. Approve the planning mission and confirm the second workspace approval appears in Approvals.
+3. Confirm the target is absent and execution evidence is null before the second approval.
+4. Approve the workspace execution and inspect receipts, file effects, verification runs, artifacts and evaluation in Mission Console and Missions.
+5. Persist the live mission, approval, evaluation and artifact identifiers under `reconstruction/`.
 
 ## Failure rules
 
-- Shared typecheck, test or build failure blocks completion.
-- Provider availability or quota failures are isolated and must not trigger automatic retry.
-- No destructive operations and no history rewrite.
+- Provider availability or quota failure remains isolated and must not trigger automatic retry.
+- Do not bypass the second approval or use a parallel execution path.
+- No destructive operations, protected-path changes or history rewrite.
 
 ## Resume checklist
 
-1. Confirm runtime/API health.
-2. Validate provider routing and connectivity preflight for both configured real-provider and fallback-provider modes.
-3. Execute governed missions and capture evaluator check-level outcomes.
-4. Capture comparative evidence IDs and hashes across mission/evaluation/memory stores.
-5. Commit only after verification succeeds.
+1. Confirm the deployed runtime contains issue #4.
+2. Confirm runtime and API health.
+3. Execute the two-approval flow from Mission Console.
+4. Capture live mission, approval, evidence and artifact identifiers.
+5. Update `CURRENT_STATE.md` only after the live file effect and evaluation are verified.

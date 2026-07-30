@@ -1,10 +1,9 @@
 import { Router, type IRouter } from "express";
 import {
+  type ForgeRuntime,
   forgeRuntime,
   type CreateMissionRequest,
 } from "@workspace/forge-runtime";
-
-const router: IRouter = Router();
 
 function message(error: unknown): string {
   return error instanceof Error
@@ -12,14 +11,24 @@ function message(error: unknown): string {
     : String(error ?? "Unknown error");
 }
 
+type MissionsRuntime = Pick<
+  ForgeRuntime,
+  "listMissions" | "getMission" | "createMission"
+>;
+
+export function createMissionsRouter(
+  runtime: MissionsRuntime = forgeRuntime,
+): IRouter {
+const router: IRouter = Router();
+
 router.get("/missions", (_req, res): void => {
   res.json({
-    missions: forgeRuntime.listMissions(),
+    missions: runtime.listMissions(),
   });
 });
 
 router.get("/missions/:missionId", (req, res): void => {
-  const mission = forgeRuntime.getMission(
+  const mission = runtime.getMission(
     req.params.missionId,
   );
 
@@ -36,7 +45,7 @@ router.get("/missions/:missionId", (req, res): void => {
 router.post("/missions", async (req, res): Promise<void> => {
   try {
     const request = req.body as CreateMissionRequest;
-    const result = await forgeRuntime.createMission(request);
+    const result = await runtime.createMission(request);
 
     res.status(202).json({
       ...result.mission,
@@ -51,4 +60,7 @@ router.post("/missions", async (req, res): Promise<void> => {
   }
 });
 
-export default router;
+return router;
+}
+
+export default createMissionsRouter();

@@ -25,6 +25,7 @@ import {
 } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
 import { Textarea } from "@/components/ui/textarea";
+import { MissionDetails } from "@/components/mission-details";
 
 function progressForStatus(status: string): number {
   if (status === "awaiting_approval") {
@@ -57,6 +58,17 @@ export default function MissionConsolePage() {
 
   const activeMission = mission.data;
   const activeApprovalId = startMission.data?.approval?.id ?? null;
+  const workspaceExecutionMissionId =
+    typeof activeMission?.output?.workspaceExecutionMissionId === "string"
+      ? activeMission.output.workspaceExecutionMissionId
+      : null;
+  const workspaceExecutionApprovalId =
+    typeof activeMission?.output?.workspaceExecutionApprovalId === "string"
+      ? activeMission.output.workspaceExecutionApprovalId
+      : null;
+  const workspaceExecutionMission = useMissionStatus(
+    workspaceExecutionMissionId,
+  );
   const activeProgress = activeMission
     ? progressForStatus(activeMission.status)
     : startMission.data?.progress ?? 0;
@@ -318,6 +330,21 @@ export default function MissionConsolePage() {
           </div>
         </CardContent>
       </Card>
+
+      {activeMission && workspaceExecutionMissionId ? (
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-lg">Gekoppelde workspace-uitvoering</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <MissionDetails
+              mission={activeMission}
+              linkedExecutionMission={workspaceExecutionMission.data ?? null}
+              workspaceExecutionApprovalId={workspaceExecutionApprovalId}
+            />
+          </CardContent>
+        </Card>
+      ) : null}
     </div>
   );
 }

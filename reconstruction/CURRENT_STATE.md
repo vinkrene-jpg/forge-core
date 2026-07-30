@@ -164,3 +164,14 @@ Status: live-runtime discrepancy confirmed.
 - The patched source now requires explicit `FORGE_LOCAL_MODEL_ENABLED=true` before local-model can be selected, which should route unconfigured environments to `manual-fallback` instead.
 - The active 5000 process is therefore still running an older build or was not restarted after the provider-selection fix.
 - Live evidence file: `reconstruction/RUNTIME_TRUTH_VERIFICATION.json`.
+
+## Issue #4 - Mission Console workspace execution linkage - 2026-07-30
+
+Status: implemented with focused runtime and API integration evidence.
+
+- `operator.autonomous-cycle` output persists and exposes `workspaceExecutionMissionId` and `workspaceExecutionApprovalId`.
+- The governance state validator now accepts the existing `operator.workspace-change` and `operator.workspace-plan` mission kinds, so workspace approvals survive restart.
+- Mission Console follows the linked execution mission and shows `plan voltooid — uitvoering wacht op approval` before the second approval.
+- The existing Approvals view identifies the workspace execution approval and its planning mission; the existing Missions view exposes inspectable mission details.
+- Execution evidence remains null before the second approval. After governed WorkspaceExecutor execution, receipts, file effects, verification runs, artifacts and evaluation are exposed from persisted mission output.
+- Focused evidence: `artifacts/api-server/src/tests/missionConsoleWorkspaceExecution.test.ts` restarts the runtime between approvals and verifies the existing mission and governance APIs before and after execution.
