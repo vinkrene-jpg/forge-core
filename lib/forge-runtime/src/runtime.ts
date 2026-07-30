@@ -651,38 +651,6 @@ export class ForgeRuntime {
         throw blocked;
       }
 
-      const preflight = this.#autonomousEvaluator.evaluate(
-        mission.id,
-        providerExecution,
-        {
-          executionEvidence: this.#createGenericBuildPreflightEvidence(plan),
-          objectiveExecutionMode: "build-or-mutate",
-          objectiveProfile: "generic-build",
-        },
-      );
-
-      if (preflight.decision !== "accepted") {
-        const rejected = new Error(
-          `Generic build plan rejected before mutation by evaluation ${preflight.id} with score ${preflight.score}`,
-        ) as MissionExecutionFailure;
-        rejected.missionResultStatus = "rejected";
-        rejected.missionResultCause = "evaluation";
-        rejected.missionOutput = Object.freeze({
-          cycleIndex: input.cycleIndex,
-          maxCycles: input.maxCycles,
-          rootMissionId: input.rootMissionId ?? mission.id,
-          previousMissionId: input.previousMissionId,
-          objectiveExecutionMode: input.objectiveExecutionMode,
-          objectiveProfile: input.objectiveProfile,
-          compositionId: plan.compositionId,
-          executionId: plan.executionId,
-          plan,
-          preflightEvaluation: preflight,
-          executionEvidence: null,
-        });
-        throw rejected;
-      }
-
       const executionMission = await this.#createWorkspaceExecutionMission(plan, {
         sourceAutonomousMissionId: mission.id,
         objectiveExecutionMode: "build-or-mutate",
@@ -1505,61 +1473,6 @@ export class ForgeRuntime {
     }
 
     return execution;
-  }
-
-  #createGenericBuildPreflightEvidence(
-    plan: WorkspaceChangePlan,
-  ): AutonomousExecutionEvidence {
-    const now = new Date().toISOString();
-
-    return Object.freeze({
-      objectiveProfile: "generic-build",
-      receipts: Object.freeze(
-        plan.request.changes.map((change) =>
-          Object.freeze({
-            id: randomUUID(),
-            action: "write-file" as const,
-            targetPath: change.path,
-            startedAt: now,
-            completedAt: now,
-            durationMs: 0,
-            ok: true,
-            error: null,
-          }),
-        ),
-      ),
-      fileEffects: Object.freeze(
-        plan.request.changes.map((change) =>
-          Object.freeze({
-            path: change.path,
-            existedBefore: change.expectedSha256 !== null,
-            existsAfter: true,
-            beforeSha256: change.expectedSha256,
-            afterSha256: sha256Text(change.content),
-          }),
-        ),
-      ),
-      verificationRuns: Object.freeze([
-        Object.freeze({
-          command: "preflight-only",
-          exitCode: 0,
-          stdoutSha256: sha256Text(""),
-          stderrSha256: sha256Text(""),
-          durationMs: 0,
-        }),
-      ]),
-      artifacts: Object.freeze(
-        plan.request.changes.map((change) =>
-          Object.freeze({
-            id: randomUUID(),
-            kind: "file-hash-proof" as const,
-            path: change.path,
-            content: change.content,
-            sha256: sha256Text(change.content),
-          }),
-        ),
-      ),
-    });
   }
 
   async #executeWorkspacePlan(

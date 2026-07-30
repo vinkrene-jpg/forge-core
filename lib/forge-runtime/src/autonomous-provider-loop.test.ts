@@ -159,6 +159,44 @@ function autonomousMissions(runtime: ForgeRuntime): MissionRecord[] {
     .filter((mission) => mission.kind === "operator.autonomous-cycle");
 }
 
+function assertNoExecutionEvidence(value: unknown): void {
+  if (Array.isArray(value)) {
+    for (const item of value) {
+      assertNoExecutionEvidence(item);
+    }
+    return;
+  }
+
+  if (typeof value !== "object" || value === null) {
+    return;
+  }
+
+  const record = value as Readonly<Record<string, unknown>>;
+  const evidenceKeys = [
+    "receipts",
+    "fileEffects",
+    "verificationRuns",
+    "artifacts",
+  ] as const;
+
+  if ("executionEvidence" in record) {
+    assert.equal(record.executionEvidence, null);
+  }
+
+  for (const key of evidenceKeys) {
+    if (key in record) {
+      assert.ok(
+        !Array.isArray(record[key]) || record[key].length === 0,
+        `${key} must be empty before workspace approval`,
+      );
+    }
+  }
+
+  for (const nested of Object.values(record)) {
+    assertNoExecutionEvidence(nested);
+  }
+}
+
 test("autonomous provider loop", { concurrency: false }, async (t) => {
   await t.test("completes, continues and survives restart", async () => {
     await withEnvironment(async () => {
@@ -590,6 +628,27 @@ test("autonomous provider loop", { concurrency: false }, async (t) => {
             "awaiting_approval",
           );
           await assert.rejects(readFile(path.join(root, "generated.txt"), "utf8"));
+          assertNoExecutionEvidence(
+            runtime.listMissions().map((candidate) => candidate.output),
+          );
+          assertNoExecutionEvidence(
+            runtime.snapshot().events.map((event) => event.payload),
+          );
+          assert.equal(
+            runtime.snapshot().events.some(
+              (event) =>
+                event.type === "autonomous.cycle.evaluated" ||
+                event.type.startsWith("workspace.execution."),
+            ),
+            false,
+          );
+
+          for (const memory of runtime.listProjectMemories(
+            "forge-core",
+            "evidence",
+          )) {
+            assertNoExecutionEvidence(JSON.parse(memory.content));
+          }
 
           await runtime.approveApproval(executionApprovalId, "integration-test");
           await waitFor(
