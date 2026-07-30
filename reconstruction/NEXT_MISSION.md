@@ -2,7 +2,7 @@
 
 ## Issue #4 follow-up - Live Mission Console verification
 
-Status: ready after proof-17 verification identifier contract correction.
+Status: ready after proof-18 canonical runtime and planner-context correction.
 
 ## Objective
 
@@ -24,7 +24,7 @@ Verify the merged Mission Console workspace-execution linkage against the author
 
 ## Resume checklist
 
-1. Rebuild and restart the deployed API bundle through Forge Control v9 so `FORGE_AI_PROVIDER=local-model` and `FORGE_LOCAL_MODEL_ENABLED=true`; verify Mission Details reports the new commit as `runtimeBuildSha` and the deployed `dist/index.mjs` as `runtimeModulePath`. A provider-contract failure must show provider/model, output length, first and last 500 characters, and a concrete parser or schema error.
+1. Fast-forward the clean canonical checkout at `C:\Forge\forge-core`, then rebuild and restart exclusively through Forge Control v9. Verify Mission Details reports the new commit, `runtimeRepositoryRoot` and `canonicalRepositoryRoot` as `C:\Forge\forge-core`, and `runtimeModulePath` as `C:\Forge\forge-core\artifacts\api-server\dist\index.mjs`.
 2. Confirm runtime and API health.
 3. Confirm the visible build marker is `mission-console-mounted-submit-2026-07-30.2`, execute the two-approval flow from Mission Console with the next proof objective, and confirm client diagnostics and persisted mission input retain full `rawObjective`, one full-path `allowCreate` target, and canonical `generic-build` / `build-or-mutate`; then confirm the linked pending workspace approval is immediately visible after the first approval.
 4. Capture live mission, approval, evidence and artifact identifiers.

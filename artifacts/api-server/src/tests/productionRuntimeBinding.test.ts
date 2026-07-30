@@ -11,6 +11,7 @@ import { promisify } from "node:util";
 
 const exec = promisify(execFile);
 const artifactDir = process.cwd();
+const repositoryRoot = path.resolve(artifactDir, "..", "..");
 
 async function availablePort(): Promise<number> {
   const server = net.createServer();
@@ -48,7 +49,7 @@ test("production API bundle loads canonical runtime executor", async () => {
   const workspaceRoot = await mkdtemp(path.join(os.tmpdir(), "forge-dist-workspace-"));
   const apiPort = await availablePort();
   const providerPort = await availablePort();
-  const targetPath = "sandbox/mirror-generic-build-proof-13.txt";
+  const targetPath = "sandbox/mirror-generic-build-proof-18.txt";
   const rawObjective = [
     "Maak uitsluitend één nieuw testbestand aan:",
     "",
@@ -114,7 +115,9 @@ test("production API bundle loads canonical runtime executor", async () => {
           push: false,
         },
       };
-      const content = body.includes("mirror-generic-build-proof-17.txt")
+      const content =
+        providerRequestBodies.length > 1 &&
+          body.includes("mirror-generic-build-proof-18.txt")
         ? liveInvalidOutput
         : JSON.stringify(plan, null, 2);
       response.setHeader("Content-Type", "application/json");
@@ -153,6 +156,42 @@ test("production API bundle loads canonical runtime executor", async () => {
   await exec("git", ["add", "README.txt"], { cwd: workspaceRoot });
   await exec("git", ["commit", "-m", "test baseline"], { cwd: workspaceRoot });
 
+  const rejectedPort = await availablePort();
+  let rejectedOutput = "";
+  const rejectedApi = spawn(
+    process.execPath,
+    ["--enable-source-maps", "./dist/index.mjs"],
+    {
+      cwd: artifactDir,
+      env: {
+        ...process.env,
+        PORT: String(rejectedPort),
+        FORGE_CANONICAL_REPO_ROOT: workspaceRoot,
+      },
+      stdio: ["ignore", "pipe", "pipe"],
+    },
+  );
+  rejectedApi.stdout.on("data", (chunk) => {
+    rejectedOutput += String(chunk);
+  });
+  rejectedApi.stderr.on("data", (chunk) => {
+    rejectedOutput += String(chunk);
+  });
+  const rejectedExitCode = await Promise.race([
+    new Promise<number | null>((resolve) =>
+      rejectedApi.once("exit", (code) => resolve(code))),
+    new Promise<never>((_, reject) =>
+      setTimeout(
+        () => reject(new Error("Non-canonical runtime did not fail closed")),
+        5_000,
+      )),
+  ]);
+  assert.notEqual(rejectedExitCode, 0);
+  assert.match(
+    rejectedOutput,
+    /Forge runtime module is outside canonical repository root/,
+  );
+
   let output = "";
   const api = spawn(
     process.execPath,
@@ -165,6 +204,7 @@ test("production API bundle loads canonical runtime executor", async () => {
         NODE_ENV: "production",
         STORAGE_DIR: storageRoot,
         FORGE_WORKSPACE_ROOT: workspaceRoot,
+        FORGE_CANONICAL_REPO_ROOT: repositoryRoot,
         FORGE_AI_PROVIDER: "local-model",
         FORGE_LOCAL_MODEL_ENABLED: "true",
         FORGE_AUTONOMY_ENABLED: "false",
@@ -184,6 +224,11 @@ test("production API bundle loads canonical runtime executor", async () => {
   try {
     await waitForJson(`${`http://127.0.0.1:${apiPort}`}/api/healthz`);
     const baseUrl = `http://127.0.0.1:${apiPort}`;
+    const runtimeSnapshot = await waitForJson<{
+      readonly binding: Readonly<Record<string, unknown>>;
+    }>(`${baseUrl}/api/runtime`);
+    assert.equal(runtimeSnapshot.binding.runtimeRepositoryRoot, repositoryRoot);
+    assert.equal(runtimeSnapshot.binding.canonicalRepositoryRoot, repositoryRoot);
     const createResponse = await fetch(`${baseUrl}/api/missions`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -288,11 +333,18 @@ test("production API bundle loads canonical runtime executor", async () => {
     assert.ok(snapshot);
     assert.match(String(snapshot.runtimeBuildSha), /^[0-9a-f]{40}$/);
     assert.match(String(snapshot.runtimeModulePath), /dist[\\/]index\.mjs$/);
+    assert.equal(snapshot.runtimeRepositoryRoot, repositoryRoot);
+    assert.equal(snapshot.canonicalRepositoryRoot, repositoryRoot);
     assert.equal(snapshot.intakeObjectiveExecutionMode, "build-or-mutate");
     assert.equal(snapshot.intakeObjectiveProfile, "generic-build");
     assert.equal(snapshot.effectiveObjectiveExecutionMode, "build-or-mutate");
     assert.equal(snapshot.effectiveObjectiveProfile, "generic-build");
     const providerRequest = providerRequestBodies[0];
+    assert.match(JSON.stringify(providerRequest), /mirror-generic-build-proof-18/);
+    assert.doesNotMatch(
+      JSON.stringify(providerRequest),
+      /mirror-generic-build-proof-16/,
+    );
     const responseFormat = providerRequest?.response_format as
       | Readonly<Record<string, unknown>>
       | undefined;
@@ -326,7 +378,7 @@ test("production API bundle loads canonical runtime executor", async () => {
     assert.equal(providerRequest?.temperature, 0);
     assert.match(output, /Forge runtime binding/);
 
-    const invalidTargetPath = "sandbox/mirror-generic-build-proof-17.txt";
+    const invalidTargetPath = "sandbox/mirror-generic-build-proof-18.txt";
     const invalidObjective = rawObjective.replace(targetPath, invalidTargetPath);
     const invalidCreateResponse = await fetch(`${baseUrl}/api/missions`, {
       method: "POST",
@@ -386,6 +438,14 @@ test("production API bundle loads canonical runtime executor", async () => {
     }
 
     assert.equal(invalidMission.status, "failed");
+    assert.equal(
+      (
+        invalidMission as {
+          readonly input?: { readonly proofTargetPath?: string };
+        }
+      ).input?.proofTargetPath,
+      invalidTargetPath,
+    );
     const diagnostics = invalidMission.output?.providerOutputDiagnostics as
       | Readonly<Record<string, unknown>>
       | undefined;
@@ -393,6 +453,14 @@ test("production API bundle loads canonical runtime executor", async () => {
     assert.match(
       String(diagnostics.rawOutputExcerpt),
       /^\{/,
+    );
+    assert.match(
+      String(diagnostics.rawOutputExcerpt),
+      /mirror-generic-build-proof-16/,
+    );
+    assert.doesNotMatch(
+      JSON.stringify(providerRequestBodies[1]),
+      /mirror-generic-build-proof-16/,
     );
     assert.match(
       String(diagnostics.parseError),

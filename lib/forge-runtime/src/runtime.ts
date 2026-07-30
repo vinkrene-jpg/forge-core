@@ -155,17 +155,48 @@ import {
 declare const __FORGE_RUNTIME_BUILD_SHA__: string | undefined;
 
 const runtimeModuleUrl = import.meta.url;
+const runtimeModulePath =
+  typeof runtimeModuleUrl === "string"
+    ? fileURLToPath(runtimeModuleUrl)
+    : typeof __filename === "string"
+      ? __filename
+      : "unknown-module";
+const runtimeRepositoryRoot = path.resolve(
+  path.dirname(runtimeModulePath),
+  "..",
+  "..",
+  "..",
+);
+const canonicalRepositoryRoot =
+  process.env.FORGE_CANONICAL_REPO_ROOT?.trim()
+    ? path.resolve(process.env.FORGE_CANONICAL_REPO_ROOT.trim())
+    : null;
+
+if (canonicalRepositoryRoot) {
+  const relativeModulePath = path.relative(
+    canonicalRepositoryRoot,
+    runtimeModulePath,
+  );
+
+  if (
+    relativeModulePath.startsWith(`..${path.sep}`) ||
+    relativeModulePath === ".." ||
+    path.isAbsolute(relativeModulePath)
+  ) {
+    throw new Error(
+      `Forge runtime module is outside canonical repository root: ${runtimeModulePath} (expected under ${canonicalRepositoryRoot})`,
+    );
+  }
+}
+
 const runtimeBinding = Object.freeze({
   runtimeBuildSha:
     typeof __FORGE_RUNTIME_BUILD_SHA__ === "string"
       ? __FORGE_RUNTIME_BUILD_SHA__
       : process.env.FORGE_RUNTIME_BUILD_SHA?.trim() || "source-unbundled",
-  runtimeModulePath:
-    typeof runtimeModuleUrl === "string"
-      ? fileURLToPath(runtimeModuleUrl)
-      : typeof __filename === "string"
-        ? __filename
-        : "unknown-module",
+  runtimeModulePath,
+  runtimeRepositoryRoot,
+  canonicalRepositoryRoot,
 });
 import {
   FileWorkspaceBridgeClient,
@@ -212,6 +243,7 @@ type ApprovedWorkspaceMissionCreationResult =
   };
 
 export interface ForgeRuntimeSnapshot {
+  readonly binding: typeof runtimeBinding;
   readonly kernel: KernelStateSnapshot;
   readonly health: RuntimeHealthSnapshot;
   readonly persistence: PersistedRuntimeState;
@@ -1687,7 +1719,7 @@ export class ForgeRuntime {
       privacy: "standard",
       budget: "high",
       files: sourceFiles,
-      memoryKinds: ["architecture", "decision", "requirement", "task", "evidence"],
+      memoryKinds: [],
     });
     const execution = await this.#aiGateway.executeComposition(
       composition.id,
@@ -2757,6 +2789,7 @@ export class ForgeRuntime {
 
     return Object.freeze({
       kernel: this.#kernel.stateSnapshot(),
+      binding: runtimeBinding,
       health: this.#kernel.healthSnapshot(),
       persistence: Object.freeze({
         ...this.#persistence,

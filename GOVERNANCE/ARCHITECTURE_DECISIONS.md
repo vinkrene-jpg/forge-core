@@ -86,6 +86,8 @@ Canonical `objectiveExecutionMode` and `objectiveProfile` values survive mission
 
 The production API bundle embeds its source Git SHA and reports the concrete loaded module path at startup and in each autonomous pre-execution snapshot. Mission Details exposes that snapshot with intake and effective execution intent. A live result is not valid evidence for a source revision unless the reported build SHA and module path identify the deployed bundle under test.
 
+When `FORGE_CANONICAL_REPO_ROOT` is configured, runtime startup fails before listening unless the loaded module is inside that repository. Runtime binding reports both the derived runtime repository root and configured canonical root. Workspace planning composes from the current mission objective, current approved target manifest and current target file contents only; persistent project memory is excluded from this provider request.
+
 ## AD-021 - Workspace provider plans are single JSON objects
 
 Workspace planning requests an Ollama-compatible JSON Schema response in addition to separate system and user prompt instructions. The provider schema constrains the output shape using supported structural keywords; the runtime remains authoritative for strict field, length, target, precondition, verification and no-push validation. The brace-aware fallback accepts exactly one syntactically valid JSON object from wrapper text. Missing, malformed, multiple or schema-invalid objects fail with concrete diagnostics and never create execution authority.
