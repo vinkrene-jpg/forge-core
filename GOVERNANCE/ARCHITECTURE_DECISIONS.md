@@ -89,3 +89,5 @@ The production API bundle embeds its source Git SHA and reports the concrete loa
 ## AD-021 - Workspace provider plans are single JSON objects
 
 Workspace planning requests a provider-level JSON object response in addition to the textual prompt contract. The runtime accepts exactly one syntactically valid JSON object, may extract that one object from provider wrapper text, and then applies the existing strict schema, target, precondition, verification and no-push validation. Missing, malformed or multiple objects fail with concrete diagnostics and never create execution authority.
+
+Rejected provider output is persisted only as a bounded, secret-scrubbed excerpt with its total length, SHA-256, truncation state and concrete parse or schema error. Mission Details exposes that evidence so operators can distinguish provider-contract failures from stale runtime deployments without granting execution authority.

@@ -89,13 +89,34 @@ test("production API bundle loads canonical runtime executor", async () => {
           push: false,
         },
       };
+      const liveInvalidOutput = [
+        "**Provider Output:**",
+        "I understand that I need to complete the typecheck before proceeding.",
+        "",
+        "**Evidence:**",
+        JSON.stringify({
+          missionId: "222fa8fd-b790-428b-b4f2-e23746df40d4",
+          kind: "operator.autonomous-cycle",
+          status: "pending",
+          result: null,
+        }),
+        "",
+        "The provider will provide evidence in its next response.",
+      ].join("\n");
+      const content = body.includes("mirror-generic-build-proof-15.txt")
+        ? liveInvalidOutput
+        : [
+            "Hier is het gevraagde workspace-plan:",
+            "```json",
+            JSON.stringify(plan),
+            "```",
+            "Dit object bevat het volledige plan.",
+          ].join("\n");
       response.setHeader("Content-Type", "application/json");
       response.end(JSON.stringify({
         id: "production-binding-plan",
         choices: [{
-          message: {
-            content: `\`\`\`json\n${JSON.stringify(plan)}\n\`\`\``,
-          },
+          message: { content },
         }],
         usage: {
           prompt_tokens: 20,
@@ -258,6 +279,84 @@ test("production API bundle loads canonical runtime executor", async () => {
       type: "json_object",
     });
     assert.match(output, /Forge runtime binding/);
+
+    const invalidTargetPath = "sandbox/mirror-generic-build-proof-15.txt";
+    const invalidObjective = rawObjective.replace(targetPath, invalidTargetPath);
+    const invalidCreateResponse = await fetch(`${baseUrl}/api/missions`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        kind: "operator.autonomous-cycle",
+        title: "Production Ollama output diagnostics proof",
+        input: {
+          projectId: "forge-core",
+          objective: invalidObjective.replace(/\s+/g, " ").trim(),
+          rawObjective: invalidObjective,
+          targets: [{ path: invalidTargetPath, allowCreate: true }],
+          objectiveExecutionMode: "build-or-mutate",
+          objectiveProfile: "generic-build",
+          intakeObjectiveExecutionMode: "build-or-mutate",
+          intakeObjectiveProfile: "generic-build",
+          proofTargetPath: invalidTargetPath,
+          cycleIndex: 1,
+          maxCycles: 1,
+          continuationAuthorized: false,
+        },
+      }),
+    });
+    assert.equal(
+      invalidCreateResponse.status,
+      202,
+      await invalidCreateResponse.clone().text(),
+    );
+    const invalidCreated = await invalidCreateResponse.json() as {
+      readonly id: string;
+      readonly approval: { readonly id: string };
+    };
+    const invalidApprovalResponse = await fetch(
+      `${baseUrl}/api/governance/approvals/${invalidCreated.approval.id}/approve`,
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ actor: "production-binding-test" }),
+      },
+    );
+    assert.equal(invalidApprovalResponse.status, 200);
+    let invalidMission = await waitForJson<{
+      readonly status: string;
+      readonly output?: Readonly<Record<string, unknown>>;
+    }>(`${baseUrl}/api/missions/${invalidCreated.id}`);
+    const invalidStartedAt = Date.now();
+
+    while (
+      invalidMission.status !== "failed" &&
+      invalidMission.status !== "succeeded" &&
+      Date.now() - invalidStartedAt < 15_000
+    ) {
+      await new Promise((resolve) => setTimeout(resolve, 50));
+      invalidMission = await waitForJson<typeof invalidMission>(
+        `${baseUrl}/api/missions/${invalidCreated.id}`,
+      );
+    }
+
+    assert.equal(invalidMission.status, "failed");
+    const diagnostics = invalidMission.output?.providerOutputDiagnostics as
+      | Readonly<Record<string, unknown>>
+      | undefined;
+    assert.ok(diagnostics);
+    assert.match(
+      String(diagnostics.rawOutputExcerpt),
+      /^\*\*Provider Output:\*\*/,
+    );
+    assert.match(
+      String(diagnostics.parseError),
+      /Unsupported workspace provider plan schemaVersion/,
+    );
+    assert.equal(diagnostics.truncated, false);
+    assert.equal(invalidMission.output?.executionEvidence, null);
+    await assert.rejects(
+      readFile(path.join(workspaceRoot, invalidTargetPath), "utf8"),
+    );
   } finally {
     const exited = new Promise((resolve) => api.once("exit", resolve));
     api.kill("SIGTERM");

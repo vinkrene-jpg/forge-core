@@ -308,6 +308,20 @@ async function exists(targetPath: string): Promise<boolean> {
   }
 }
 
+function providerOutputExcerpt(outputText: string, maximum = 4_000): string {
+  return outputText
+    .replace(
+      /-----BEGIN [A-Z ]*PRIVATE KEY-----[\s\S]*?-----END [A-Z ]*PRIVATE KEY-----/gi,
+      "[REDACTED PRIVATE KEY]",
+    )
+    .replace(/\bsk-[a-z0-9_-]{20,}\b/gi, "[REDACTED TOKEN]")
+    .replace(
+      /\b(api[_-]?key|secret|token|password)\s*[:=]\s*["']?[a-z0-9_./+=-]{16,}/gi,
+      "$1=[REDACTED]",
+    )
+    .slice(0, maximum);
+}
+
 export class ForgeRuntime {
   readonly #events = new RuntimeEventBus();
   readonly #kernel = new ForgeKernel(this.#events);
@@ -1683,15 +1697,43 @@ export class ForgeRuntime {
       throw new Error(`Workspace provider planning failed: ${execution.error ?? execution.status}`);
     }
 
-    const plan = parseWorkspaceProviderPlan({
-      missionId: mission.id,
-      projectId,
-      objective,
-      targets,
-      compositionId: composition.id,
-      executionId: execution.id,
-      outputText: execution.outputText,
-    });
+    let plan: WorkspaceChangePlan;
+
+    try {
+      plan = parseWorkspaceProviderPlan({
+        missionId: mission.id,
+        projectId,
+        objective,
+        targets,
+        compositionId: composition.id,
+        executionId: execution.id,
+        outputText: execution.outputText,
+      });
+    } catch (error) {
+      const parseError = errorMessage(error);
+      const failure = new Error(
+        `Workspace provider plan rejected: ${parseError}`,
+      ) as MissionExecutionFailure;
+      failure.missionResultStatus = "failed";
+      failure.missionResultCause = "provider-output-contract";
+      failure.missionOutput = Object.freeze({
+        providerOutputDiagnostics: Object.freeze({
+          ...runtimeBinding,
+          providerId: execution.providerId,
+          model: execution.model,
+          executionId: execution.id,
+          outputLength: execution.outputText.length,
+          outputSha256: createHash("sha256")
+            .update(execution.outputText, "utf8")
+            .digest("hex"),
+          rawOutputExcerpt: providerOutputExcerpt(execution.outputText),
+          truncated: execution.outputText.length > 4_000,
+          parseError,
+        }),
+        executionEvidence: null,
+      });
+      throw failure;
+    }
 
     if (
       plan.summary.length < 200 ||

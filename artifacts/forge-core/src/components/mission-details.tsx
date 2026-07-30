@@ -60,6 +60,7 @@ export function MissionDetails({
   const executionEvidence = record(executionOutput?.executionEvidence);
   const evaluation = record(executionOutput?.evaluation);
   const preExecutionSnapshot = record(output?.preExecutionSnapshot);
+  const providerOutputDiagnostics = record(output?.providerOutputDiagnostics);
   const executionStatus = linkedExecutionMission?.status ??
     (mission.kind === "operator.workspace-change" ? mission.status : null);
   const waitingForExecutionApproval =
@@ -153,6 +154,17 @@ export function MissionDetails({
           </div>
           <pre className="mt-2 max-h-64 overflow-auto whitespace-pre-wrap rounded-md border border-border/50 bg-background p-3 text-xs text-muted-foreground">
             {JSON.stringify(preExecutionSnapshot, null, 2)}
+          </pre>
+        </div>
+      ) : null}
+
+      {providerOutputDiagnostics ? (
+        <div>
+          <div className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+            Workspace provider output diagnostics
+          </div>
+          <pre className="mt-2 max-h-64 overflow-auto whitespace-pre-wrap rounded-md border border-border/50 bg-background p-3 text-xs text-muted-foreground">
+            {JSON.stringify(providerOutputDiagnostics, null, 2)}
           </pre>
         </div>
       ) : null}

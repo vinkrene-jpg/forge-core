@@ -223,5 +223,25 @@ test("provider workspace planner", { concurrency: false }, async (t) => {
       }),
       /contains 2 valid JSON objects; exactly one is required/,
     );
+    assert.throws(
+      () => parseWorkspaceProviderPlan({
+        ...base,
+        outputText: [
+          "**Provider Output:**",
+          "I will complete the typecheck before proceeding.",
+          "",
+          "**Evidence:**",
+          JSON.stringify({
+            missionId: "222fa8fd-b790-428b-b4f2-e23746df40d4",
+            kind: "operator.autonomous-cycle",
+            status: "pending",
+            result: null,
+          }),
+          "",
+          "The provider will provide evidence in its next response.",
+        ].join("\n"),
+      }),
+      /Unsupported workspace provider plan schemaVersion/,
+    );
   });
 });
