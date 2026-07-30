@@ -151,16 +151,6 @@ function extractDurationMs(command: string): number {
   return Math.min(Math.round(amount * 3_600_000), 300_000);
 }
 
-function extractProofTargetPath(command: string): string | null {
-  const match = command.match(/\b([a-z0-9][a-z0-9._-]*proof[a-z0-9._-]*\.txt)\b/i);
-
-  if (!match) {
-    return null;
-  }
-
-  return match[1].toLowerCase();
-}
-
 function extractWorkspaceTargets(
   command: string,
   includeInlineMutationTarget: boolean,
@@ -258,7 +248,6 @@ function buildMissionIntakePreview(
   const projectId = pickProjectId(runtime);
   const missionKind = chooseMissionKind(command);
   const interpretedGoal = command;
-  const proofTargetPath = extractProofTargetPath(command);
   const objectiveClassification =
     missionKind === "operator.autonomous-cycle"
       ? classifyAutonomousObjective(interpretedGoal)
@@ -267,6 +256,15 @@ function buildMissionIntakePreview(
     command,
     objectiveClassification?.mode === "build-or-mutate",
   );
+  const objectiveExecutionMode =
+    targets.length > 0
+      ? "build-or-mutate"
+      : objectiveClassification?.mode;
+  const objectiveProfile =
+    targets.length > 0
+      ? "generic-build"
+      : objectiveClassification?.profile;
+  const proofTargetPath = targets[0]?.path;
 
   if (
     objectiveClassification?.mode === "build-or-mutate" &&
@@ -275,6 +273,16 @@ function buildMissionIntakePreview(
   ) {
     throw new Error(
       "Mutation mission with a repository path requires exactly one target manifest",
+    );
+  }
+
+  if (
+    hasRepositoryPathReference(command) &&
+    targets.length === 1 &&
+    !targets[0].path.includes("/")
+  ) {
+    throw new Error(
+      "Mission intake may not discard workspace target directory components",
     );
   }
 
@@ -287,14 +295,10 @@ function buildMissionIntakePreview(
             projectId,
             objective: interpretedGoal,
             rawObjective,
-            intakeObjectiveExecutionMode:
-              targets.length > 0
-                ? "build-or-mutate"
-                : objectiveClassification?.mode,
-            intakeObjectiveProfile:
-              targets.length > 0
-                ? "generic-build"
-                : objectiveClassification?.profile,
+            objectiveExecutionMode,
+            objectiveProfile,
+            intakeObjectiveExecutionMode: objectiveExecutionMode,
+            intakeObjectiveProfile: objectiveProfile,
             ...(proofTargetPath ? { proofTargetPath } : {}),
             ...(targets.length > 0 ? { targets } : {}),
             cycleIndex: 1,

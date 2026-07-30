@@ -112,7 +112,7 @@ test(
               summary:
                 "Assumptions: the requested proof is confined to one new sandbox file and no other repository path may change. Verification guidance: inspect the persisted receipts, file effects, verification runs, artifacts, hashes, and accepted evaluation before treating execution as complete.",
               changes: [{
-                path: "sandbox/mirror-generic-build-proof-8.txt",
+                path: "sandbox/mirror-generic-build-proof-9.txt",
                 expectedSha256: null,
                 content: "created through the governed WorkspaceExecutor\n",
               }],
@@ -283,7 +283,7 @@ test(
       const liveObjective = [
         "Maak uitsluitend één nieuw testbestand aan:",
         "",
-        "Pad: sandbox/mirror-generic-build-proof-8.txt",
+        "Pad: sandbox/mirror-generic-build-proof-9.txt",
         "",
         "Exacte inhoud: Forge generic-build live approval proof",
         "Datum: 2026-07-30",
@@ -309,10 +309,22 @@ test(
         };
       };
       assert.deepEqual(preview.request.input?.targets, [{
-        path: "sandbox/mirror-generic-build-proof-8.txt",
+        path: "sandbox/mirror-generic-build-proof-9.txt",
         allowCreate: true,
       }]);
       assert.equal(preview.request.input?.rawObjective, liveObjective);
+      assert.equal(
+        preview.request.input?.proofTargetPath,
+        "sandbox/mirror-generic-build-proof-9.txt",
+      );
+      assert.equal(
+        preview.request.input?.objectiveExecutionMode,
+        "build-or-mutate",
+      );
+      assert.equal(
+        preview.request.input?.objectiveProfile,
+        "generic-build",
+      );
       assert.equal(
         preview.request.input?.intakeObjectiveExecutionMode,
         "build-or-mutate",
@@ -332,10 +344,16 @@ test(
         readonly approval: { readonly id: string };
       };
       assert.deepEqual(created.input.targets, [{
-        path: "sandbox/mirror-generic-build-proof-8.txt",
+        path: "sandbox/mirror-generic-build-proof-9.txt",
         allowCreate: true,
       }]);
       assert.equal(created.input.rawObjective, liveObjective);
+      assert.equal(
+        created.input.proofTargetPath,
+        "sandbox/mirror-generic-build-proof-9.txt",
+      );
+      assert.equal(created.input.objectiveExecutionMode, "build-or-mutate");
+      assert.equal(created.input.objectiveProfile, "generic-build");
       assert.equal(
         created.input.intakeObjectiveExecutionMode,
         "build-or-mutate",
@@ -426,7 +444,7 @@ test(
       );
       await assert.rejects(
         readFile(
-          path.join(workspaceRoot, "sandbox", "mirror-generic-build-proof-8.txt"),
+          path.join(workspaceRoot, "sandbox", "mirror-generic-build-proof-9.txt"),
           "utf8",
         ),
       );
@@ -459,7 +477,7 @@ test(
       assert.equal(evaluation?.decision, "accepted");
       assert.equal(
         await readFile(
-          path.join(workspaceRoot, "sandbox", "mirror-generic-build-proof-8.txt"),
+          path.join(workspaceRoot, "sandbox", "mirror-generic-build-proof-9.txt"),
           "utf8",
         ),
         "created through the governed WorkspaceExecutor\n",

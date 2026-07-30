@@ -2,7 +2,7 @@
 
 ## Issue #4 follow-up - Live Mission Console verification
 
-Status: ready after mounted proof-8 route-click and persisted workspace-approval coverage.
+Status: ready after canonical proof-9 full-path request coverage.
 
 ## Objective
 
@@ -26,6 +26,6 @@ Verify the merged Mission Console workspace-execution linkage against the author
 
 1. Confirm the deployed runtime contains issue #4.
 2. Confirm runtime and API health.
-3. Confirm the visible build marker is `mission-console-mounted-submit-2026-07-30.1`, execute the two-approval flow from Mission Console with the proof-8 objective, and confirm client diagnostics show `/api/missions` with exactly `rawObjective`, `targets[{path:"sandbox/mirror-generic-build-proof-8.txt", allowCreate:true}]`, `generic-build` / `build-or-mutate`; then confirm the linked pending workspace approval is immediately visible after the first approval.
+3. Confirm the visible build marker is `mission-console-mounted-submit-2026-07-30.1`, execute the two-approval flow from Mission Console with the proof-9 objective, and confirm client diagnostics show `/api/missions` with full `rawObjective`, `targets[{path:"sandbox/mirror-generic-build-proof-9.txt", allowCreate:true}]`, the same full `proofTargetPath`, and canonical `generic-build` / `build-or-mutate`; then confirm the linked pending workspace approval is immediately visible after the first approval.
 4. Capture live mission, approval, evidence and artifact identifiers.
 5. Update `CURRENT_STATE.md` only after the live file effect and evaluation are verified.
