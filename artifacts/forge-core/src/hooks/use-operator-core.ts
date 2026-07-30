@@ -10,7 +10,10 @@ import {
   type ModelTaskType,
   type ProjectMemoryKind,
 } from "@/lib/operator-api";
-import { startMissionFromCurrentIntake } from "@/pages/mission-console-submit";
+import {
+  startMissionFromCurrentIntake,
+  type MissionConsoleRequestDiagnostic,
+} from "@/pages/mission-console-submit";
 
 const keys = {
   summary: ["operator", "summary"] as const,
@@ -156,7 +159,16 @@ export function useStartMissionFromIntake() {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: startMissionFromCurrentIntake,
+    mutationFn: (request: {
+      readonly rawObjective: string;
+      readonly onRequest?: (
+        diagnostic: MissionConsoleRequestDiagnostic,
+      ) => void;
+    }) =>
+      startMissionFromCurrentIntake(
+        request.rawObjective,
+        request.onRequest,
+      ),
     onSuccess: async (result) => {
       await Promise.all([
         queryClient.invalidateQueries({

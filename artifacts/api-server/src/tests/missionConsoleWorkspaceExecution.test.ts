@@ -112,7 +112,7 @@ test(
               summary:
                 "Assumptions: the requested proof is confined to one new sandbox file and no other repository path may change. Verification guidance: inspect the persisted receipts, file effects, verification runs, artifacts, hashes, and accepted evaluation before treating execution as complete.",
               changes: [{
-                path: "sandbox/mirror-generic-build-proof-7.txt",
+                path: "sandbox/mirror-generic-build-proof-8.txt",
                 expectedSha256: null,
                 content: "created through the governed WorkspaceExecutor\n",
               }],
@@ -283,7 +283,7 @@ test(
       const liveObjective = [
         "Maak uitsluitend één nieuw testbestand aan:",
         "",
-        "Pad: sandbox/mirror-generic-build-proof-7.txt",
+        "Pad: sandbox/mirror-generic-build-proof-8.txt",
         "",
         "Exacte inhoud: Forge generic-build live approval proof",
         "Datum: 2026-07-30",
@@ -309,7 +309,7 @@ test(
         };
       };
       assert.deepEqual(preview.request.input?.targets, [{
-        path: "sandbox/mirror-generic-build-proof-7.txt",
+        path: "sandbox/mirror-generic-build-proof-8.txt",
         allowCreate: true,
       }]);
       assert.equal(preview.request.input?.rawObjective, liveObjective);
@@ -332,7 +332,7 @@ test(
         readonly approval: { readonly id: string };
       };
       assert.deepEqual(created.input.targets, [{
-        path: "sandbox/mirror-generic-build-proof-7.txt",
+        path: "sandbox/mirror-generic-build-proof-8.txt",
         allowCreate: true,
       }]);
       assert.equal(created.input.rawObjective, liveObjective);
@@ -426,7 +426,7 @@ test(
       );
       await assert.rejects(
         readFile(
-          path.join(workspaceRoot, "sandbox", "mirror-generic-build-proof-7.txt"),
+          path.join(workspaceRoot, "sandbox", "mirror-generic-build-proof-8.txt"),
           "utf8",
         ),
       );
@@ -459,7 +459,7 @@ test(
       assert.equal(evaluation?.decision, "accepted");
       assert.equal(
         await readFile(
-          path.join(workspaceRoot, "sandbox", "mirror-generic-build-proof-7.txt"),
+          path.join(workspaceRoot, "sandbox", "mirror-generic-build-proof-8.txt"),
           "utf8",
         ),
         "created through the governed WorkspaceExecutor\n",

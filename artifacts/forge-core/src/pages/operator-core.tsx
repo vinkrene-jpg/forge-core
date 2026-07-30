@@ -4,24 +4,17 @@ import {
   Database,
   FileCode2,
   FolderTree,
-  Play,
   Plus,
   Route,
-  ShieldAlert,
-  ShieldCheck,
-  ShieldQuestion,
   WandSparkles,
 } from "lucide-react";
 import {
   useAddMemory,
   useComposePrompt,
-  useMissionIntakePreview,
-  useMissionStatus,
   useOperatorProjects,
   useOperatorSummary,
   useProjectMemories,
   usePromptCompositions,
-  useStartMissionFromIntake,
   useWorkspaceFiles,
 } from "@/hooks/use-operator-core";
 import type {
@@ -39,7 +32,6 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
-import { Progress } from "@/components/ui/progress";
 import {
   Select,
   SelectContent,
@@ -70,7 +62,6 @@ export default function OperatorCorePage() {
     usePromptCompositions(projectId);
   const addMemory = useAddMemory();
   const compose = useComposePrompt();
-  const startMission = useStartMissionFromIntake();
 
   const [memoryKind, setMemoryKind] =
     useState<ProjectMemoryKind>("decision");
@@ -91,20 +82,6 @@ export default function OperatorCorePage() {
       "GOVERNANCE/CONSTITUTION.md",
       "package.json",
     ]);
-  const [missionCommand, setMissionCommand] =
-    useState(
-      "Analyseer de huidige Forge status en start een autonome implementatiemissie voor de hoogste evidence-backed prioriteit.",
-    );
-  const [startedMissionId, setStartedMissionId] =
-    useState<string | null>(null);
-
-  const missionPreview = useMissionIntakePreview(
-    missionCommand,
-  );
-  const startedMission = useMissionStatus(
-    startedMissionId,
-  );
-
   const visibleFiles = useMemo(
     () =>
       (files.data?.files ?? [])
@@ -122,32 +99,7 @@ export default function OperatorCorePage() {
       ? addMemory.error.message
       : compose.error instanceof Error
         ? compose.error.message
-        : startMission.error instanceof Error
-          ? startMission.error.message
         : null;
-
-  const activeMission = startedMission.data;
-  const activeProgress =
-    activeMission?.status === "awaiting_approval"
-      ? 20
-      : activeMission?.status === "queued"
-        ? 35
-        : activeMission?.status === "running"
-          ? 70
-          : activeMission?.status === "succeeded" ||
-              activeMission?.status === "failed" ||
-              activeMission?.status === "cancelled"
-            ? 100
-            : startMission.data?.progress ?? 0;
-
-  const activeOutcome =
-    activeMission?.status === "succeeded"
-      ? JSON.stringify(activeMission.output ?? {}, null, 2)
-      : activeMission?.status === "failed"
-        ? activeMission.lastError ?? "Mission failed without an explicit error message."
-        : activeMission?.status === "awaiting_approval"
-          ? "Blokkade: expliciete governance-goedkeuring vereist voordat de missie mag starten."
-          : null;
 
   const summaryCards: ReadonlyArray<{
     readonly label: string;
@@ -218,145 +170,6 @@ export default function OperatorCorePage() {
           </Card>
         ))}
       </div>
-
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2 text-lg">
-            <Play className="h-5 w-5 text-primary" />
-            Opdrachtinvoer
-          </CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          <Textarea
-            value={missionCommand}
-            onChange={(event) =>
-              setMissionCommand(event.target.value)
-            }
-            className="min-h-24"
-            placeholder="Beschrijf de missie die Forge autonoom moet starten"
-          />
-
-          <div className="grid gap-3 md:grid-cols-3">
-            <div className="rounded-md border border-border/50 p-3">
-              <div className="text-xs uppercase tracking-wide text-muted-foreground">
-                Begrepen doel
-              </div>
-              <div className="mt-1 text-sm">
-                {missionPreview.data?.interpretedGoal ?? "Nog geen interpretatie"}
-              </div>
-            </div>
-
-            <div className="rounded-md border border-border/50 p-3">
-              <div className="text-xs uppercase tracking-wide text-muted-foreground">
-                Gekozen missietype
-              </div>
-              <div className="mt-1 text-sm font-medium">
-                {missionPreview.data?.missionKind ?? "Nog niet bepaald"}
-              </div>
-            </div>
-
-            <div className="rounded-md border border-border/50 p-3">
-              <div className="text-xs uppercase tracking-wide text-muted-foreground">
-                Governance-status
-              </div>
-              <div className="mt-1 flex items-center gap-2 text-sm font-medium">
-                {missionPreview.data?.governance.status === "can_start" ? (
-                  <ShieldCheck className="h-4 w-4 text-emerald-500" />
-                ) : missionPreview.data?.governance.status === "approval_required" ? (
-                  <ShieldQuestion className="h-4 w-4 text-amber-500" />
-                ) : (
-                  <ShieldAlert className="h-4 w-4 text-destructive" />
-                )}
-                <span>
-                  {missionPreview.data
-                    ? `${missionPreview.data.governance.status} (${missionPreview.data.governance.riskLevel})`
-                    : "Nog niet bepaald"}
-                </span>
-              </div>
-              <div className="mt-2 text-xs text-muted-foreground">
-                {missionPreview.data?.governance.reason ?? ""}
-              </div>
-            </div>
-          </div>
-
-          <div className="flex flex-wrap items-center gap-3">
-            <Button
-              disabled={
-                missionCommand.trim().length < 8 ||
-                missionPreview.isLoading ||
-                startMission.isPending ||
-                !missionPreview.data
-              }
-              onClick={() => {
-                if (!missionPreview.data) {
-                  return;
-                }
-
-                startMission
-                  .mutateAsync(missionCommand)
-                  .then((result) => {
-                    setStartedMissionId(result.mission.id);
-                  })
-                  .catch(() => {
-                    // Error surfaced through actionError.
-                  });
-              }}
-            >
-              <Play className="mr-2 h-4 w-4" />
-              Start missie
-            </Button>
-
-            <div className="text-xs text-muted-foreground">
-              Forge vraagt alleen extra input bij harde governancegrenzen.
-            </div>
-          </div>
-
-          {activeMission ? (
-            <div className="rounded-md border border-primary/30 bg-primary/5 p-4">
-              <div className="grid gap-3 md:grid-cols-4">
-                <div>
-                  <div className="text-xs uppercase tracking-wide text-muted-foreground">
-                    Missie-ID
-                  </div>
-                  <div className="mt-1 font-mono text-xs">
-                    {activeMission.id}
-                  </div>
-                </div>
-
-                <div>
-                  <div className="text-xs uppercase tracking-wide text-muted-foreground">
-                    Status
-                  </div>
-                  <div className="mt-1 text-sm font-medium">
-                    {activeMission.status}
-                  </div>
-                </div>
-
-                <div className="md:col-span-2">
-                  <div className="text-xs uppercase tracking-wide text-muted-foreground">
-                    Voortgang
-                  </div>
-                  <div className="mt-2 space-y-2">
-                    <Progress value={activeProgress} />
-                    <div className="text-xs text-muted-foreground">
-                      {activeProgress}%
-                    </div>
-                  </div>
-                </div>
-              </div>
-
-              <div className="mt-4">
-                <div className="text-xs uppercase tracking-wide text-muted-foreground">
-                  Resultaat of blokkade
-                </div>
-                <pre className="mt-2 max-h-56 overflow-auto whitespace-pre-wrap rounded-md bg-background p-3 text-xs text-muted-foreground">
-                  {activeOutcome ?? "Missie loopt, resultaat volgt na afronding."}
-                </pre>
-              </div>
-            </div>
-          ) : null}
-        </CardContent>
-      </Card>
 
       <div className="grid gap-6 xl:grid-cols-2">
         <Card>
