@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import { spawn } from "node:child_process";
 import { execFile } from "node:child_process";
+import { createHash } from "node:crypto";
 import { createServer } from "node:http";
 import { mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import net from "node:net";
@@ -44,12 +45,34 @@ async function waitForJson<T>(url: string): Promise<T> {
   throw new Error(`Timed out waiting for ${url}: ${String(lastError)}`);
 }
 
-test("production API bundle loads canonical runtime executor", async () => {
+async function waitForMissionStatus<T extends {
+  readonly status: string;
+}>(
+  baseUrl: string,
+  missionId: string,
+  status: string,
+): Promise<T> {
+  const startedAt = Date.now();
+  let mission = await waitForJson<T>(`${baseUrl}/api/missions/${missionId}`);
+
+  while (mission.status !== status && Date.now() - startedAt < 20_000) {
+    await new Promise((resolve) => setTimeout(resolve, 50));
+    mission = await waitForJson<T>(`${baseUrl}/api/missions/${missionId}`);
+  }
+
+  assert.equal(mission.status, status, JSON.stringify(mission));
+  return mission;
+}
+
+test("production API bundle proves persistent two-step workspace execution", async () => {
   const storageRoot = await mkdtemp(path.join(os.tmpdir(), "forge-dist-state-"));
-  const workspaceRoot = await mkdtemp(path.join(os.tmpdir(), "forge-dist-workspace-"));
+  const workspaceRoot = await mkdtemp(
+    path.join(artifactDir, "dist", "forge-dist-workspace-"),
+  );
   const apiPort = await availablePort();
   const providerPort = await availablePort();
-  const targetPath = "sandbox/mirror-generic-build-proof-18.txt";
+  const targetPath = "sandbox/mirror-final-workspace-flow.txt";
+  const targetContent = "Forge generic-build live approval proof\n";
   const rawObjective = [
     "Maak uitsluitend één nieuw testbestand aan:",
     "",
@@ -104,7 +127,7 @@ test("production API bundle loads canonical runtime executor", async () => {
         changes: [{
           path: targetPath,
           expectedSha256: null,
-          content: "Forge generic-build live approval proof\n",
+          content: targetContent,
         }],
         verification: [
           "typecheck",
@@ -117,7 +140,7 @@ test("production API bundle loads canonical runtime executor", async () => {
       };
       const content =
         providerRequestBodies.length > 1 &&
-          body.includes("mirror-generic-build-proof-18.txt")
+          body.includes("mirror-final-stale-context-check.txt")
         ? liveInvalidOutput
         : JSON.stringify(plan, null, 2);
       response.setHeader("Content-Type", "application/json");
@@ -153,7 +176,19 @@ test("production API bundle loads canonical runtime executor", async () => {
     cwd: workspaceRoot,
   });
   await writeFile(path.join(workspaceRoot, "README.txt"), "baseline\n", "utf8");
-  await exec("git", ["add", "README.txt"], { cwd: workspaceRoot });
+  await writeFile(
+    path.join(workspaceRoot, "package.json"),
+    JSON.stringify({
+      name: "@workspace/forge-production-flow-test",
+      private: true,
+      scripts: {
+        typecheck: "node -e \"process.exit(0)\"",
+        test: "node -e \"process.exit(0)\"",
+      },
+    }),
+    "utf8",
+  );
+  await exec("git", ["add", "README.txt", "package.json"], { cwd: workspaceRoot });
   await exec("git", ["commit", "-m", "test baseline"], { cwd: workspaceRoot });
 
   const rejectedPort = await availablePort();
@@ -193,33 +228,50 @@ test("production API bundle loads canonical runtime executor", async () => {
   );
 
   let output = "";
-  const api = spawn(
-    process.execPath,
-    ["--enable-source-maps", "./dist/index.mjs"],
-    {
-      cwd: artifactDir,
-      env: {
-        ...process.env,
-        PORT: String(apiPort),
-        NODE_ENV: "production",
-        STORAGE_DIR: storageRoot,
-        FORGE_WORKSPACE_ROOT: workspaceRoot,
-        FORGE_CANONICAL_REPO_ROOT: repositoryRoot,
-        FORGE_AI_PROVIDER: "local-model",
-        FORGE_LOCAL_MODEL_ENABLED: "true",
-        FORGE_AUTONOMY_ENABLED: "false",
-        FORGE_LOCAL_MODEL_NAME: "qwen2.5-coder:7b",
-        FORGE_LOCAL_MODEL_BASE_URL: `http://127.0.0.1:${providerPort}/v1`,
+  const apiEnvironment = {
+    ...process.env,
+    PORT: String(apiPort),
+    NODE_ENV: "production",
+    STORAGE_DIR: storageRoot,
+    FORGE_WORKSPACE_ROOT: workspaceRoot,
+    FORGE_CANONICAL_REPO_ROOT: repositoryRoot,
+    FORGE_AI_PROVIDER: "local-model",
+    FORGE_LOCAL_MODEL_ENABLED: "true",
+    FORGE_AUTONOMY_ENABLED: "false",
+    FORGE_LOCAL_MODEL_NAME: "qwen2.5-coder:7b",
+    FORGE_LOCAL_MODEL_BASE_URL: `http://127.0.0.1:${providerPort}/v1`,
+  };
+  const startApi = () => {
+    const child = spawn(
+      process.execPath,
+      ["--enable-source-maps", "./dist/index.mjs"],
+      {
+        cwd: artifactDir,
+        env: apiEnvironment,
+        stdio: ["ignore", "pipe", "pipe"],
       },
-      stdio: ["ignore", "pipe", "pipe"],
-    },
-  );
-  api.stdout.on("data", (chunk) => {
-    output = (output + String(chunk)).slice(-20_000);
-  });
-  api.stderr.on("data", (chunk) => {
-    output = (output + String(chunk)).slice(-20_000);
-  });
+    );
+    child.stdout.on("data", (chunk) => {
+      output = (output + String(chunk)).slice(-20_000);
+    });
+    child.stderr.on("data", (chunk) => {
+      output = (output + String(chunk)).slice(-20_000);
+    });
+    return child;
+  };
+  const stopApi = async (child: ReturnType<typeof spawn>): Promise<void> => {
+    if (child.exitCode !== null) {
+      return;
+    }
+
+    const exited = new Promise((resolve) => child.once("exit", resolve));
+    child.kill("SIGTERM");
+    await Promise.race([
+      exited,
+      new Promise((resolve) => setTimeout(resolve, 5_000)),
+    ]);
+  };
+  let api = startApi();
 
   try {
     await waitForJson(`${`http://127.0.0.1:${apiPort}`}/api/healthz`);
@@ -340,7 +392,7 @@ test("production API bundle loads canonical runtime executor", async () => {
     assert.equal(snapshot.effectiveObjectiveExecutionMode, "build-or-mutate");
     assert.equal(snapshot.effectiveObjectiveProfile, "generic-build");
     const providerRequest = providerRequestBodies[0];
-    assert.match(JSON.stringify(providerRequest), /mirror-generic-build-proof-18/);
+    assert.match(JSON.stringify(providerRequest), /mirror-final-workspace-flow/);
     assert.doesNotMatch(
       JSON.stringify(providerRequest),
       /mirror-generic-build-proof-16/,
@@ -378,7 +430,115 @@ test("production API bundle loads canonical runtime executor", async () => {
     assert.equal(providerRequest?.temperature, 0);
     assert.match(output, /Forge runtime binding/);
 
-    const invalidTargetPath = "sandbox/mirror-generic-build-proof-18.txt";
+    await stopApi(api);
+    api = startApi();
+    await waitForJson(`${baseUrl}/api/healthz`);
+
+    const persistedExecutionMission = await waitForJson<{
+      readonly status: string;
+      readonly output: unknown;
+    }>(`${baseUrl}/api/missions/${executionMissionId}`);
+    const persistedApprovals = await waitForJson<{
+      readonly approvals: readonly {
+        readonly id: string;
+        readonly missionId: string;
+        readonly status: string;
+      }[];
+    }>(`${baseUrl}/api/governance/approvals`);
+    assert.equal(persistedExecutionMission.status, "awaiting_approval");
+    assert.equal(persistedExecutionMission.output, null);
+    assert.ok(persistedApprovals.approvals.some(
+      (approval) =>
+        approval.id === executionApprovalId &&
+        approval.missionId === executionMissionId &&
+        approval.status === "pending",
+    ));
+    await assert.rejects(
+      readFile(path.join(workspaceRoot, targetPath), "utf8"),
+    );
+
+    const executionApprovalResponse = await fetch(
+      `${baseUrl}/api/governance/approvals/${executionApprovalId}/approve`,
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ actor: "production-binding-test" }),
+      },
+    );
+    assert.equal(
+      executionApprovalResponse.status,
+      200,
+      await executionApprovalResponse.clone().text(),
+    );
+    const completedExecutionMission = await waitForMissionStatus<{
+      readonly status: string;
+      readonly output?: Readonly<Record<string, unknown>>;
+    }>(baseUrl, executionMissionId, "succeeded");
+    assert.equal(
+      await readFile(path.join(workspaceRoot, targetPath), "utf8"),
+      targetContent,
+    );
+    const evidence = completedExecutionMission.output?.executionEvidence as
+      | {
+          readonly receipts: readonly unknown[];
+          readonly fileEffects: readonly {
+            readonly path: string;
+            readonly afterSha256: string;
+          }[];
+          readonly verificationRuns: readonly {
+            readonly exitCode: number;
+          }[];
+          readonly artifacts: readonly {
+            readonly path: string;
+            readonly content: string;
+            readonly sha256: string;
+          }[];
+        }
+      | undefined;
+    assert.ok(evidence);
+    assert.ok(evidence.receipts.length > 0);
+    assert.equal(evidence.fileEffects.length, 1);
+    assert.ok(
+      evidence.fileEffects[0]?.path.endsWith(
+        targetPath.replaceAll("/", path.sep),
+      ),
+    );
+    const expectedSha256 = createHash("sha256")
+      .update(targetContent)
+      .digest("hex");
+    assert.equal(evidence.fileEffects[0]?.afterSha256, expectedSha256);
+    assert.ok(evidence.verificationRuns.length > 0);
+    assert.ok(evidence.verificationRuns.every((run) => run.exitCode === 0));
+    assert.ok(evidence.artifacts.some(
+      (artifact) =>
+        artifact.path.endsWith(targetPath.replaceAll("/", path.sep)) &&
+        artifact.content === targetContent &&
+        artifact.sha256 === expectedSha256,
+    ));
+    const evaluation = completedExecutionMission.output?.evaluation as
+      | Readonly<Record<string, unknown>>
+      | undefined;
+    assert.equal(evaluation?.decision, "accepted");
+    assert.equal(evaluation?.score, 100);
+
+    await stopApi(api);
+    api = startApi();
+    await waitForJson(`${baseUrl}/api/healthz`);
+    const persistedCompletion = await waitForJson<{
+      readonly status: string;
+      readonly output?: Readonly<Record<string, unknown>>;
+    }>(`${baseUrl}/api/missions/${executionMissionId}`);
+    assert.equal(persistedCompletion.status, "succeeded");
+    assert.deepEqual(
+      persistedCompletion.output?.executionEvidence,
+      completedExecutionMission.output?.executionEvidence,
+    );
+    assert.deepEqual(
+      persistedCompletion.output?.evaluation,
+      completedExecutionMission.output?.evaluation,
+    );
+
+    const invalidTargetPath = "sandbox/mirror-final-stale-context-check.txt";
     const invalidObjective = rawObjective.replace(targetPath, invalidTargetPath);
     const invalidCreateResponse = await fetch(`${baseUrl}/api/missions`, {
       method: "POST",
@@ -495,12 +655,7 @@ test("production API bundle loads canonical runtime executor", async () => {
       readFile(path.join(workspaceRoot, invalidTargetPath), "utf8"),
     );
   } finally {
-    const exited = new Promise((resolve) => api.once("exit", resolve));
-    api.kill("SIGTERM");
-    await Promise.race([
-      exited,
-      new Promise((resolve) => setTimeout(resolve, 5_000)),
-    ]);
+    await stopApi(api);
     provider.closeAllConnections();
     await new Promise<void>((resolve) => provider.close(() => resolve()));
     await rm(storageRoot, { recursive: true, force: true });

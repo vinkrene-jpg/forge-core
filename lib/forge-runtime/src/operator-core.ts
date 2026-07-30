@@ -187,6 +187,7 @@ export class OperatorCore {
       const existing = loaded.projects.find(
         (project) => project.id === "forge-core",
       );
+      const configuredRoot = path.resolve(this.#defaultWorkspaceRoot);
 
       let projects = [...loaded.projects];
 
@@ -196,9 +197,7 @@ export class OperatorCore {
         const project: ProjectRecord = Object.freeze({
           id: "forge-core",
           name: "Forge Core",
-          rootPath: path.resolve(
-            this.#defaultWorkspaceRoot,
-          ),
+          rootPath: configuredRoot,
           description:
             "Authoritative local Forge Core repository and runtime workspace.",
           createdAt: timestamp,
@@ -214,6 +213,19 @@ export class OperatorCore {
             rootPath: project.rootPath,
           },
         );
+      } else if (path.resolve(existing.rootPath) !== configuredRoot) {
+        const rebound = Object.freeze({
+          ...existing,
+          rootPath: configuredRoot,
+          updatedAt: new Date().toISOString(),
+        });
+        projects = projects.map((project) =>
+          project.id === existing.id ? rebound : project);
+        this.#events.publish("operator.project.root.rebound", {
+          projectId: existing.id,
+          previousRootPath: existing.rootPath,
+          rootPath: configuredRoot,
+        });
       }
 
       await this.#save({

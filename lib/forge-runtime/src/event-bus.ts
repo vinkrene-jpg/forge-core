@@ -35,6 +35,7 @@ export type RuntimeEventType =
   | "evolution.plan.failed"
   | "operator.state.loaded"
   | "operator.project.registered"
+  | "operator.project.root.rebound"
   | "operator.memory.added"
   | "operator.workspace.inspected"
   | "workspace.execution.started"

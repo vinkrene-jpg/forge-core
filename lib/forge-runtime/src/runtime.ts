@@ -14,6 +14,7 @@ import {
 } from "./ai-gateway-store";
 import { spawn } from "node:child_process";
 import { createHash, randomUUID } from "node:crypto";
+import { realpathSync } from "node:fs";
 import {
   access,
   mkdir,
@@ -171,21 +172,29 @@ const canonicalRepositoryRoot =
   process.env.FORGE_CANONICAL_REPO_ROOT?.trim()
     ? path.resolve(process.env.FORGE_CANONICAL_REPO_ROOT.trim())
     : null;
+const workspaceRoot = path.resolve(
+  process.env.FORGE_WORKSPACE_ROOT?.trim() || process.cwd(),
+);
 
 if (canonicalRepositoryRoot) {
-  const relativeModulePath = path.relative(
-    canonicalRepositoryRoot,
-    runtimeModulePath,
-  );
+  const realCanonicalRepositoryRoot = realpathSync(canonicalRepositoryRoot);
 
-  if (
-    relativeModulePath.startsWith(`..${path.sep}`) ||
-    relativeModulePath === ".." ||
-    path.isAbsolute(relativeModulePath)
-  ) {
-    throw new Error(
-      `Forge runtime module is outside canonical repository root: ${runtimeModulePath} (expected under ${canonicalRepositoryRoot})`,
-    );
+  for (const [label, candidate] of [
+    ["runtime module", runtimeModulePath],
+    ["workspace root", workspaceRoot],
+  ] as const) {
+    const realCandidate = realpathSync(candidate);
+    const relativePath = path.relative(realCanonicalRepositoryRoot, realCandidate);
+
+    if (
+      relativePath.startsWith(`..${path.sep}`) ||
+      relativePath === ".." ||
+      path.isAbsolute(relativePath)
+    ) {
+      throw new Error(
+        `Forge ${label} is outside canonical repository root: ${realCandidate} (expected under ${realCanonicalRepositoryRoot})`,
+      );
+    }
   }
 }
 
@@ -197,6 +206,7 @@ const runtimeBinding = Object.freeze({
   runtimeModulePath,
   runtimeRepositoryRoot,
   canonicalRepositoryRoot,
+  workspaceRoot,
 });
 import {
   FileWorkspaceBridgeClient,
@@ -1704,13 +1714,12 @@ export class ForgeRuntime {
         "",
         "WORKSPACE_PLAN_OUTPUT_CONTRACT_V1",
         "Return exactly one raw JSON object. Do not use Markdown fences or prose outside JSON.",
-        "The only allowed top-level fields are schemaVersion, summary, changes, verification and commit.",
+        "The only allowed top-level fields are schemaVersion, changes, verification and commit.",
         "schemaVersion must equal 1.",
         "changes must contain only approved target paths and must copy each expectedSha256 exactly from the manifest.",
         "verification must include the identifier typecheck and may additionally include only test and build.",
         "Use test for the Forge runtime test. Never place commands or explanatory text in verification.",
         "commit must contain a concise message and push must be false.",
-        "summary must contain at least 200 characters and explicitly state assumptions and verification guidance.",
         "Never include credentials, environment values, arbitrary commands, deletions or protected paths.",
         "",
         `Approved target manifest: ${JSON.stringify(targets)}`,
@@ -1771,16 +1780,6 @@ export class ForgeRuntime {
       throw failure;
     }
 
-    if (
-      plan.summary.length < 200 ||
-      !/assumptions?|aannames?/i.test(plan.summary) ||
-      !/verif|tests?|controle|bewijs/i.test(plan.summary)
-    ) {
-      throw new Error(
-        "Workspace provider plan summary must contain at least 200 characters with explicit assumptions and verification guidance",
-      );
-    }
-
     const evidence = await this.#operatorCore.addMemory(projectId, {
       kind: "evidence",
       source: `workspace-plan:${mission.id}`,
@@ -1815,7 +1814,9 @@ export class ForgeRuntime {
 
     const result = await this.createMission({
       kind: "operator.workspace-change",
-      title: `Execute approved workspace plan: ${plan.summary}`,
+      title:
+        "Execute approved workspace plan: " +
+        plan.targets.map((target) => target.path).join(", "),
       input: {
         projectId: plan.projectId,
         sourcePlanningMissionId: plan.missionId,

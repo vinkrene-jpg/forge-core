@@ -48,6 +48,26 @@ function assertSecretFree(value: string): void {
   }
 }
 
+function deterministicSummary(
+  objective: string,
+  targets: readonly WorkspacePlanningTarget[],
+  verification: readonly string[],
+): string {
+  const paths = targets
+    .map((target) =>
+      target.path.length <= 120
+        ? target.path
+        : `${target.path.slice(0, 117)}...`)
+    .join(", ");
+  const checks = verification.join(", ");
+
+  return [
+    `Assumptions: this governed workspace plan is limited to the currently approved target manifest (${paths}); no prior mission target, provider output, prompt state, fallback content, or unapproved repository path is authoritative.`,
+    `The current objective is ${JSON.stringify(objective.trim().slice(0, 300))}.`,
+    `Verification guidance: after the separate workspace execution approval, run only the allowlisted verification identifiers (${checks}) through WorkspaceExecutor, then inspect the persisted file effect, SHA-256, verification result, receipt, artifact, and evaluation before accepting completion.`,
+  ].join(" ");
+}
+
 function normalizeVerification(value: unknown): unknown {
   if (!Array.isArray(value)) {
     return value;
@@ -206,6 +226,12 @@ export function parseWorkspaceProviderPlan(input: {
 
   const targets = new Map(input.targets.map((target) => [target.path, target]));
 
+  if (request.changes.length !== targets.size) {
+    throw new Error(
+      "Provider plan must contain exactly the current approved target manifest",
+    );
+  }
+
   for (const change of request.changes) {
     const target = targets.get(change.path);
 
@@ -218,12 +244,22 @@ export function parseWorkspaceProviderPlan(input: {
     }
   }
 
+  for (const target of targets.values()) {
+    if (!request.changes.some((change) => change.path === target.path)) {
+      throw new Error(`Provider omitted the approved target path: ${target.path}`);
+    }
+  }
+
   return Object.freeze({
     id: randomUUID(),
     missionId: input.missionId,
     projectId: input.projectId,
     objective: requiredText(input.objective, "objective", 10_000),
-    summary: requiredText(candidate.summary, "summary", 2_000),
+    summary: requiredText(
+      deterministicSummary(input.objective, input.targets, request.verification),
+      "summary",
+      2_000,
+    ),
     targets: Object.freeze(input.targets.map((target) => Object.freeze({ ...target }))),
     request,
     compositionId: input.compositionId,

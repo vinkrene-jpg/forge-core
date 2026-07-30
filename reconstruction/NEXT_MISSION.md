@@ -1,19 +1,19 @@
 # Forge Next Mission
 
-## Issue #4 follow-up - Live Mission Console verification
+## Issue #4 follow-up - Deploy and confirm canonical live runtime
 
-Status: ready after proof-18 canonical runtime and planner-context correction.
+Status: ready after the production-built two-approval restart flow passed.
 
 ## Objective
 
-Verify the merged Mission Console workspace-execution linkage against the authoritative live runtime without bypassing either approval.
+Deploy the verified commit to the canonical checkout and perform one final operator-visible confirmation without bypassing either approval.
 
 ## Required chapters
 
-1. Start one real `generic-build` mission for an explicitly allowed sandbox target.
-2. Approve the planning mission and confirm the second workspace approval appears in Approvals.
-3. Confirm the target is absent and execution evidence is null before the second approval.
-4. Approve the workspace execution and inspect receipts, file effects, verification runs, artifacts and evaluation in Mission Console and Missions.
+1. Fast-forward the clean canonical checkout at `C:\Forge\forge-core` to the verified commit.
+2. Rebuild and restart exclusively through Forge Control v9.
+3. Confirm Runtime Details reports module and workspace roots under `C:\Forge\forge-core`.
+4. Run one new `generic-build` Mission Console mission through both approvals.
 5. Persist the live mission, approval, evaluation and artifact identifiers under `reconstruction/`.
 
 ## Failure rules
@@ -24,7 +24,7 @@ Verify the merged Mission Console workspace-execution linkage against the author
 
 ## Resume checklist
 
-1. Fast-forward the clean canonical checkout at `C:\Forge\forge-core`, then rebuild and restart exclusively through Forge Control v9. Verify Mission Details reports the new commit, `runtimeRepositoryRoot` and `canonicalRepositoryRoot` as `C:\Forge\forge-core`, and `runtimeModulePath` as `C:\Forge\forge-core\artifacts\api-server\dist\index.mjs`.
+1. Fast-forward the clean canonical checkout at `C:\Forge\forge-core`, then rebuild and restart exclusively through Forge Control v9. Verify Mission Details reports the new commit, `runtimeRepositoryRoot`, `workspaceRoot` and `canonicalRepositoryRoot` as `C:\Forge\forge-core`, and `runtimeModulePath` as `C:\Forge\forge-core\artifacts\api-server\dist\index.mjs`.
 2. Confirm runtime and API health.
 3. Confirm the visible build marker is `mission-console-mounted-submit-2026-07-30.2`, execute the two-approval flow from Mission Console with the next proof objective, and confirm client diagnostics and persisted mission input retain full `rawObjective`, one full-path `allowCreate` target, and canonical `generic-build` / `build-or-mutate`; then confirm the linked pending workspace approval is immediately visible after the first approval.
 4. Capture live mission, approval, evidence and artifact identifiers.

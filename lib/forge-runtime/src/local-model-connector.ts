@@ -24,14 +24,12 @@ const workspacePlanJsonSchema = Object.freeze({
   additionalProperties: false,
   required: [
     "schemaVersion",
-    "summary",
     "changes",
     "verification",
     "commit",
   ],
   properties: {
     schemaVersion: { type: "integer" },
-    summary: { type: "string" },
     changes: {
       type: "array",
       items: {
