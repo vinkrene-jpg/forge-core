@@ -2,7 +2,7 @@
 
 ## Issue #4 follow-up - Live Mission Console verification
 
-Status: ready after source integration and exact Mission Console request coverage.
+Status: ready after exact proof-5 source integration and request coverage.
 
 ## Objective
 
@@ -26,6 +26,6 @@ Verify the merged Mission Console workspace-execution linkage against the author
 
 1. Confirm the deployed runtime contains issue #4.
 2. Confirm runtime and API health.
-3. Execute the two-approval flow from Mission Console with an explicit repository-relative target and confirm the `/api/missions` request contains `targets[{path, allowCreate:true}]`.
+3. Execute the two-approval flow from Mission Console with the proof-5 objective and confirm diagnostics preserve `rawObjective`, the `/api/missions` request contains exactly `targets[{path:"sandbox/mirror-generic-build-proof-5.txt", allowCreate:true}]`, and classification is `generic-build` / `build-or-mutate`.
 4. Capture live mission, approval, evidence and artifact identifiers.
 5. Update `CURRENT_STATE.md` only after the live file effect and evaluation are verified.

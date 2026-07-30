@@ -87,6 +87,14 @@ function normalizeCommand(value: unknown): string {
   return normalized;
 }
 
+function rawCommand(value: unknown): string {
+  if (typeof value !== "string") {
+    throw new Error("command must be a string");
+  }
+
+  return value;
+}
+
 type MissionIntakeRuntime = Pick<
   ForgeRuntime,
   | "listOperatorProjects"
@@ -225,6 +233,11 @@ function extractWorkspaceTargets(
     : Object.freeze([]);
 }
 
+function hasRepositoryPathReference(command: string): boolean {
+  return /(?:^|[\s"'`])(?:[a-z0-9._-]+[\\/])+[a-z0-9][a-z0-9._-]*(?=$|[\s,.;:!?'"`])/i
+    .test(command);
+}
+
 function chooseMissionKind(command: string): MissionKind {
   if (/(stabil|stability|soak|monitor)/i.test(command)) {
     return "runtime.stability-window";
@@ -239,6 +252,7 @@ function chooseMissionKind(command: string): MissionKind {
 
 function buildMissionIntakePreview(
   command: string,
+  rawObjective = command,
   runtime: MissionIntakeRuntime = forgeRuntime,
 ): MissionIntakePreview {
   const projectId = pickProjectId(runtime);
@@ -254,6 +268,16 @@ function buildMissionIntakePreview(
     objectiveClassification?.mode === "build-or-mutate",
   );
 
+  if (
+    objectiveClassification?.mode === "build-or-mutate" &&
+    hasRepositoryPathReference(command) &&
+    targets.length !== 1
+  ) {
+    throw new Error(
+      "Mutation mission with a repository path requires exactly one target manifest",
+    );
+  }
+
   const request: CreateMissionRequest =
     missionKind === "operator.autonomous-cycle"
       ? {
@@ -262,6 +286,7 @@ function buildMissionIntakePreview(
           input: {
             projectId,
             objective: interpretedGoal,
+            rawObjective,
             intakeObjectiveExecutionMode:
               targets.length > 0
                 ? "build-or-mutate"
@@ -592,8 +617,13 @@ export function createMissionIntakeRouter(
 
   intakeRouter.post("/operator/mission-intake/preview", (req, res): void => {
     try {
-      const command = normalizeCommand(req.body?.command);
-      const preview = buildMissionIntakePreview(command, runtime);
+      const rawObjective = rawCommand(req.body?.command);
+      const command = normalizeCommand(rawObjective);
+      const preview = buildMissionIntakePreview(
+        command,
+        rawObjective,
+        runtime,
+      );
       res.json(preview);
     } catch (error) {
       res.status(400).json({ error: message(error) });
@@ -602,8 +632,13 @@ export function createMissionIntakeRouter(
 
   intakeRouter.post("/operator/mission-intake/start", async (req, res): Promise<void> => {
     try {
-      const command = normalizeCommand(req.body?.command);
-      const preview = buildMissionIntakePreview(command, runtime);
+      const rawObjective = rawCommand(req.body?.command);
+      const command = normalizeCommand(rawObjective);
+      const preview = buildMissionIntakePreview(
+        command,
+        rawObjective,
+        runtime,
+      );
 
       await persistMissionIntake(preview, null, runtime);
 

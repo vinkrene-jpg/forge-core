@@ -112,7 +112,7 @@ test(
               summary:
                 "Assumptions: the requested proof is confined to one new sandbox file and no other repository path may change. Verification guidance: inspect the persisted receipts, file effects, verification runs, artifacts, hashes, and accepted evaluation before treating execution as complete.",
               changes: [{
-                path: "sandbox/mirror-generic-build-proof-4.txt",
+                path: "sandbox/mirror-generic-build-proof-5.txt",
                 expectedSha256: null,
                 content: "created through the governed WorkspaceExecutor\n",
               }],
@@ -164,7 +164,11 @@ test(
           }),
         },
       );
-      assert.equal(readOnlyPreviewResponse.status, 200);
+      assert.equal(
+        readOnlyPreviewResponse.status,
+        200,
+        await readOnlyPreviewResponse.clone().text(),
+      );
       const readOnlyPreview = await readOnlyPreviewResponse.json() as {
         readonly request: {
           readonly input?: Readonly<Record<string, unknown>>;
@@ -263,11 +267,39 @@ test(
       );
       assert.equal(ambiguousPreviewResponse.status, 400);
 
+      const missingManifestResponse = await fetch(
+        `${baseUrl}/api/operator/mission-intake/preview`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            command:
+              "Maak het bestand in sandbox/missing-extension aan en wijzig niets anders.",
+          }),
+        },
+      );
+      assert.equal(missingManifestResponse.status, 400);
+
+      const liveObjective = [
+        "Maak uitsluitend één nieuw testbestand aan:",
+        "",
+        "Pad: sandbox/mirror-generic-build-proof-5.txt",
+        "",
+        "Exacte inhoud: Forge generic-build live approval proof",
+        "Datum: 2026-07-30",
+        "Doel: tweede workspace approval en echte execution evidence aantonen",
+        "",
+        "Wijzig geen enkel ander bestand.",
+        "Gebruik dit exacte pad als expliciet target met allowCreate=true.",
+        "Voer typecheck uit als verificatie.",
+        "Niet pushen.",
+      ].join("\n");
+
       const previewResponse = await fetch(`${baseUrl}/api/operator/mission-intake/preview`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          command: "sandbox/mirror-generic-build-proof-4.txt",
+          command: liveObjective,
         }),
       });
       assert.equal(previewResponse.status, 200);
@@ -277,9 +309,10 @@ test(
         };
       };
       assert.deepEqual(preview.request.input?.targets, [{
-        path: "sandbox/mirror-generic-build-proof-4.txt",
+        path: "sandbox/mirror-generic-build-proof-5.txt",
         allowCreate: true,
       }]);
+      assert.equal(preview.request.input?.rawObjective, liveObjective);
       assert.equal(
         preview.request.input?.intakeObjectiveExecutionMode,
         "build-or-mutate",
@@ -299,9 +332,10 @@ test(
         readonly approval: { readonly id: string };
       };
       assert.deepEqual(created.input.targets, [{
-        path: "sandbox/mirror-generic-build-proof-4.txt",
+        path: "sandbox/mirror-generic-build-proof-5.txt",
         allowCreate: true,
       }]);
+      assert.equal(created.input.rawObjective, liveObjective);
       assert.equal(
         created.input.intakeObjectiveExecutionMode,
         "build-or-mutate",
@@ -370,7 +404,7 @@ test(
       );
       await assert.rejects(
         readFile(
-          path.join(workspaceRoot, "sandbox", "mirror-generic-build-proof-4.txt"),
+          path.join(workspaceRoot, "sandbox", "mirror-generic-build-proof-5.txt"),
           "utf8",
         ),
       );
@@ -403,7 +437,7 @@ test(
       assert.equal(evaluation?.decision, "accepted");
       assert.equal(
         await readFile(
-          path.join(workspaceRoot, "sandbox", "mirror-generic-build-proof-4.txt"),
+          path.join(workspaceRoot, "sandbox", "mirror-generic-build-proof-5.txt"),
           "utf8",
         ),
         "created through the governed WorkspaceExecutor\n",

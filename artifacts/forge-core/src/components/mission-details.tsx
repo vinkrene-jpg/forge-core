@@ -131,6 +131,7 @@ export function MissionDetails({
         </div>
         <pre className="mt-2 max-h-64 overflow-auto whitespace-pre-wrap rounded-md border border-border/50 bg-background p-3 text-xs text-muted-foreground">
           {JSON.stringify({
+            rawObjective: input?.rawObjective ?? null,
             targets: input?.targets ?? null,
             intakeObjectiveExecutionMode:
               input?.intakeObjectiveExecutionMode ?? null,
