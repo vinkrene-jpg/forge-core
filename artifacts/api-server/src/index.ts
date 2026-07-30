@@ -50,6 +50,7 @@ async function start(): Promise<void> {
   ensureStorage();
   await seedCoreRegistry();
   initSchedulerFromEnv();
+  logger.info(forgeRuntime.binding(), "Forge runtime binding");
   await forgeRuntime.start();
 
   server = app.listen(port, () => {

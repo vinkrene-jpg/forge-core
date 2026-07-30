@@ -59,6 +59,7 @@ export function MissionDetails({
   const executionOutput = linkedOutput ?? output;
   const executionEvidence = record(executionOutput?.executionEvidence);
   const evaluation = record(executionOutput?.evaluation);
+  const preExecutionSnapshot = record(output?.preExecutionSnapshot);
   const executionStatus = linkedExecutionMission?.status ??
     (mission.kind === "operator.workspace-change" ? mission.status : null);
   const waitingForExecutionApproval =
@@ -144,6 +145,17 @@ export function MissionDetails({
           }, null, 2)}
         </pre>
       </div>
+
+      {preExecutionSnapshot ? (
+        <div>
+          <div className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+            Runtime binding en pre-execution snapshot
+          </div>
+          <pre className="mt-2 max-h-64 overflow-auto whitespace-pre-wrap rounded-md border border-border/50 bg-background p-3 text-xs text-muted-foreground">
+            {JSON.stringify(preExecutionSnapshot, null, 2)}
+          </pre>
+        </div>
+      ) : null}
 
       {executionEvidence ? (
         <div className="space-y-4 rounded-md border border-border/60 p-4">

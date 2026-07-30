@@ -21,6 +21,7 @@ import {
   rm,
 } from "node:fs/promises";
 import path from "node:path";
+import { fileURLToPath } from "node:url";
 import {
   AutonomousOutputEvaluator,
   type AutonomousExecutionEvidence,
@@ -150,6 +151,22 @@ import {
   WorkspaceExecutor,
   type WorkspaceVerificationRunner,
 } from "./workspace-executor";
+
+declare const __FORGE_RUNTIME_BUILD_SHA__: string | undefined;
+
+const runtimeModuleUrl = import.meta.url;
+const runtimeBinding = Object.freeze({
+  runtimeBuildSha:
+    typeof __FORGE_RUNTIME_BUILD_SHA__ === "string"
+      ? __FORGE_RUNTIME_BUILD_SHA__
+      : process.env.FORGE_RUNTIME_BUILD_SHA?.trim() || "source-unbundled",
+  runtimeModulePath:
+    typeof runtimeModuleUrl === "string"
+      ? fileURLToPath(runtimeModuleUrl)
+      : typeof __filename === "string"
+        ? __filename
+        : "unknown-module",
+});
 import {
   FileWorkspaceBridgeClient,
   type WorkspaceChangeExecutor,
@@ -479,6 +496,25 @@ export class ForgeRuntime {
     signal: AbortSignal,
   ): Promise<Readonly<Record<string, unknown>>> {
     const input = parseAutonomousCycleInput(mission.input);
+    const preExecutionSnapshot = Object.freeze({
+      ...runtimeBinding,
+      intakeObjectiveExecutionMode:
+        mission.input.intakeObjectiveExecutionMode ??
+        mission.input.objectiveExecutionMode ??
+        null,
+      intakeObjectiveProfile:
+        mission.input.intakeObjectiveProfile ??
+        mission.input.objectiveProfile ??
+        null,
+      effectiveObjectiveExecutionMode: input.objectiveExecutionMode,
+      effectiveObjectiveProfile: input.objectiveProfile,
+      rawObjectivePresent:
+        typeof mission.input.rawObjective === "string" &&
+        mission.input.rawObjective.length > 0,
+      targets: Array.isArray(mission.input.targets)
+        ? mission.input.targets
+        : null,
+    });
     const persistedBuildIntent =
       mission.input.objectiveExecutionMode === "build-or-mutate" ||
       mission.input.objectiveProfile === "generic-build" ||
@@ -496,9 +532,18 @@ export class ForgeRuntime {
       (input.objectiveExecutionMode !== "build-or-mutate" ||
         input.objectiveProfile !== "generic-build")
     ) {
-      throw new Error(
+      const failure = new Error(
         "Persisted build-or-mutate intent may not hydrate as an analysis mission",
-      );
+      ) as MissionExecutionFailure;
+      failure.missionResultStatus = "blocked";
+      failure.missionResultCause = "execution-intent";
+      failure.missionOutput = Object.freeze({
+        objectiveExecutionMode: input.objectiveExecutionMode,
+        objectiveProfile: input.objectiveProfile,
+        preExecutionSnapshot,
+        executionEvidence: null,
+      });
+      throw failure;
     }
 
     const relevantContext = this.#memoryBridge.relevantContext({
@@ -625,6 +670,7 @@ export class ForgeRuntime {
           proofContent,
           proofSha256,
           executionEvidence,
+          preExecutionSnapshot,
           missingGates: Object.freeze(missingGates),
         });
         throw failure;
@@ -649,6 +695,7 @@ export class ForgeRuntime {
           objectiveExecutionMode: input.objectiveExecutionMode,
           objectiveProfile: input.objectiveProfile,
           executionEvidence: null,
+          preExecutionSnapshot,
         });
         throw blocked;
       }
@@ -675,6 +722,7 @@ export class ForgeRuntime {
           executionId: plan.executionId,
           plan,
           executionEvidence: null,
+          preExecutionSnapshot,
         });
         throw blocked;
       }
@@ -700,6 +748,7 @@ export class ForgeRuntime {
         workspaceExecutionApprovalId: executionMission.approval.id,
         evaluation: null,
         executionEvidence: null,
+        preExecutionSnapshot,
       });
     }
 
@@ -878,6 +927,7 @@ export class ForgeRuntime {
       outputSha256,
       usage: execution.usage,
       nextMissionId: null,
+      preExecutionSnapshot,
     });
 
     if (evaluation.decision !== "accepted") {
@@ -2679,6 +2729,10 @@ export class ForgeRuntime {
       memoryBridge: this.#memoryBridge.summary(),
       events: this.#events.snapshot(),
     });
+  }
+
+  binding(): typeof runtimeBinding {
+    return runtimeBinding;
   }
 }
 

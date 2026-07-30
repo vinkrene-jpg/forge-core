@@ -450,6 +450,29 @@ test(
       assert.notEqual(planningMission.output?.objectiveExecutionMode, "analysis-only");
       assert.notEqual(planningMission.output?.objectiveProfile, "generic-analysis");
       assert.equal(planningMission.output?.evaluation, null);
+      const preExecutionSnapshot =
+        planningMission.output?.preExecutionSnapshot as
+          | Readonly<Record<string, unknown>>
+          | undefined;
+      assert.ok(preExecutionSnapshot);
+      assert.equal(preExecutionSnapshot.runtimeBuildSha, "source-unbundled");
+      assert.match(
+        String(preExecutionSnapshot.runtimeModulePath),
+        /missionConsoleWorkspaceExecution\.test\.cjs$/,
+      );
+      assert.equal(
+        preExecutionSnapshot.intakeObjectiveExecutionMode,
+        "build-or-mutate",
+      );
+      assert.equal(preExecutionSnapshot.intakeObjectiveProfile, "generic-build");
+      assert.equal(
+        preExecutionSnapshot.effectiveObjectiveExecutionMode,
+        "build-or-mutate",
+      );
+      assert.equal(
+        preExecutionSnapshot.effectiveObjectiveProfile,
+        "generic-build",
+      );
       const executionMissionId = String(
         planningMission.output?.workspaceExecutionMissionId ?? "",
       );

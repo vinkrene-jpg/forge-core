@@ -2,7 +2,7 @@
 
 ## Issue #4 follow-up - Live Mission Console verification
 
-Status: ready after proof-12 persistence/hydration enforcement.
+Status: ready after proof-13 production runtime-binding instrumentation.
 
 ## Objective
 
@@ -24,7 +24,7 @@ Verify the merged Mission Console workspace-execution linkage against the author
 
 ## Resume checklist
 
-1. Rebuild and restart the deployed API bundle; verify the port-5000 process start time is newer than the proof-12 commit.
+1. Rebuild and restart the deployed API bundle; verify Mission Details reports the new commit as `runtimeBuildSha` and reports the deployed `dist/index.mjs` as `runtimeModulePath`.
 2. Confirm runtime and API health.
 3. Confirm the visible build marker is `mission-console-mounted-submit-2026-07-30.2`, execute the two-approval flow from Mission Console with the next proof objective, and confirm client diagnostics and persisted mission input retain full `rawObjective`, one full-path `allowCreate` target, and canonical `generic-build` / `build-or-mutate`; then confirm the linked pending workspace approval is immediately visible after the first approval.
 4. Capture live mission, approval, evidence and artifact identifiers.

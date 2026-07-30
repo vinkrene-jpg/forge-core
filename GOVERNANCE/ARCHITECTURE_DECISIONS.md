@@ -81,3 +81,7 @@ Provider route selection may not treat local-model execution as implicitly avail
 ## AD-019 - Persisted mission intent is authoritative
 
 Canonical `objectiveExecutionMode` and `objectiveProfile` values survive mission persistence, approval and runtime hydration unchanged. An explicit create target may never hydrate as analysis-only. A generic build may reach successful terminal state only after the existing workspace planner has created a linked workspace execution mission and persisted its pending second approval; provider analysis output alone is not completion evidence.
+
+## AD-020 - Runtime binding is execution evidence
+
+The production API bundle embeds its source Git SHA and reports the concrete loaded module path at startup and in each autonomous pre-execution snapshot. Mission Details exposes that snapshot with intake and effective execution intent. A live result is not valid evidence for a source revision unless the reported build SHA and module path identify the deployed bundle under test.
