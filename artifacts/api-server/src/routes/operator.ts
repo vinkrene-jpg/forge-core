@@ -1,11 +1,13 @@
 import { Router, type IRouter } from "express";
 import {
   assessMissionRequest,
+  classifyAutonomousObjective,
   forgeRuntime,
   requirementsForMission,
   type CapabilityStatus,
   type CreateProjectMemoryRequest,
   type CreateMissionRequest,
+  type ForgeRuntime,
   type ModelRouteRequest,
   type MissionKind,
   type ProjectMemoryKind,
@@ -80,8 +82,20 @@ function normalizeCommand(value: unknown): string {
   return normalized;
 }
 
-function pickProjectId(): string {
-  return forgeRuntime.listOperatorProjects()[0]?.id ?? "forge-core";
+type MissionIntakeRuntime = Pick<
+  ForgeRuntime,
+  | "listOperatorProjects"
+  | "autonomySummary"
+  | "getCapability"
+  | "addProjectMemory"
+  | "recordMemoryBridgeDecision"
+  | "recordMemoryBridgeLearning"
+  | "upsertMemoryBridgeContext"
+  | "createMission"
+>;
+
+function pickProjectId(runtime: MissionIntakeRuntime = forgeRuntime): string {
+  return runtime.listOperatorProjects()[0]?.id ?? "forge-core";
 }
 
 function extractMaxCycles(command: string): number {
@@ -134,6 +148,39 @@ function extractProofTargetPath(command: string): string | null {
   return match[1].toLowerCase();
 }
 
+function extractWorkspaceTargets(
+  command: string,
+): readonly { readonly path: string; readonly allowCreate: true }[] {
+  const targets = new Map<string, { readonly path: string; readonly allowCreate: true }>();
+  const mutationVerbs =
+    /\b(?:maak|creëer|creeer|bouw|wijzig|verander|bewerk|schrijf|implementeer|create|build|modify|edit|write|implement)\b/gi;
+  const pathPattern =
+    /(?:^|[\s"'`])((?:(?:[a-z0-9._-]+[\\/])+)?[a-z0-9][a-z0-9._-]*\.[a-z0-9]+)(?=$|[\s,.;:!?'"`])/i;
+
+  for (const verb of command.matchAll(mutationVerbs)) {
+    const start = (verb.index ?? 0) + verb[0].length;
+    const pathMatch = command.slice(start, start + 160).match(pathPattern);
+
+    if (!pathMatch) {
+      continue;
+    }
+
+    const targetPath = pathMatch[1].replace(/\\/g, "/");
+    const segments = targetPath.split("/");
+
+    if (segments.some((segment) => segment === "." || segment === "..")) {
+      continue;
+    }
+
+    targets.set(targetPath.toLowerCase(), Object.freeze({
+      path: targetPath,
+      allowCreate: true,
+    }));
+  }
+
+  return Object.freeze([...targets.values()].slice(0, 8));
+}
+
 function chooseMissionKind(command: string): MissionKind {
   if (/(stabil|stability|soak|monitor)/i.test(command)) {
     return "runtime.stability-window";
@@ -146,11 +193,22 @@ function chooseMissionKind(command: string): MissionKind {
   return "operator.autonomous-cycle";
 }
 
-function buildMissionIntakePreview(command: string): MissionIntakePreview {
-  const projectId = pickProjectId();
+function buildMissionIntakePreview(
+  command: string,
+  runtime: MissionIntakeRuntime = forgeRuntime,
+): MissionIntakePreview {
+  const projectId = pickProjectId(runtime);
   const missionKind = chooseMissionKind(command);
   const interpretedGoal = command;
   const proofTargetPath = extractProofTargetPath(command);
+  const objectiveClassification =
+    missionKind === "operator.autonomous-cycle"
+      ? classifyAutonomousObjective(interpretedGoal)
+      : null;
+  const targets =
+    objectiveClassification?.mode === "build-or-mutate"
+      ? extractWorkspaceTargets(command)
+      : [];
 
   const request: CreateMissionRequest =
     missionKind === "operator.autonomous-cycle"
@@ -161,6 +219,7 @@ function buildMissionIntakePreview(command: string): MissionIntakePreview {
             projectId,
             objective: interpretedGoal,
             ...(proofTargetPath ? { proofTargetPath } : {}),
+            ...(targets.length > 0 ? { targets } : {}),
             cycleIndex: 1,
             maxCycles: extractMaxCycles(command),
             continuationAuthorized: false,
@@ -186,9 +245,9 @@ function buildMissionIntakePreview(command: string): MissionIntakePreview {
           };
 
   const assessment = assessMissionRequest(request);
-  const autonomy = forgeRuntime.autonomySummary();
+  const autonomy = runtime.autonomySummary();
   const expectedCapabilities = requirementsForMission(missionKind).map((requirement) => {
-    const current = forgeRuntime.getCapability(requirement.capabilityId);
+    const current = runtime.getCapability(requirement.capabilityId);
 
     return Object.freeze({
       capabilityId: requirement.capabilityId,
@@ -224,17 +283,18 @@ function buildMissionIntakePreview(command: string): MissionIntakePreview {
 async function persistMissionIntake(
   preview: MissionIntakePreview,
   missionId: string | null,
+  runtime: MissionIntakeRuntime = forgeRuntime,
 ): Promise<void> {
-  const projectId = pickProjectId();
+  const projectId = pickProjectId(runtime);
 
-  await forgeRuntime.addProjectMemory(projectId, {
+  await runtime.addProjectMemory(projectId, {
     kind: "task",
     source: "desktop-mission-intake",
     tags: ["mission-intake", "command"],
     content: preview.originalCommand,
   });
 
-  await forgeRuntime.addProjectMemory(projectId, {
+  await runtime.addProjectMemory(projectId, {
     kind: "decision",
     source: "desktop-mission-intake",
     tags: ["mission-intake", "interpretation", preview.missionKind],
@@ -250,14 +310,14 @@ async function persistMissionIntake(
     ),
   });
 
-  await forgeRuntime.recordMemoryBridgeDecision({
+  await runtime.recordMemoryBridgeDecision({
     title: "Operator opdrachtinvoer",
     content: preview.originalCommand,
     tags: ["desktop-intake", "command"],
     sourceMissionId: missionId,
   });
 
-  await forgeRuntime.recordMemoryBridgeDecision({
+  await runtime.recordMemoryBridgeDecision({
     title: "Operator interpretatie",
     content: [
       `Goal: ${preview.interpretedGoal}`,
@@ -273,7 +333,7 @@ async function persistMissionIntake(
     sourceMissionId: missionId,
   });
 
-  await forgeRuntime.upsertMemoryBridgeContext({
+  await runtime.upsertMemoryBridgeContext({
     summary: [
       `Operator goal: ${preview.interpretedGoal}`,
       `Mission kind: ${preview.missionKind}`,
@@ -473,32 +533,32 @@ router.get(
   },
 );
 
-router.post(
-  "/operator/mission-intake/preview",
-  (req, res): void => {
+export function createMissionIntakeRouter(
+  runtime: MissionIntakeRuntime = forgeRuntime,
+): IRouter {
+  const intakeRouter: IRouter = Router();
+
+  intakeRouter.post("/operator/mission-intake/preview", (req, res): void => {
     try {
       const command = normalizeCommand(req.body?.command);
-      const preview = buildMissionIntakePreview(command);
+      const preview = buildMissionIntakePreview(command, runtime);
       res.json(preview);
     } catch (error) {
       res.status(400).json({ error: message(error) });
     }
-  },
-);
+  });
 
-router.post(
-  "/operator/mission-intake/start",
-  async (req, res): Promise<void> => {
+  intakeRouter.post("/operator/mission-intake/start", async (req, res): Promise<void> => {
     try {
       const command = normalizeCommand(req.body?.command);
-      const preview = buildMissionIntakePreview(command);
+      const preview = buildMissionIntakePreview(command, runtime);
 
-      await persistMissionIntake(preview, null);
+      await persistMissionIntake(preview, null, runtime);
 
-      const result = await forgeRuntime.createMission(preview.request);
+      const result = await runtime.createMission(preview.request);
 
-      await persistMissionIntake(preview, result.mission.id);
-      await forgeRuntime.recordMemoryBridgeLearning({
+      await persistMissionIntake(preview, result.mission.id, runtime);
+      await runtime.recordMemoryBridgeLearning({
         title: `Mission gestart: ${result.mission.id}`,
         content: [
           `Command: ${preview.originalCommand}`,
@@ -521,8 +581,12 @@ router.post(
     } catch (error) {
       res.status(400).json({ error: message(error) });
     }
-  },
-);
+  });
+
+  return intakeRouter;
+}
+
+router.use(createMissionIntakeRouter());
 
 router.post(
   "/operator/mission-intake/:missionId/record-result",

@@ -72,6 +72,7 @@ export {
 } from "./autonomy-store";
 export {
   AutonomousOutputEvaluator,
+  classifyAutonomousObjective,
   parseCapabilityResult,
   parseAutonomousCycleInput,
   type AutonomousCycleInput,

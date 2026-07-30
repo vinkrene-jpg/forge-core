@@ -11,6 +11,7 @@ import {
   type ModelTaskType,
   type ProjectMemoryKind,
 } from "@/lib/operator-api";
+import { forgeApi } from "@/lib/forge-api";
 
 const keys = {
   summary: ["operator", "summary"] as const,
@@ -159,7 +160,14 @@ export function useStartMissionFromIntake() {
     mutationFn: (request: {
       command: string;
       preview: MissionIntakePreview;
-    }) => operatorApi.missionIntakeStart(request.command),
+    }) =>
+      forgeApi.createMission(request.preview.request).then((mission) => ({
+        preview: request.preview,
+        mission,
+        governance: mission.governance,
+        approval: mission.approval,
+        progress: mission.status === "awaiting_approval" ? 20 : 35,
+      })),
     onSuccess: async (result) => {
       await Promise.all([
         queryClient.invalidateQueries({

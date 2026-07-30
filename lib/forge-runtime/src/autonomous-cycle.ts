@@ -162,6 +162,8 @@ export function classifyAutonomousObjective(
   const normalizedForIntent = ` ${normalized.replace(/\s+/g, " ").trim()} `;
   const explicitReadOnly = [
     /\bwijzig\s+geen\b/,
+    /\bniet\s+(?:wijzigen|aanpassen|schrijven|veranderen|maken|verwijderen)\b/,
+    /\b(?:wijzig|verander|pas|schrijf|maak|verwijder)\b[^.!?\n]{0,80}\bniet\b/,
     /\bgeen\s+bestanden?\s+(?:wijzigen|aanpassen|schrijven|veranderen)\b/,
     /\bverander\s+geen\b/,
     /\bpas\s+geen\b/,
@@ -236,7 +238,23 @@ export function parseAutonomousCycleInput(
     .slice(0, 8);
 
   const objective = textInput(input, "objective");
-  const classified = classifyAutonomousObjective(objective);
+  const hasExplicitCreateTarget =
+    Array.isArray(input.targets) &&
+    input.targets.some(
+      (target) =>
+        typeof target === "object" &&
+        target !== null &&
+        !Array.isArray(target) &&
+        (target as Readonly<Record<string, unknown>>).allowCreate === true &&
+        typeof (target as Readonly<Record<string, unknown>>).path === "string" &&
+        String((target as Readonly<Record<string, unknown>>).path).trim().length > 0,
+    );
+  const classified = hasExplicitCreateTarget
+    ? Object.freeze({
+        mode: "build-or-mutate" as const,
+        profile: "generic-build" as const,
+      })
+    : classifyAutonomousObjective(objective);
 
   return Object.freeze({
     projectId: textInput(input, "projectId", "forge-core"),

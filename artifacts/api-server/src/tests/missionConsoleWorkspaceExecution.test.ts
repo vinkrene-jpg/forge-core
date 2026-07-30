@@ -14,6 +14,7 @@ import {
   type WorkspaceVerificationRunner,
 } from "@workspace/forge-runtime";
 import { createMissionsRouter } from "../routes/missions";
+import { createMissionIntakeRouter } from "../routes/operator";
 import { createRuntimeGovernanceRouter } from "../routes/runtimeGovernance";
 
 const exec = promisify(execFile);
@@ -45,6 +46,7 @@ async function startApi(runtime: ForgeRuntime): Promise<{
 }> {
   const app = express();
   app.use(express.json());
+  app.use("/api", createMissionIntakeRouter(runtime));
   app.use("/api", createMissionsRouter(runtime));
   app.use("/api", createRuntimeGovernanceRouter(runtime));
   const server = createServer(app);
@@ -110,7 +112,7 @@ test(
               summary:
                 "Assumptions: the requested proof is confined to one new sandbox file and no other repository path may change. Verification guidance: inspect the persisted receipts, file effects, verification runs, artifacts, hashes, and accepted evaluation before treating execution as complete.",
               changes: [{
-                path: "sandbox/mirror-generic-build-proof.txt",
+                path: "sandbox/mirror-generic-build-proof-2.txt",
                 expectedSha256: null,
                 content: "created through the governed WorkspaceExecutor\n",
               }],
@@ -151,30 +153,96 @@ test(
       server = initialApi.server;
       let baseUrl = initialApi.baseUrl;
 
-      const createResponse = await fetch(`${baseUrl}/api/missions`, {
+      const readOnlyPreviewResponse = await fetch(
+        `${baseUrl}/api/operator/mission-intake/preview`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            command:
+              "Analyseer uitsluitend sandbox/read-only.txt en wijzig geen bestanden.",
+          }),
+        },
+      );
+      assert.equal(readOnlyPreviewResponse.status, 200);
+      const readOnlyPreview = await readOnlyPreviewResponse.json() as {
+        readonly request: {
+          readonly input?: Readonly<Record<string, unknown>>;
+        };
+      };
+      assert.equal(readOnlyPreview.request.input?.targets, undefined);
+
+      const postfixReadOnlyPreviewResponse = await fetch(
+        `${baseUrl}/api/operator/mission-intake/preview`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            command: "Lees en wijzig sandbox/read-only.txt niet.",
+          }),
+        },
+      );
+      assert.equal(postfixReadOnlyPreviewResponse.status, 200);
+      const postfixReadOnlyPreview = await postfixReadOnlyPreviewResponse.json() as {
+        readonly request: {
+          readonly input?: Readonly<Record<string, unknown>>;
+        };
+      };
+      assert.equal(postfixReadOnlyPreview.request.input?.targets, undefined);
+
+      const rootTargetPreviewResponse = await fetch(
+        `${baseUrl}/api/operator/mission-intake/preview`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            command: "Maak output.json op basis van config/schema.json.",
+          }),
+        },
+      );
+      assert.equal(rootTargetPreviewResponse.status, 200);
+      const rootTargetPreview = await rootTargetPreviewResponse.json() as {
+        readonly request: {
+          readonly input?: Readonly<Record<string, unknown>>;
+        };
+      };
+      assert.deepEqual(rootTargetPreview.request.input?.targets, [{
+        path: "output.json",
+        allowCreate: true,
+      }]);
+
+      const previewResponse = await fetch(`${baseUrl}/api/operator/mission-intake/preview`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          kind: "operator.autonomous-cycle",
-          title: "Generic build from Mission Console",
-          input: {
-            projectId: "forge-core",
-            objective:
-              "Maak uitsluitend sandbox/mirror-generic-build-proof.txt aan via de bestaande workspace-uitvoering.",
-            cycleIndex: 1,
-            maxCycles: 1,
-            files: [],
-            targets: [{
-              path: "sandbox/mirror-generic-build-proof.txt",
-              allowCreate: true,
-            }],
-          },
+          command:
+            "Maak uitsluitend sandbox/mirror-generic-build-proof-2.txt aan via de bestaande workspace-uitvoering.",
         }),
+      });
+      assert.equal(previewResponse.status, 200);
+      const preview = await previewResponse.json() as {
+        readonly request: {
+          readonly input?: Readonly<Record<string, unknown>>;
+        };
+      };
+      assert.deepEqual(preview.request.input?.targets, [{
+        path: "sandbox/mirror-generic-build-proof-2.txt",
+        allowCreate: true,
+      }]);
+
+      const createResponse = await fetch(`${baseUrl}/api/missions`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(preview.request),
       });
       assert.equal(createResponse.status, 202);
       const created = await createResponse.json() as MissionRecord & {
         readonly approval: { readonly id: string };
       };
+      assert.deepEqual(created.input.targets, [{
+        path: "sandbox/mirror-generic-build-proof-2.txt",
+        allowCreate: true,
+      }]);
 
       const firstApprovalResponse = await fetch(
         `${baseUrl}/api/governance/approvals/${created.approval.id}/approve`,
@@ -191,6 +259,8 @@ test(
         created.id,
         "succeeded",
       );
+      assert.equal(planningMission.output?.objectiveExecutionMode, "build-or-mutate");
+      assert.equal(planningMission.output?.objectiveProfile, "generic-build");
       const executionMissionId = String(
         planningMission.output?.workspaceExecutionMissionId ?? "",
       );
@@ -236,7 +306,7 @@ test(
       );
       await assert.rejects(
         readFile(
-          path.join(workspaceRoot, "sandbox", "mirror-generic-build-proof.txt"),
+          path.join(workspaceRoot, "sandbox", "mirror-generic-build-proof-2.txt"),
           "utf8",
         ),
       );
@@ -269,7 +339,7 @@ test(
       assert.equal(evaluation?.decision, "accepted");
       assert.equal(
         await readFile(
-          path.join(workspaceRoot, "sandbox", "mirror-generic-build-proof.txt"),
+          path.join(workspaceRoot, "sandbox", "mirror-generic-build-proof-2.txt"),
           "utf8",
         ),
         "created through the governed WorkspaceExecutor\n",
