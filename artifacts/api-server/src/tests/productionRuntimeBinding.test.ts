@@ -64,7 +64,7 @@ async function waitForMissionStatus<T extends {
   return mission;
 }
 
-test("production restart recovers workspace evidence without mutation replay", async () => {
+test("production restart migrates legacy stale workspace mission without mutation replay", async () => {
   const storageRoot = await mkdtemp(path.join(os.tmpdir(), "forge-dist-state-"));
   const workspaceRoot = await mkdtemp(
     path.join(artifactDir, "dist", "forge-dist-workspace-"),
@@ -552,6 +552,32 @@ test("production restart recovers workspace evidence without mutation replay", a
     const beforeRecoveryStat = await stat(path.join(workspaceRoot, targetPath));
 
     await killApi(api);
+    const missionStatePath = path.join(
+      storageRoot,
+      "forge-runtime",
+      "missions.json",
+    );
+    const legacyState = JSON.parse(
+      await readFile(missionStatePath, "utf8"),
+    ) as {
+      missions: {
+        id: string;
+        status: string;
+        output: Readonly<Record<string, unknown>> | null;
+      }[];
+    };
+    const legacyMission = legacyState.missions.find(
+      (mission) => mission.id === executionMissionId,
+    );
+    assert.ok(legacyMission);
+    legacyMission.status = "running";
+    legacyMission.output = null;
+    await writeFile(
+      missionStatePath,
+      JSON.stringify(legacyState, null, 2) + "\n",
+      "utf8",
+    );
+
     api = startApi();
     await waitForJson(`${baseUrl}/api/healthz`);
     const persistedCompletion = await waitForMissionStatus<{
@@ -564,20 +590,45 @@ test("production restart recovers workspace evidence without mutation replay", a
       await readFile(path.join(workspaceRoot, targetPath), "utf8"),
       targetContent,
     );
-    assert.deepEqual(
-      persistedCompletion.output?.executionEvidence,
-      checkpointedExecutionMission.output?.executionEvidence,
+    const recoveredEvidence =
+      persistedCompletion.output?.executionEvidence as
+        | {
+            readonly receipts: readonly unknown[];
+            readonly fileEffects: readonly unknown[];
+            readonly verificationRuns: readonly {
+              readonly exitCode: number;
+            }[];
+            readonly artifacts: readonly unknown[];
+          }
+        | undefined;
+    assert.ok(recoveredEvidence);
+    assert.ok(recoveredEvidence.receipts.length > 0);
+    assert.equal(recoveredEvidence.fileEffects.length, 1);
+    assert.ok(recoveredEvidence.verificationRuns.length > 0);
+    assert.ok(
+      recoveredEvidence.verificationRuns.every((run) => run.exitCode === 0),
     );
-    assert.deepEqual(
-      persistedCompletion.output?.evaluation,
-      checkpointedExecutionMission.output?.evaluation,
+    assert.equal(recoveredEvidence.artifacts.length, 1);
+    assert.equal(
+      (persistedCompletion.output?.evaluation as {
+        readonly decision: string;
+        readonly score: number;
+      }).decision,
+      "accepted",
     );
     assert.equal(persistedCompletion.output?.proofFilePath, targetPath);
     assert.equal(persistedCompletion.output?.proofContent, targetContent);
     assert.equal(persistedCompletion.output?.proofSha256, expectedSha256);
-    assert.deepEqual(
-      persistedCompletion.output?.verification,
-      checkpointedExecutionMission.output?.verification,
+    assert.ok(
+      Array.isArray(persistedCompletion.output?.verification) &&
+      persistedCompletion.output.verification.length === 2 &&
+      persistedCompletion.output.verification.every(
+        (result) =>
+          typeof result === "object" &&
+          result !== null &&
+          "exitCode" in result &&
+          result.exitCode === 0,
+      ),
     );
     assert.deepEqual(persistedCompletion.output?.missionResult, {
       status: "completed",
@@ -589,6 +640,7 @@ test("production restart recovers workspace evidence without mutation replay", a
     });
     assert.equal(
       (persistedCompletion.output?.workspaceRecovery as {
+        readonly legacyMigrated: boolean;
         readonly mutationReplayed: boolean;
         readonly validated: boolean;
       }).mutationReplayed,
@@ -596,9 +648,16 @@ test("production restart recovers workspace evidence without mutation replay", a
     );
     assert.equal(
       (persistedCompletion.output?.workspaceRecovery as {
+        readonly legacyMigrated: boolean;
         readonly mutationReplayed: boolean;
         readonly validated: boolean;
       }).validated,
+      true,
+    );
+    assert.equal(
+      (persistedCompletion.output?.workspaceRecovery as {
+        readonly legacyMigrated: boolean;
+      }).legacyMigrated,
       true,
     );
 

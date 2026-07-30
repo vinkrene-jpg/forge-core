@@ -19,7 +19,9 @@ import {
   access,
   mkdir,
   readFile,
+  realpath,
   rm,
+  stat,
 } from "node:fs/promises";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
@@ -147,6 +149,7 @@ import {
   type LearningCapabilityMatrixEntry,
 } from "./learning-matrix";
 import {
+  NodeWorkspaceVerificationRunner,
   parseWorkspaceChangeRequest,
   WorkspaceExecutionError,
   WorkspaceExecutor,
@@ -380,6 +383,7 @@ export class ForgeRuntime {
   readonly #memoryBridge: FileMemoryBridge;
   readonly #learningEvidenceTool: LearningEvidenceTool;
   readonly #workspaceExecutor: WorkspaceChangeExecutor;
+  readonly #workspaceVerificationRunner: WorkspaceVerificationRunner;
   readonly #autonomousEvaluator = new AutonomousOutputEvaluator();
   readonly #missionLoop: MissionLoop;
   #persistence = createInitialRuntimeState();
@@ -452,6 +456,9 @@ export class ForgeRuntime {
     const bridgeDirectory = process.env.FORGE_WORKSPACE_BRIDGE_DIR?.trim();
     const bridgeToken = process.env.FORGE_WORKSPACE_BRIDGE_TOKEN?.trim();
 
+    this.#workspaceVerificationRunner =
+      options.workspaceVerificationRunner ??
+      new NodeWorkspaceVerificationRunner();
     this.#workspaceExecutor =
       options.workspaceChangeExecutor ??
       (bridgeDirectory && bridgeToken
@@ -462,7 +469,7 @@ export class ForgeRuntime {
           })
         : new WorkspaceExecutor({
             events: this.#events,
-            verificationRunner: options.workspaceVerificationRunner,
+            verificationRunner: this.#workspaceVerificationRunner,
           }));
 
     const aiGatewayOptions: AiGatewayEngineOptions = {
@@ -1639,7 +1646,9 @@ export class ForgeRuntime {
 
     for (const mission of staleMissions) {
       try {
-        const output = await this.#validatedWorkspaceRecoveryOutput(mission);
+        const output = mission.output?.workspaceExecutionCheckpoint
+          ? await this.#validatedWorkspaceRecoveryOutput(mission)
+          : await this.#migrateLegacyWorkspaceRecovery(mission);
         await this.#missionEngine.complete(mission.id, output);
         this.#events.publish("mission.recovered", {
           missionId: mission.id,
@@ -1688,6 +1697,279 @@ export class ForgeRuntime {
       throw new Error("complete persisted workspace checkpoint is missing");
     }
 
+    return this.#validatedCheckpointRecoveryDetails(mission, output);
+  }
+
+  async #migrateLegacyWorkspaceRecovery(
+    mission: MissionRecord,
+  ): Promise<Readonly<Record<string, unknown>>> {
+      const approval = this.#governanceEngine.findByMissionId(mission.id);
+      if (!approval || approval.status !== "approved") {
+        throw new Error("legacy workspace execution approval is not approved");
+      }
+
+      const projectId =
+        typeof mission.input.projectId === "string"
+          ? mission.input.projectId
+          : "forge-core";
+      const project = this.#operatorCore.getProject(projectId);
+      if (!project) {
+        throw new Error(`legacy workspace project is unavailable: ${projectId}`);
+      }
+
+      const sourceAutonomousMissionId =
+        typeof mission.input.sourceAutonomousMissionId === "string"
+          ? mission.input.sourceAutonomousMissionId
+          : null;
+      const sourcePlanningMissionId =
+        typeof mission.input.sourcePlanningMissionId === "string"
+          ? mission.input.sourcePlanningMissionId
+          : null;
+      const sourceMissionId =
+        sourceAutonomousMissionId ?? sourcePlanningMissionId;
+      const sourceMission = sourceMissionId
+        ? this.#missionEngine.get(sourceMissionId)
+        : null;
+      const sourcePlan = sourceMission?.output?.plan as
+        | WorkspaceChangePlan
+        | undefined;
+      const request = parseWorkspaceChangeRequest(mission.input);
+
+      if (
+        !sourceMission ||
+        sourceMission.status !== "succeeded" ||
+        !sourcePlan ||
+        sourcePlan.id !== mission.input.sourcePlanId ||
+        sourcePlan.missionId !== sourceMission.id ||
+        sourcePlan.projectId !== projectId ||
+        sourcePlan.providerOutputSha256 !== mission.input.providerOutputSha256 ||
+        JSON.stringify(sourcePlan.request) !== JSON.stringify(request) ||
+        (
+          sourceMission.kind === "operator.autonomous-cycle"
+            ? (
+                sourcePlanningMissionId !== sourceAutonomousMissionId ||
+                sourceMission.output?.workspaceExecutionMissionId !== mission.id ||
+                sourceMission.output?.workspaceExecutionApprovalId !== approval.id
+              )
+            : sourceMission.kind !== "operator.workspace-plan"
+        )
+      ) {
+        throw new Error("legacy workspace source plan linkage is invalid");
+      }
+      if (request.commit?.push) {
+        throw new Error(
+          "legacy workspace recovery cannot prove a requested Git push",
+        );
+      }
+
+      const recoveredAt = new Date().toISOString();
+      const realProjectRoot = await realpath(project.rootPath);
+      const receipts: AutonomousExecutionEvidence["receipts"][number][] = [];
+      const fileEffects: AutonomousExecutionEvidence["fileEffects"][number][] = [];
+      const artifacts: AutonomousExecutionEvidence["artifacts"][number][] = [];
+      const targetSnapshots: {
+        readonly path: string;
+        readonly absolutePath: string;
+        readonly content: string;
+        readonly sha256: string;
+        readonly mtimeMs: number;
+      }[] = [];
+
+      for (const change of request.changes) {
+        const absolutePath = path.resolve(project.rootPath, change.path);
+        const realTargetPath = await realpath(absolutePath);
+        const relativeTargetPath = path.relative(realProjectRoot, realTargetPath);
+        if (
+          relativeTargetPath === ".." ||
+          relativeTargetPath.startsWith(`..${path.sep}`) ||
+          path.isAbsolute(relativeTargetPath)
+        ) {
+          throw new Error(
+            `legacy approved target escapes the project workspace: ${change.path}`,
+          );
+        }
+        const startedAt = new Date().toISOString();
+        const started = Date.now();
+        const content = await readFile(realTargetPath, "utf8");
+        const targetStat = await stat(realTargetPath);
+        const actualSha256 = sha256Text(content);
+        const expectedSha256 = sha256Text(change.content);
+        const completedAt = new Date().toISOString();
+        const durationMs = Math.max(0, Date.now() - started);
+
+        if (content !== change.content || actualSha256 !== expectedSha256) {
+          throw new Error(
+            `legacy approved target does not match the actual file: ${change.path}`,
+          );
+        }
+        targetSnapshots.push(Object.freeze({
+          path: change.path,
+          absolutePath: realTargetPath,
+          content,
+          sha256: actualSha256,
+          mtimeMs: targetStat.mtimeMs,
+        }));
+
+        for (const action of [
+          "read-file",
+          "compute-sha256",
+          "verify-file-exists",
+        ] as const) {
+          receipts.push(Object.freeze({
+            id: randomUUID(),
+            action,
+            targetPath: realTargetPath,
+            startedAt,
+            completedAt,
+            durationMs,
+            ok: true,
+            error: null,
+          }));
+        }
+        fileEffects.push(Object.freeze({
+          path: realTargetPath,
+          existedBefore: change.expectedSha256 !== null,
+          existsAfter: true,
+          beforeSha256: change.expectedSha256,
+          afterSha256: actualSha256,
+        }));
+        artifacts.push(Object.freeze({
+          id: randomUUID(),
+          kind: "file-hash-proof" as const,
+          path: realTargetPath,
+          content,
+          sha256: actualSha256,
+        }));
+      }
+
+      const abortController = new AbortController();
+      const verificationResults = [];
+      for (const step of request.verification) {
+        const result = await this.#workspaceVerificationRunner.run(
+          step,
+          project.rootPath,
+          abortController.signal,
+        );
+        if (result.exitCode !== 0) {
+          throw new Error(
+            `legacy workspace verification failed for ${step} with exit code ${result.exitCode}`,
+          );
+        }
+        verificationResults.push(Object.freeze({
+          command: result.command,
+          exitCode: result.exitCode,
+          stdoutChars: result.stdout.length,
+          stderrChars: result.stderr.length,
+          stdoutSha256: sha256Text(result.stdout),
+          stderrSha256: sha256Text(result.stderr),
+          durationMs: result.durationMs,
+        }));
+      }
+      for (const snapshot of targetSnapshots) {
+        const content = await readFile(snapshot.absolutePath, "utf8");
+        const targetStat = await stat(snapshot.absolutePath);
+        if (
+          content !== snapshot.content ||
+          sha256Text(content) !== snapshot.sha256 ||
+          targetStat.mtimeMs !== snapshot.mtimeMs
+        ) {
+          throw new Error(
+            `legacy verification changed the approved target: ${snapshot.path}`,
+          );
+        }
+      }
+
+      const executionEvidence: AutonomousExecutionEvidence = Object.freeze({
+        objectiveProfile: "generic-build",
+        receipts: Object.freeze(receipts),
+        fileEffects: Object.freeze(fileEffects),
+        verificationRuns: Object.freeze(
+          verificationResults.map((result) =>
+            Object.freeze({
+              command: result.command,
+              exitCode: result.exitCode,
+              stdoutSha256: result.stdoutSha256,
+              stderrSha256: result.stderrSha256,
+              durationMs: result.durationMs,
+            })),
+        ),
+        artifacts: Object.freeze(artifacts),
+      });
+      const providerExecution =
+        this.#validatedGenericBuildProviderExecution(
+          sourcePlan,
+          sourceMission.id,
+        );
+      const evaluation = this.#autonomousEvaluator.evaluate(
+        sourceMission.id,
+        providerExecution,
+        {
+          executionEvidence,
+          objectiveExecutionMode: "build-or-mutate",
+          objectiveProfile: "generic-build",
+        },
+      );
+      if (evaluation.decision !== "accepted") {
+        throw new Error(
+          `legacy workspace evidence evaluation was ${evaluation.decision}`,
+        );
+      }
+
+      return Object.freeze({
+        id: randomUUID(),
+        missionId: mission.id,
+        status: "verified",
+        branch: "legacy-recovery",
+        changedFiles: request.changes.map((change) => Object.freeze({
+          path: change.path,
+          beforeSha256: change.expectedSha256,
+          afterSha256: sha256Text(change.content),
+        })),
+        verification: Object.freeze(verificationResults),
+        rollbackPerformed: false,
+        commitSha: null,
+        commitRecovery: Object.freeze({
+          requested: request.commit !== null,
+          completed: false,
+          pushRequested: false,
+          reason:
+            request.commit === null
+              ? "No commit was requested"
+              : "Legacy recovery validates existing effects and never creates a new commit",
+        }),
+        error: null,
+        startedAt: mission.startedAt ?? mission.updatedAt,
+        completedAt: recoveredAt,
+        sourceAutonomousMissionId,
+        workspaceExecutionApprovalId: approval.id,
+        evaluation,
+        executionEvidence,
+        proofFilePath: request.changes[0]?.path ?? null,
+        proofContent: request.changes[0]?.content ?? null,
+        proofSha256:
+          request.changes[0]
+            ? sha256Text(request.changes[0].content)
+            : null,
+        workspaceExecutionCheckpoint: Object.freeze({
+          version: 1,
+          persistedAt: recoveredAt,
+          mutationCompleted: true,
+          legacyMigrated: true,
+        }),
+        workspaceRecovery: Object.freeze({
+          recoveredAt,
+          mutationReplayed: false,
+          validated: true,
+          legacyMigrated: true,
+          validatedTargets: request.changes.map((change) => change.path),
+        }),
+      });
+  }
+
+  async #validatedCheckpointRecoveryDetails(
+    mission: MissionRecord,
+    output: Readonly<Record<string, unknown>>,
+  ): Promise<Readonly<Record<string, unknown>>> {
     const approval = this.#governanceEngine.findByMissionId(mission.id);
     if (!approval || approval.status !== "approved") {
       throw new Error("workspace execution approval is not approved");
