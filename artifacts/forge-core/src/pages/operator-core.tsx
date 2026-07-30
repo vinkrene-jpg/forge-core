@@ -293,10 +293,7 @@ export default function OperatorCorePage() {
                 }
 
                 startMission
-                  .mutateAsync({
-                    command: missionCommand,
-                    preview: missionPreview.data,
-                  })
+                  .mutateAsync(missionCommand)
                   .then((result) => {
                     setStartedMissionId(result.mission.id);
                   })

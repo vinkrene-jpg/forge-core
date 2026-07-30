@@ -5,13 +5,12 @@ import {
 } from "@tanstack/react-query";
 import {
   operatorApi,
-  type MissionIntakePreview,
   type ModelBudget,
   type ModelPrivacy,
   type ModelTaskType,
   type ProjectMemoryKind,
 } from "@/lib/operator-api";
-import { forgeApi } from "@/lib/forge-api";
+import { startMissionFromCurrentIntake } from "@/pages/mission-console-submit";
 
 const keys = {
   summary: ["operator", "summary"] as const,
@@ -157,17 +156,7 @@ export function useStartMissionFromIntake() {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: (request: {
-      command: string;
-      preview: MissionIntakePreview;
-    }) =>
-      forgeApi.createMission(request.preview.request).then((mission) => ({
-        preview: request.preview,
-        mission,
-        governance: mission.governance,
-        approval: mission.approval,
-        progress: mission.status === "awaiting_approval" ? 20 : 35,
-      })),
+    mutationFn: startMissionFromCurrentIntake,
     onSuccess: async (result) => {
       await Promise.all([
         queryClient.invalidateQueries({

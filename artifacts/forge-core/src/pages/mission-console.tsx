@@ -26,6 +26,7 @@ import {
 import { Progress } from "@/components/ui/progress";
 import { Textarea } from "@/components/ui/textarea";
 import { MissionDetails } from "@/components/mission-details";
+import { handleMissionConsoleSubmit } from "@/pages/mission-console-submit";
 
 function progressForStatus(status: string): number {
   if (status === "awaiting_approval") {
@@ -250,8 +251,11 @@ export default function MissionConsolePage() {
                   return;
                 }
 
-                void startMission
-                  .mutateAsync({ command, preview: preview.data })
+                void handleMissionConsoleSubmit(
+                  command,
+                  (currentRawObjective) =>
+                    startMission.mutateAsync(currentRawObjective),
+                )
                   .then((result) => {
                     setMissionId(result.mission.id);
                   });
