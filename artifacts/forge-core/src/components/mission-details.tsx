@@ -59,6 +59,12 @@ export function MissionDetails({
   const executionOutput = linkedOutput ?? output;
   const executionEvidence = record(executionOutput?.executionEvidence);
   const evaluation = record(executionOutput?.evaluation);
+  const missionResult = record(executionOutput?.missionResult);
+  const workspaceRecovery = record(executionOutput?.workspaceRecovery);
+  const proofFilePath = text(executionOutput?.proofFilePath);
+  const proofContent = text(executionOutput?.proofContent);
+  const proofSha256 = text(executionOutput?.proofSha256);
+  const verification = executionOutput?.verification;
   const preExecutionSnapshot = record(output?.preExecutionSnapshot);
   const providerOutputDiagnostics = record(output?.providerOutputDiagnostics);
   const providerOutputLength =
@@ -152,6 +158,29 @@ export function MissionDetails({
           }, null, 2)}
         </pre>
       </div>
+
+      {missionResult ||
+      workspaceRecovery ||
+      proofFilePath ||
+      proofContent ||
+      proofSha256 ||
+      (Array.isArray(verification) && verification.length > 0) ? (
+        <div>
+          <div className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+            Persisted workspace result and recovery
+          </div>
+          <pre className="mt-2 max-h-96 overflow-auto whitespace-pre-wrap rounded-md border border-border/50 bg-background p-3 text-xs text-muted-foreground">
+            {JSON.stringify({
+              missionResult,
+              proofFilePath,
+              proofContent,
+              proofSha256,
+              verification: verification ?? null,
+              workspaceRecovery,
+            }, null, 2)}
+          </pre>
+        </div>
+      ) : null}
 
       {preExecutionSnapshot ? (
         <div>

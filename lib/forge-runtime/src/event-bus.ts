@@ -12,6 +12,7 @@ export type RuntimeEventType =
   | "mission.approved"
   | "mission.rejected"
   | "mission.started"
+  | "mission.execution.checkpointed"
   | "mission.succeeded"
   | "mission.failed"
   | "mission.requeued"

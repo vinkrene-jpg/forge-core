@@ -97,3 +97,7 @@ Workspace verification is represented only by the fixed identifiers `typecheck`,
 The provider supplies only mutable plan facts: changes, verification identifiers and commit intent. Forge deterministically builds the operator-facing summary, assumptions and verification guidance from the current objective and approved targets. Provider changes must match the complete approved target set exactly; missing, additional or stale targets never create execution authority.
 
 Rejected provider output is persisted only as a bounded, secret-scrubbed excerpt with its total length, first and last 500 characters, SHA-256, truncation state and concrete parse or schema error. Mission Details exposes that evidence so operators can distinguish provider-contract failures from stale runtime deployments without granting execution authority.
+
+## AD-022 - Workspace completion uses durable evidence checkpoints
+
+A successful WorkspaceExecutor mutation is followed by an atomic persisted mission checkpoint containing final workspace status, execution evidence, proof path/content/SHA-256 and verification receipts before the mission is finalized. Startup never replays a stale running workspace mutation. It may reconcile that mission to succeeded only after read-only validation of its approved source linkage, actual target content and hash, persisted receipts and accepted evaluation where applicable; otherwise it persists a concrete restart-recovery failure.

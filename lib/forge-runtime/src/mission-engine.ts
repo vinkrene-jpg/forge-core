@@ -282,6 +282,10 @@ export class MissionEngine {
           return cloneMission(mission);
         }
 
+        if (mission.kind === "operator.workspace-change") {
+          return cloneMission(mission);
+        }
+
         recoveredMissionIds.push(mission.id);
 
         return cloneMission({
@@ -600,6 +604,50 @@ export class MissionEngine {
       }),
       null,
     );
+  }
+
+  async checkpointRunning(
+    missionId: string,
+    output: Readonly<Record<string, unknown>>,
+  ): Promise<MissionRecord> {
+    this.#ensureInitialized();
+
+    return this.#mutate(async () => {
+      const index = this.#state.missions.findIndex(
+        (mission) => mission.id === missionId,
+      );
+
+      if (index < 0) {
+        throw new Error(`Mission not found: ${missionId}`);
+      }
+
+      const current = this.#state.missions[index];
+
+      if (current.status !== "running") {
+        throw new Error(`Mission ${missionId} is not running`);
+      }
+
+      const checkpointed = cloneMission({
+        ...current,
+        updatedAt: new Date().toISOString(),
+        output: Object.freeze({ ...output }),
+      });
+      const missions = [...this.#state.missions];
+      missions[index] = checkpointed;
+      const nextState = Object.freeze({
+        version: MISSION_STORE_VERSION,
+        missions: Object.freeze(missions),
+      });
+
+      await this.#stateStore.save(nextState);
+      this.#state = nextState;
+      this.#events.publish("mission.execution.checkpointed", {
+        missionId,
+        kind: checkpointed.kind,
+      });
+
+      return cloneMission(checkpointed);
+    });
   }
 
   async fail(

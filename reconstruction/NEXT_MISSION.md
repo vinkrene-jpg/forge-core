@@ -2,7 +2,7 @@
 
 ## Issue #4 follow-up - Deploy and confirm canonical live runtime
 
-Status: ready after the production-built two-approval restart flow passed.
+Status: ready after production-built post-mutation crash recovery passed without replay.
 
 ## Objective
 
@@ -13,8 +13,9 @@ Deploy the verified commit to the canonical checkout and perform one final opera
 1. Fast-forward the clean canonical checkout at `C:\Forge\forge-core` to the verified commit.
 2. Rebuild and restart exclusively through Forge Control v9.
 3. Confirm Runtime Details reports module and workspace roots under `C:\Forge\forge-core`.
-4. Run one new `generic-build` Mission Console mission through both approvals.
-5. Persist the live mission, approval, evaluation and artifact identifiers under `reconstruction/`.
+4. Run one new `generic-build` Mission Console mission through both approvals and restart Forge after execution.
+5. Confirm the child mission remains `succeeded` and Mission Details shows mission result, proof fields, verification, execution evidence and recovery status without rewriting the target.
+6. Persist the live mission, approval, evaluation and artifact identifiers under `reconstruction/`.
 
 ## Failure rules
 

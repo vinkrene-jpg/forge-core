@@ -3,7 +3,7 @@ import { spawn } from "node:child_process";
 import { execFile } from "node:child_process";
 import { createHash } from "node:crypto";
 import { createServer } from "node:http";
-import { mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
+import { mkdtemp, readFile, rm, stat, writeFile } from "node:fs/promises";
 import net from "node:net";
 import os from "node:os";
 import path from "node:path";
@@ -64,7 +64,7 @@ async function waitForMissionStatus<T extends {
   return mission;
 }
 
-test("production API bundle proves persistent two-step workspace execution", async () => {
+test("production restart recovers workspace evidence without mutation replay", async () => {
   const storageRoot = await mkdtemp(path.join(os.tmpdir(), "forge-dist-state-"));
   const workspaceRoot = await mkdtemp(
     path.join(artifactDir, "dist", "forge-dist-workspace-"),
@@ -240,6 +240,7 @@ test("production API bundle proves persistent two-step workspace execution", asy
     FORGE_AUTONOMY_ENABLED: "false",
     FORGE_LOCAL_MODEL_NAME: "qwen2.5-coder:7b",
     FORGE_LOCAL_MODEL_BASE_URL: `http://127.0.0.1:${providerPort}/v1`,
+    FORGE_WORKSPACE_FINALIZATION_DELAY_MS: "30000",
   };
   const startApi = () => {
     const child = spawn(
@@ -266,6 +267,18 @@ test("production API bundle proves persistent two-step workspace execution", asy
 
     const exited = new Promise((resolve) => child.once("exit", resolve));
     child.kill("SIGTERM");
+    await Promise.race([
+      exited,
+      new Promise((resolve) => setTimeout(resolve, 5_000)),
+    ]);
+  };
+  const killApi = async (child: ReturnType<typeof spawn>): Promise<void> => {
+    if (child.exitCode !== null) {
+      return;
+    }
+
+    const exited = new Promise((resolve) => child.once("exit", resolve));
+    child.kill("SIGKILL");
     await Promise.race([
       exited,
       new Promise((resolve) => setTimeout(resolve, 5_000)),
@@ -470,15 +483,27 @@ test("production API bundle proves persistent two-step workspace execution", asy
       200,
       await executionApprovalResponse.clone().text(),
     );
-    const completedExecutionMission = await waitForMissionStatus<{
+    let checkpointedExecutionMission = await waitForJson<{
       readonly status: string;
       readonly output?: Readonly<Record<string, unknown>>;
-    }>(baseUrl, executionMissionId, "succeeded");
+    }>(`${baseUrl}/api/missions/${executionMissionId}`);
+    const checkpointStartedAt = Date.now();
+    while (
+      !checkpointedExecutionMission.output?.workspaceExecutionCheckpoint &&
+      Date.now() - checkpointStartedAt < 20_000
+    ) {
+      await new Promise((resolve) => setTimeout(resolve, 25));
+      checkpointedExecutionMission = await waitForJson(
+        `${baseUrl}/api/missions/${executionMissionId}`,
+      );
+    }
+    assert.equal(checkpointedExecutionMission.status, "running");
+    assert.ok(checkpointedExecutionMission.output?.workspaceExecutionCheckpoint);
     assert.equal(
       await readFile(path.join(workspaceRoot, targetPath), "utf8"),
       targetContent,
     );
-    const evidence = completedExecutionMission.output?.executionEvidence as
+    const evidence = checkpointedExecutionMission.output?.executionEvidence as
       | {
           readonly receipts: readonly unknown[];
           readonly fileEffects: readonly {
@@ -515,27 +540,66 @@ test("production API bundle proves persistent two-step workspace execution", asy
         artifact.content === targetContent &&
         artifact.sha256 === expectedSha256,
     ));
-    const evaluation = completedExecutionMission.output?.evaluation as
+    const evaluation = checkpointedExecutionMission.output?.evaluation as
       | Readonly<Record<string, unknown>>
       | undefined;
     assert.equal(evaluation?.decision, "accepted");
     assert.equal(evaluation?.score, 100);
+    assert.equal(checkpointedExecutionMission.output?.proofFilePath, targetPath);
+    assert.equal(checkpointedExecutionMission.output?.proofContent, targetContent);
+    assert.equal(checkpointedExecutionMission.output?.proofSha256, expectedSha256);
+    assert.ok(Array.isArray(checkpointedExecutionMission.output?.verification));
+    const beforeRecoveryStat = await stat(path.join(workspaceRoot, targetPath));
 
-    await stopApi(api);
+    await killApi(api);
     api = startApi();
     await waitForJson(`${baseUrl}/api/healthz`);
-    const persistedCompletion = await waitForJson<{
+    const persistedCompletion = await waitForMissionStatus<{
       readonly status: string;
       readonly output?: Readonly<Record<string, unknown>>;
-    }>(`${baseUrl}/api/missions/${executionMissionId}`);
-    assert.equal(persistedCompletion.status, "succeeded");
+    }>(baseUrl, executionMissionId, "succeeded");
+    const afterRecoveryStat = await stat(path.join(workspaceRoot, targetPath));
+    assert.equal(afterRecoveryStat.mtimeMs, beforeRecoveryStat.mtimeMs);
+    assert.equal(
+      await readFile(path.join(workspaceRoot, targetPath), "utf8"),
+      targetContent,
+    );
     assert.deepEqual(
       persistedCompletion.output?.executionEvidence,
-      completedExecutionMission.output?.executionEvidence,
+      checkpointedExecutionMission.output?.executionEvidence,
     );
     assert.deepEqual(
       persistedCompletion.output?.evaluation,
-      completedExecutionMission.output?.evaluation,
+      checkpointedExecutionMission.output?.evaluation,
+    );
+    assert.equal(persistedCompletion.output?.proofFilePath, targetPath);
+    assert.equal(persistedCompletion.output?.proofContent, targetContent);
+    assert.equal(persistedCompletion.output?.proofSha256, expectedSha256);
+    assert.deepEqual(
+      persistedCompletion.output?.verification,
+      checkpointedExecutionMission.output?.verification,
+    );
+    assert.deepEqual(persistedCompletion.output?.missionResult, {
+      status: "completed",
+      cause: "execution",
+      message: "Mission completed successfully",
+      producedAt: (persistedCompletion.output?.missionResult as {
+        readonly producedAt: string;
+      }).producedAt,
+    });
+    assert.equal(
+      (persistedCompletion.output?.workspaceRecovery as {
+        readonly mutationReplayed: boolean;
+        readonly validated: boolean;
+      }).mutationReplayed,
+      false,
+    );
+    assert.equal(
+      (persistedCompletion.output?.workspaceRecovery as {
+        readonly mutationReplayed: boolean;
+        readonly validated: boolean;
+      }).validated,
+      true,
     );
 
     const invalidTargetPath = "sandbox/mirror-final-stale-context-check.txt";
