@@ -2,7 +2,7 @@
 
 ## Issue #4 follow-up - Live Mission Console verification
 
-Status: ready after mounted proof-10 client request canonicalization.
+Status: ready after proof-10 runtime request normalization and second-approval regression coverage.
 
 ## Objective
 
@@ -24,7 +24,7 @@ Verify the merged Mission Console workspace-execution linkage against the author
 
 ## Resume checklist
 
-1. Confirm the deployed runtime contains issue #4.
+1. Confirm the deployed runtime contains the shared intake/runtime target normalizer and restart it before testing.
 2. Confirm runtime and API health.
 3. Confirm the visible build marker is `mission-console-mounted-submit-2026-07-30.2`, execute the two-approval flow from Mission Console with the proof-10 objective, and confirm client diagnostics show `/api/missions` with full `rawObjective`, `targets[{path:"sandbox/mirror-generic-build-proof-10.txt", allowCreate:true}]`, the same full `proofTargetPath`, and canonical `generic-build` / `build-or-mutate`; then confirm the linked pending workspace approval is immediately visible after the first approval.
 4. Capture live mission, approval, evidence and artifact identifiers.

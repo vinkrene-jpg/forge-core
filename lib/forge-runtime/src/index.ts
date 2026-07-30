@@ -73,6 +73,7 @@ export {
 export {
   AutonomousOutputEvaluator,
   classifyAutonomousObjective,
+  extractAutonomousWorkspaceTargets,
   parseCapabilityResult,
   parseAutonomousCycleInput,
   type AutonomousCycleInput,

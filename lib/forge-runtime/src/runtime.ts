@@ -24,6 +24,7 @@ import path from "node:path";
 import {
   AutonomousOutputEvaluator,
   type AutonomousExecutionEvidence,
+  extractAutonomousWorkspaceTargets,
   parseCapabilityResult,
   parseAutonomousCycleInput,
   type AutonomousEvaluation,
@@ -1981,6 +1982,42 @@ export class ForgeRuntime {
   async createMission(
     request: CreateMissionRequest,
   ): Promise<RuntimeMissionCreationResult> {
+    if (request.kind === "operator.autonomous-cycle") {
+      const missionInput = request.input ?? {};
+      const objective =
+        typeof missionInput.objective === "string"
+          ? missionInput.objective
+          : "";
+      const existingTargets = missionInput.targets;
+
+      if (
+        (!Array.isArray(existingTargets) || existingTargets.length === 0) &&
+        objective.length > 0
+      ) {
+        const inferredTargets = extractAutonomousWorkspaceTargets(objective);
+
+        if (inferredTargets.length === 1) {
+          const targetPath = inferredTargets[0].path;
+          request = Object.freeze({
+            ...request,
+            input: Object.freeze({
+              ...missionInput,
+              rawObjective:
+                typeof missionInput.rawObjective === "string"
+                  ? missionInput.rawObjective
+                  : objective,
+              targets: inferredTargets,
+              objectiveExecutionMode: "build-or-mutate",
+              objectiveProfile: "generic-build",
+              intakeObjectiveExecutionMode: "build-or-mutate",
+              intakeObjectiveProfile: "generic-build",
+              proofTargetPath: targetPath,
+            }),
+          });
+        }
+      }
+    }
+
     const capabilityAnalysis =
       await this.#capabilityAnalyzer.analyzeMission(request);
 

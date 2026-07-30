@@ -2,6 +2,7 @@ import { Router, type IRouter } from "express";
 import {
   assessMissionRequest,
   classifyAutonomousObjective,
+  extractAutonomousWorkspaceTargets,
   forgeRuntime,
   requirementsForMission,
   type CapabilityStatus,
@@ -155,72 +156,7 @@ function extractWorkspaceTargets(
   command: string,
   includeInlineMutationTarget: boolean,
 ): readonly { readonly path: string; readonly allowCreate: true }[] {
-  const candidates = new Map<string, string>();
-  const mutationVerbs =
-    /\b(?:maak|creëer|creeer|bouw|wijzig|verander|bewerk|schrijf|implementeer|create|build|modify|edit|write|implement)\b/gi;
-  const relativePath =
-    String.raw`(?:(?:[a-z0-9._-]+[\\/])+)[a-z0-9][a-z0-9._-]*\.[a-z0-9]+`;
-  const inlineTargetPath =
-    String.raw`(?:(?:[a-z0-9._-]+[\\/])+)?[a-z0-9][a-z0-9._-]*\.[a-z0-9]+`;
-  const pathPattern = new RegExp(
-    String.raw`(?:^|[\s"'])(` +
-      inlineTargetPath +
-      String.raw`)(?=$|[\s,.;:!?'"'])`,
-    "gi",
-  );
-  const labeledPathPattern = new RegExp(
-    String.raw`^pad:\s*(` + relativePath + String.raw`)\s*$`,
-    "i",
-  );
-  const standalonePathPattern = new RegExp(
-    String.raw`^(` + relativePath + String.raw`)\s*$`,
-    "i",
-  );
-
-  const addCandidate = (rawPath: string): void => {
-    const targetPath = rawPath.replace(/\\/g, "/");
-    const segments = targetPath.split("/");
-
-    if (segments.some((segment) => segment === "." || segment === "..")) {
-      throw new Error("Workspace target path may not contain traversal segments");
-    }
-
-    candidates.set(targetPath.toLowerCase(), targetPath);
-  };
-
-  for (const line of command.split("\n")) {
-    const labeled = line.match(labeledPathPattern);
-    const standalone = line.match(standalonePathPattern);
-
-    if (labeled) {
-      addCandidate(labeled[1]);
-    } else if (standalone) {
-      addCandidate(standalone[1]);
-    }
-  }
-
-  if (includeInlineMutationTarget) {
-    for (const verb of command.matchAll(mutationVerbs)) {
-      const start = (verb.index ?? 0) + verb[0].length;
-      const mutationSpan = command.slice(start, start + 160);
-
-      for (const pathMatch of mutationSpan.matchAll(pathPattern)) {
-        addCandidate(pathMatch[1]);
-      }
-    }
-  }
-
-  if (candidates.size > 1) {
-    throw new Error(
-      "Mission intake requires exactly one unambiguous workspace target path",
-    );
-  }
-
-  const [targetPath] = candidates.values();
-
-  return targetPath
-    ? Object.freeze([Object.freeze({ path: targetPath, allowCreate: true as const })])
-    : Object.freeze([]);
+  return extractAutonomousWorkspaceTargets(command, includeInlineMutationTarget);
 }
 
 function hasRepositoryPathReference(command: string): boolean {
