@@ -2,7 +2,7 @@
 
 ## Issue #4 follow-up - Live Mission Console verification
 
-Status: ready after proof-13 production runtime-binding instrumentation.
+Status: ready after successful root `forge:start` verification.
 
 ## Objective
 

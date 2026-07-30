@@ -186,8 +186,9 @@ test("production API bundle loads canonical runtime executor", async () => {
       Date.now() - startedAt < 15_000
     ) {
       await new Promise((resolve) => setTimeout(resolve, 50));
-      terminal = await fetch(`${baseUrl}/api/missions/${created.id}`)
-        .then((response) => response.json());
+      terminal = await waitForJson<typeof mission>(
+        `${baseUrl}/api/missions/${created.id}`,
+      );
     }
 
     assert.equal(terminal.status, "succeeded", JSON.stringify(terminal));
