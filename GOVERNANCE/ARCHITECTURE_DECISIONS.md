@@ -90,4 +90,6 @@ The production API bundle embeds its source Git SHA and reports the concrete loa
 
 Workspace planning requests an Ollama-compatible JSON Schema response in addition to separate system and user prompt instructions. The provider schema constrains the output shape using supported structural keywords; the runtime remains authoritative for strict field, length, target, precondition, verification and no-push validation. The brace-aware fallback accepts exactly one syntactically valid JSON object from wrapper text. Missing, malformed, multiple or schema-invalid objects fail with concrete diagnostics and never create execution authority.
 
+Workspace verification is represented only by the fixed identifiers `typecheck`, `test` and `build`. The two exact historical Forge runtime `pnpm` test/typecheck phrases normalize to those identifiers for compatibility; all other commands or free text remain invalid.
+
 Rejected provider output is persisted only as a bounded, secret-scrubbed excerpt with its total length, first and last 500 characters, SHA-256, truncation state and concrete parse or schema error. Mission Details exposes that evidence so operators can distinguish provider-contract failures from stale runtime deployments without granting execution authority.

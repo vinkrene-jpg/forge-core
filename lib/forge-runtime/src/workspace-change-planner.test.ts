@@ -243,5 +243,31 @@ test("provider workspace planner", { concurrency: false }, async (t) => {
       }),
       /Unsupported workspace provider plan schemaVersion/,
     );
+
+    const mapped = parseWorkspaceProviderPlan({
+      ...base,
+      outputText: JSON.stringify({
+        ...validPlan,
+        verification: [
+          "Run pnpm --filter @workspace/forge-runtime typecheck",
+          "Run pnpm --filter @workspace/forge-runtime test",
+        ],
+      }),
+    });
+    assert.deepEqual(mapped.request.verification, ["typecheck", "test"]);
+
+    assert.throws(
+      () => parseWorkspaceProviderPlan({
+        ...base,
+        outputText: JSON.stringify({
+          ...validPlan,
+          verification: [
+            "Run pnpm --filter @workspace/forge-runtime test",
+            "Invoke arbitrary-command",
+          ],
+        }),
+      }),
+      /Unsupported verification step: Invoke arbitrary-command/,
+    );
   });
 });

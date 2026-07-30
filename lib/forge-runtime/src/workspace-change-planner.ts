@@ -48,6 +48,22 @@ function assertSecretFree(value: string): void {
   }
 }
 
+function normalizeVerification(value: unknown): unknown {
+  if (!Array.isArray(value)) {
+    return value;
+  }
+
+  const knownRuntimeChecks = new Map<string, "typecheck" | "test">([
+    ["Run pnpm --filter @workspace/forge-runtime typecheck", "typecheck"],
+    ["Run pnpm --filter @workspace/forge-runtime test", "test"],
+  ]);
+
+  return value.map((step) =>
+    typeof step === "string" && knownRuntimeChecks.has(step)
+      ? knownRuntimeChecks.get(step)
+      : step);
+}
+
 function parseSingleJsonObject(outputText: string): Readonly<Record<string, unknown>> {
   const candidates: Array<{
     readonly offset: number;
@@ -172,7 +188,7 @@ export function parseWorkspaceProviderPlan(input: {
 
   const request = parseWorkspaceChangeRequest({
     changes: candidate.changes,
-    verification: candidate.verification,
+    verification: normalizeVerification(candidate.verification),
     commit: candidate.commit,
   });
 

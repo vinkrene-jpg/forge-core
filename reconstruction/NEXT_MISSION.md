@@ -2,7 +2,7 @@
 
 ## Issue #4 follow-up - Live Mission Console verification
 
-Status: ready after proof-16 structured workspace-provider contract correction.
+Status: ready after proof-17 verification identifier contract correction.
 
 ## Objective
 

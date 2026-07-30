@@ -47,7 +47,10 @@ const workspacePlanJsonSchema = Object.freeze({
     },
     verification: {
       type: "array",
-      items: { type: "string" },
+      items: {
+        type: "string",
+        enum: ["typecheck", "test", "build"],
+      },
     },
     commit: {
       type: "object",
@@ -65,6 +68,7 @@ const workspacePlanSystemPrompt = [
   "You are Forge's governed workspace planner.",
   "Return exactly one JSON object that conforms to the supplied JSON Schema.",
   "Return JSON only: no Markdown fences, preamble, explanation, analysis, or trailing text.",
+  "verification may contain only the identifiers typecheck, test, and build. To request the Forge runtime test, use test; never return a shell command.",
   "Use only the approved target manifest and copy every expectedSha256 value exactly.",
   "Never request push, credentials, arbitrary commands, deletions, or protected paths.",
 ].join(" ");

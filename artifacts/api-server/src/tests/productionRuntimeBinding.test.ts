@@ -64,27 +64,26 @@ test("production API bundle loads canonical runtime executor", async () => {
     "Niet pushen.",
   ].join("\n");
   const liveInvalidOutput = [
-    "Manual fallback response generated at 2026-07-30T17:22:12.314Z.",
-    "Objective: Maak uitsluitend één nieuw testbestand aan:",
-    "",
-    "Pad: sandbox/mirror-generic-build-proof-16.txt",
-    "",
-    "Exacte inhoud:",
-    "Forge generic-build live approval proof",
-    "Datum: 2026-07-30",
-    "Doel: tweede workspace approval en echte execution evidence aantonen",
-    "",
-    "W...",
-    "Assumptions:",
-    "- External provider execution was unavailable or budget-constrained.",
-    "- This response preserves runtime continuity and marks the capability as a gap until verified implementation evidence exists.",
-    "Verification guidance:",
-    "- Run pnpm --filter @workspace/forge-runtime test",
-    "- Run pnpm --filter @workspace/forge-runtime typecheck",
-    "- Confirm no secret material is persisted in runtime evidence",
-    "CAPABILITY_RESULT: GAP",
-    "Next step:",
-    "- Schedule a bounded low-cost follow-up mission using the local model route.",
+    "{",
+    "  \"schemaVersion\": 1,",
+    "  \"summary\": \"The mission to execute a bounded evidence exercise for capability human-intent.goal-clarification was rejected due to an external provider execution failure. A manual fallback response has been generated, and the capability is marked as a gap until verified implementation evidence exists.\",",
+    "  \"changes\": [",
+    "    {",
+    "      \"path\": \"sandbox/mirror-generic-build-proof-16.txt\",",
+    "      \"expectedSha256\": null,",
+    "      \"content\": \"// This file was created as part of a fallback response for the rejected mission.\\n// It is intended to be a placeholder until verified implementation evidence exists.\"",
+    "    }",
+    "  ],",
+    "  \"verification\": [",
+    "    \"Run pnpm --filter @workspace/forge-runtime test\",",
+    "    \"Run pnpm --filter @workspace/forge-runtime typecheck\",",
+    "    \"Confirm no secret material is persisted in runtime evidence\"",
+    "  ],",
+    "  \"commit\": {",
+    "    \"message\": \"Fallback response for rejected mission and placeholder file creation\",",
+    "    \"push\": false",
+    "  }",
+    "}",
   ].join("\n");
   const providerRequestBodies: Readonly<Record<string, unknown>>[] = [];
   const provider = createServer((request, response) => {
@@ -106,13 +105,16 @@ test("production API bundle loads canonical runtime executor", async () => {
           expectedSha256: null,
           content: "Forge generic-build live approval proof\n",
         }],
-        verification: ["typecheck"],
+        verification: [
+          "typecheck",
+          "Run pnpm --filter @workspace/forge-runtime test",
+        ],
         commit: {
           message: "test: production runtime binding",
           push: false,
         },
       };
-      const content = body.includes("mirror-generic-build-proof-16.txt")
+      const content = body.includes("mirror-generic-build-proof-17.txt")
         ? liveInvalidOutput
         : JSON.stringify(plan, null, 2);
       response.setHeader("Content-Type", "application/json");
@@ -243,6 +245,12 @@ test("production API bundle loads canonical runtime executor", async () => {
     assert.equal(terminal.output?.evaluation, null);
     assert.equal(typeof terminal.output?.workspaceExecutionMissionId, "string");
     assert.equal(typeof terminal.output?.workspaceExecutionApprovalId, "string");
+    assert.deepEqual(
+      (terminal.output?.plan as {
+        readonly request: { readonly verification: readonly string[] };
+      }).request.verification,
+      ["typecheck", "test"],
+    );
     const executionMissionId = String(
       terminal.output?.workspaceExecutionMissionId,
     );
@@ -298,6 +306,17 @@ test("production API bundle loads canonical runtime executor", async () => {
       (jsonSchema?.schema as Readonly<Record<string, unknown>>)?.additionalProperties,
       false,
     );
+    const schemaProperties = (
+      jsonSchema?.schema as Readonly<Record<string, unknown>>
+    )?.properties as Readonly<Record<string, unknown>>;
+    const verificationSchema = schemaProperties.verification as
+      Readonly<Record<string, unknown>>;
+    const verificationItems = verificationSchema.items as
+      Readonly<Record<string, unknown>>;
+    assert.deepEqual(
+      verificationItems.enum,
+      ["typecheck", "test", "build"],
+    );
     const messages = providerRequest?.messages as
       | readonly Readonly<Record<string, unknown>>[]
       | undefined;
@@ -307,7 +326,7 @@ test("production API bundle loads canonical runtime executor", async () => {
     assert.equal(providerRequest?.temperature, 0);
     assert.match(output, /Forge runtime binding/);
 
-    const invalidTargetPath = "sandbox/mirror-generic-build-proof-16.txt";
+    const invalidTargetPath = "sandbox/mirror-generic-build-proof-17.txt";
     const invalidObjective = rawObjective.replace(targetPath, invalidTargetPath);
     const invalidCreateResponse = await fetch(`${baseUrl}/api/missions`, {
       method: "POST",
@@ -373,11 +392,11 @@ test("production API bundle loads canonical runtime executor", async () => {
     assert.ok(diagnostics);
     assert.match(
       String(diagnostics.rawOutputExcerpt),
-      /^Manual fallback response generated/,
+      /^\{/,
     );
     assert.match(
       String(diagnostics.parseError),
-      /contains no valid JSON object/,
+      /Unsupported verification step: Confirm no secret material is persisted in runtime evidence/,
     );
     assert.equal(diagnostics.outputLength, liveInvalidOutput.length);
     assert.equal(
