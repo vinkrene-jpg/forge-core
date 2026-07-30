@@ -85,3 +85,7 @@ Canonical `objectiveExecutionMode` and `objectiveProfile` values survive mission
 ## AD-020 - Runtime binding is execution evidence
 
 The production API bundle embeds its source Git SHA and reports the concrete loaded module path at startup and in each autonomous pre-execution snapshot. Mission Details exposes that snapshot with intake and effective execution intent. A live result is not valid evidence for a source revision unless the reported build SHA and module path identify the deployed bundle under test.
+
+## AD-021 - Workspace provider plans are single JSON objects
+
+Workspace planning requests a provider-level JSON object response in addition to the textual prompt contract. The runtime accepts exactly one syntactically valid JSON object, may extract that one object from provider wrapper text, and then applies the existing strict schema, target, precondition, verification and no-push validation. Missing, malformed or multiple objects fail with concrete diagnostics and never create execution authority.

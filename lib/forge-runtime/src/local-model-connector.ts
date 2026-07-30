@@ -100,6 +100,9 @@ export class LocalModelConnector
       "http://127.0.0.1:11434/v1"
     ).replace(/\/$/, "");
     const apiKey = process.env.FORGE_LOCAL_MODEL_API_KEY?.trim();
+    const requiresRawJsonObject = composition.objective.includes(
+      "Return exactly one raw JSON object.",
+    );
 
     const controller = new AbortController();
     const timeout = setTimeout(() => controller.abort(), 300_000);
@@ -122,6 +125,9 @@ export class LocalModelConnector
             },
           ],
           temperature: 0.2,
+          ...(requiresRawJsonObject
+            ? { response_format: { type: "json_object" } }
+            : {}),
         }),
         signal: controller.signal,
       });

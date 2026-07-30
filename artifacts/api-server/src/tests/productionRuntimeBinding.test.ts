@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import { spawn } from "node:child_process";
 import { execFile } from "node:child_process";
 import { createServer } from "node:http";
-import { mkdtemp, rm, writeFile } from "node:fs/promises";
+import { mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import net from "node:net";
 import os from "node:os";
 import path from "node:path";
@@ -63,11 +63,18 @@ test("production API bundle loads canonical runtime executor", async () => {
     "Voer typecheck uit als verificatie.",
     "Niet pushen.",
   ].join("\n");
-  const provider = createServer((_request, response) => {
-    response.setHeader("Content-Type", "application/json");
-    response.end(JSON.stringify({
-      id: "production-binding-plan",
-      output_text: JSON.stringify({
+  const providerRequestBodies: Readonly<Record<string, unknown>>[] = [];
+  const provider = createServer((request, response) => {
+    let body = "";
+    request.setEncoding("utf8");
+    request.on("data", (chunk) => {
+      body += chunk;
+    });
+    request.on("end", () => {
+      providerRequestBodies.push(
+        JSON.parse(body) as Readonly<Record<string, unknown>>,
+      );
+      const plan = {
         schemaVersion: 1,
         summary:
           "Assumptions: the approved target is one new sandbox proof file and no other repository content may change. Verification guidance: inspect the persisted plan, second approval, exact target path, receipts, file effects, verification runs, artifact hashes, and final evaluation before accepting this governed execution.",
@@ -81,13 +88,22 @@ test("production API bundle loads canonical runtime executor", async () => {
           message: "test: production runtime binding",
           push: false,
         },
-      }),
-      usage: {
-        input_tokens: 20,
-        output_tokens: 30,
-        total_tokens: 50,
-      },
-    }));
+      };
+      response.setHeader("Content-Type", "application/json");
+      response.end(JSON.stringify({
+        id: "production-binding-plan",
+        choices: [{
+          message: {
+            content: `\`\`\`json\n${JSON.stringify(plan)}\n\`\`\``,
+          },
+        }],
+        usage: {
+          prompt_tokens: 20,
+          completion_tokens: 30,
+          total_tokens: 50,
+        },
+      }));
+    });
   });
   await new Promise<void>((resolve) =>
     provider.listen(providerPort, "127.0.0.1", resolve));
@@ -117,11 +133,11 @@ test("production API bundle loads canonical runtime executor", async () => {
         NODE_ENV: "production",
         STORAGE_DIR: storageRoot,
         FORGE_WORKSPACE_ROOT: workspaceRoot,
-        FORGE_AI_PROVIDER: "openai-responses",
+        FORGE_AI_PROVIDER: "local-model",
+        FORGE_LOCAL_MODEL_ENABLED: "true",
         FORGE_AUTONOMY_ENABLED: "false",
-        OPENAI_API_KEY: "test-only-not-a-real-secret",
-        OPENAI_MODEL: "test-model",
-        OPENAI_BASE_URL: `http://127.0.0.1:${providerPort}/v1`,
+        FORGE_LOCAL_MODEL_NAME: "test-model",
+        FORGE_LOCAL_MODEL_BASE_URL: `http://127.0.0.1:${providerPort}/v1`,
       },
       stdio: ["ignore", "pipe", "pipe"],
     },
@@ -197,6 +213,37 @@ test("production API bundle loads canonical runtime executor", async () => {
     assert.equal(terminal.output?.evaluation, null);
     assert.equal(typeof terminal.output?.workspaceExecutionMissionId, "string");
     assert.equal(typeof terminal.output?.workspaceExecutionApprovalId, "string");
+    const executionMissionId = String(
+      terminal.output?.workspaceExecutionMissionId,
+    );
+    const executionApprovalId = String(
+      terminal.output?.workspaceExecutionApprovalId,
+    );
+    const executionMission = await fetch(
+      `${baseUrl}/api/missions/${executionMissionId}`,
+    ).then((response) => response.json() as Promise<{
+      readonly status: string;
+      readonly output: unknown;
+    }>);
+    const approvals = await fetch(`${baseUrl}/api/governance/approvals`)
+      .then((response) => response.json() as Promise<{
+        readonly approvals: readonly {
+          readonly id: string;
+          readonly missionId: string;
+          readonly status: string;
+        }[];
+      }>);
+    assert.equal(executionMission.status, "awaiting_approval");
+    assert.equal(executionMission.output, null);
+    assert.ok(approvals.approvals.some(
+      (approval) =>
+        approval.id === executionApprovalId &&
+        approval.missionId === executionMissionId &&
+        approval.status === "pending",
+    ));
+    await assert.rejects(
+      readFile(path.join(workspaceRoot, targetPath), "utf8"),
+    );
     const snapshot = terminal.output?.preExecutionSnapshot as
       | Readonly<Record<string, unknown>>
       | undefined;
@@ -207,6 +254,9 @@ test("production API bundle loads canonical runtime executor", async () => {
     assert.equal(snapshot.intakeObjectiveProfile, "generic-build");
     assert.equal(snapshot.effectiveObjectiveExecutionMode, "build-or-mutate");
     assert.equal(snapshot.effectiveObjectiveProfile, "generic-build");
+    assert.deepEqual(providerRequestBodies[0]?.response_format, {
+      type: "json_object",
+    });
     assert.match(output, /Forge runtime binding/);
   } finally {
     const exited = new Promise((resolve) => api.once("exit", resolve));

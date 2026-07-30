@@ -170,4 +170,58 @@ test("provider workspace planner", { concurrency: false }, async (t) => {
       }),
     }), /changed the source precondition/);
   });
+
+  await t.test("extracts exactly one wrapped JSON object and diagnoses invalid output", () => {
+    const base = {
+      missionId: "live-proof-14",
+      projectId: "forge-core",
+      objective: "Create the approved proof file",
+      targets: [{
+        path: "sandbox/mirror-generic-build-proof-14.txt",
+        expectedSha256: null,
+        exists: false,
+      }],
+      compositionId: "composition",
+      executionId: "execution",
+    } as const;
+    const validPlan = {
+      schemaVersion: 1,
+      summary: "Assumptions and verification guidance for one approved file.",
+      changes: [{
+        path: "sandbox/mirror-generic-build-proof-14.txt",
+        expectedSha256: null,
+        content: "Forge generic-build live approval proof\n",
+      }],
+      verification: ["typecheck"],
+      commit: { message: "test: proof 14", push: false },
+    };
+    const parsed = parseWorkspaceProviderPlan({
+      ...base,
+      outputText: [
+        "The requested plan follows.",
+        "```json",
+        JSON.stringify(validPlan),
+        "```",
+      ].join("\n"),
+    });
+    assert.equal(
+      parsed.request.changes[0].path,
+      "sandbox/mirror-generic-build-proof-14.txt",
+    );
+
+    assert.throws(
+      () => parseWorkspaceProviderPlan({
+        ...base,
+        outputText: "```json\n{\"schemaVersion\":1\n```",
+      }),
+      /no valid JSON object \(unterminated object at offset 8\)/,
+    );
+    assert.throws(
+      () => parseWorkspaceProviderPlan({
+        ...base,
+        outputText: `${JSON.stringify(validPlan)}\n${JSON.stringify(validPlan)}`,
+      }),
+      /contains 2 valid JSON objects; exactly one is required/,
+    );
+  });
 });

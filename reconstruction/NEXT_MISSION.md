@@ -2,7 +2,7 @@
 
 ## Issue #4 follow-up - Live Mission Console verification
 
-Status: ready after successful root `forge:start` verification.
+Status: ready after proof-14 workspace-provider JSON contract correction.
 
 ## Objective
 

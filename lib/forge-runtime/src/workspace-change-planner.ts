@@ -48,6 +48,98 @@ function assertSecretFree(value: string): void {
   }
 }
 
+function parseSingleJsonObject(outputText: string): Readonly<Record<string, unknown>> {
+  const candidates: Array<{
+    readonly offset: number;
+    readonly value: Readonly<Record<string, unknown>>;
+  }> = [];
+  const failures: string[] = [];
+
+  for (let start = 0; start < outputText.length; start += 1) {
+    if (outputText[start] !== "{") {
+      continue;
+    }
+
+    let depth = 0;
+    let inString = false;
+    let escaped = false;
+    let end = -1;
+
+    for (let index = start; index < outputText.length; index += 1) {
+      const character = outputText[index];
+
+      if (inString) {
+        if (escaped) {
+          escaped = false;
+        } else if (character === "\\") {
+          escaped = true;
+        } else if (character === "\"") {
+          inString = false;
+        }
+        continue;
+      }
+
+      if (character === "\"") {
+        inString = true;
+      } else if (character === "{") {
+        depth += 1;
+      } else if (character === "}") {
+        depth -= 1;
+
+        if (depth === 0) {
+          end = index + 1;
+          break;
+        }
+      }
+    }
+
+    if (end < 0) {
+      failures.push(`unterminated object at offset ${start}`);
+      break;
+    }
+
+    const candidateText = outputText.slice(start, end);
+
+    try {
+      const decoded: unknown = JSON.parse(candidateText);
+
+      if (
+        typeof decoded === "object" &&
+        decoded !== null &&
+        !Array.isArray(decoded)
+      ) {
+        candidates.push({
+          offset: start,
+          value: decoded as Readonly<Record<string, unknown>>,
+        });
+      }
+    } catch (error) {
+      failures.push(
+        `invalid object at offset ${start}: ${
+          error instanceof Error ? error.message : String(error)
+        }`,
+      );
+    }
+
+    start = end - 1;
+  }
+
+  if (candidates.length === 0) {
+    throw new Error(
+      "Workspace provider output contains no valid JSON object" +
+        (failures.length > 0 ? ` (${failures.slice(0, 3).join("; ")})` : ""),
+    );
+  }
+
+  if (candidates.length !== 1) {
+    throw new Error(
+      `Workspace provider output contains ${candidates.length} valid JSON objects; exactly one is required`,
+    );
+  }
+
+  return candidates[0].value;
+}
+
 export function parseWorkspaceProviderPlan(input: {
   readonly missionId: string;
   readonly projectId: string;
@@ -59,19 +151,7 @@ export function parseWorkspaceProviderPlan(input: {
 }): WorkspaceChangePlan {
   assertSecretFree(input.outputText);
 
-  let decoded: unknown;
-
-  try {
-    decoded = JSON.parse(input.outputText);
-  } catch {
-    throw new Error("Workspace provider output must be one raw JSON object");
-  }
-
-  if (typeof decoded !== "object" || decoded === null || Array.isArray(decoded)) {
-    throw new Error("Workspace provider plan must be a JSON object");
-  }
-
-  const candidate = decoded as Readonly<Record<string, unknown>>;
+  const candidate = parseSingleJsonObject(input.outputText);
 
   if (candidate.schemaVersion !== 1) {
     throw new Error("Unsupported workspace provider plan schemaVersion");
