@@ -6,7 +6,7 @@ import * as React from "react";
 const rawObjective = [
   "Maak uitsluitend één nieuw testbestand aan:",
   "",
-  "Pad: sandbox/mirror-generic-build-proof-8.txt",
+  "Pad: sandbox/mirror-generic-build-proof-10.txt",
   "",
   "Exacte inhoud: Forge generic-build live approval proof",
   "Datum: 2026-07-30",
@@ -18,28 +18,16 @@ const rawObjective = [
   "Niet pushen.",
 ].join("\n");
 
-function createRequest(command: string) {
-  const target = command.includes("mirror-generic-build-proof-8.txt")
-    ? [{
-        path: "sandbox/mirror-generic-build-proof-8.txt",
-        allowCreate: true,
-      }]
-    : undefined;
-
+function brokenLivePreviewRequest(command: string) {
   return {
     kind: "operator.autonomous-cycle" as const,
     title: command,
     input: {
       projectId: "forge-core",
       objective: command.replace(/\n+/g, " "),
-      rawObjective: command,
-      ...(target ? { targets: target } : {}),
-      intakeObjectiveExecutionMode: target
-        ? "build-or-mutate"
-        : "analysis-only",
-      intakeObjectiveProfile: target
-        ? "generic-build"
-        : "generic-analysis",
+      proofTargetPath: command.includes("mirror-generic-build-proof-10.txt")
+        ? "mirror-generic-build-proof-10.txt"
+        : undefined,
     },
   };
 }
@@ -59,14 +47,14 @@ async function waitFor(
   }
 }
 
-test("mounted / route posts proof-8 through the visible Start missie button", async () => {
+test("mounted / route canonicalizes proof-10 in the final Start missie POST", async () => {
   const dom = new JSDOM(
     "<!doctype html><html><body><div id=\"root\"></div></body></html>",
     { url: "http://localhost/" },
   );
   const originalFetch = globalThis.fetch;
   const requests: Array<{ url: string; body: unknown }> = [];
-  let finalCreateBody: ReturnType<typeof createRequest> | null = null;
+  let finalCreateBody: Readonly<Record<string, unknown>> | null = null;
 
   Object.assign(globalThis, {
     window: dom.window,
@@ -112,7 +100,7 @@ test("mounted / route posts proof-8 through the visible Start missie button", as
 
     if (url === "/api/operator/mission-intake/preview") {
       const command = String(body?.command ?? "");
-      const request = createRequest(command);
+      const request = brokenLivePreviewRequest(command);
       return Response.json({
         originalCommand: command,
         interpretedGoal: command,
@@ -130,7 +118,7 @@ test("mounted / route posts proof-8 through the visible Start missie button", as
     }
 
     if (url === "/api/missions" && init?.method === "POST") {
-      finalCreateBody = body as ReturnType<typeof createRequest>;
+      finalCreateBody = body;
       return Response.json({
         id: "mounted-route-planning-mission",
         ...finalCreateBody,
@@ -182,7 +170,7 @@ test("mounted / route posts proof-8 through the visible Start missie button", as
     });
     assert.match(
       container.textContent ?? "",
-      /Build mission-console-mounted-submit-2026-07-30\.1/,
+      /Build mission-console-mounted-submit-2026-07-30\.2/,
     );
 
     const textarea = container.querySelector("textarea");
@@ -222,28 +210,43 @@ test("mounted / route posts proof-8 through the visible Start missie button", as
     });
 
     const postedRequest = finalCreateBody as
-      | ReturnType<typeof createRequest>
+      | ReturnType<typeof brokenLivePreviewRequest> & {
+          readonly input: {
+            readonly rawObjective: string;
+            readonly targets: readonly {
+              readonly path: string;
+              readonly allowCreate: boolean;
+            }[];
+            readonly objectiveExecutionMode: string;
+            readonly objectiveProfile: string;
+            readonly proofTargetPath: string;
+          };
+        }
       | null;
     assert.ok(postedRequest);
     assert.equal(postedRequest.input.rawObjective, rawObjective);
     assert.deepEqual(postedRequest.input.targets, [{
-      path: "sandbox/mirror-generic-build-proof-8.txt",
+      path: "sandbox/mirror-generic-build-proof-10.txt",
       allowCreate: true,
     }]);
     assert.equal(
-      postedRequest.input.intakeObjectiveExecutionMode,
+      postedRequest.input.objectiveExecutionMode,
       "build-or-mutate",
     );
     assert.equal(
-      postedRequest.input.intakeObjectiveProfile,
+      postedRequest.input.objectiveProfile,
       "generic-build",
+    );
+    assert.equal(
+      postedRequest.input.proofTargetPath,
+      "sandbox/mirror-generic-build-proof-10.txt",
     );
 
     const diagnostics = container.querySelector(
       "[data-testid=\"mission-console-request-diagnostics\"]",
     )?.textContent ?? "";
     assert.match(diagnostics, /\/api\/missions/);
-    assert.match(diagnostics, /mirror-generic-build-proof-8\.txt/);
+    assert.match(diagnostics, /sandbox\/mirror-generic-build-proof-10\.txt/);
     assert.match(diagnostics, /build-or-mutate/);
     assert.match(diagnostics, /generic-build/);
   } finally {

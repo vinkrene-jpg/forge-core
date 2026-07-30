@@ -33,7 +33,7 @@ import {
 } from "@/pages/mission-console-submit";
 
 export const MISSION_CONSOLE_BUILD_MARKER =
-  "mission-console-mounted-submit-2026-07-30.1";
+  "mission-console-mounted-submit-2026-07-30.2";
 
 function progressForStatus(status: string): number {
   if (status === "awaiting_approval") {
