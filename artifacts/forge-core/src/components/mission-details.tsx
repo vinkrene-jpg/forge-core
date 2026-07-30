@@ -125,6 +125,25 @@ export function MissionDetails({
         ) : null}
       </div>
 
+      <div>
+        <div className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+          Intake request diagnostics
+        </div>
+        <pre className="mt-2 max-h-64 overflow-auto whitespace-pre-wrap rounded-md border border-border/50 bg-background p-3 text-xs text-muted-foreground">
+          {JSON.stringify({
+            targets: input?.targets ?? null,
+            intakeObjectiveExecutionMode:
+              input?.intakeObjectiveExecutionMode ?? null,
+            intakeObjectiveProfile:
+              input?.intakeObjectiveProfile ?? null,
+            producedObjectiveExecutionMode:
+              output?.objectiveExecutionMode ?? null,
+            producedObjectiveProfile:
+              output?.objectiveProfile ?? null,
+          }, null, 2)}
+        </pre>
+      </div>
+
       {executionEvidence ? (
         <div className="space-y-4 rounded-md border border-border/60 p-4">
           <div className="font-semibold">Execution evidence</div>

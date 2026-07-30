@@ -218,6 +218,14 @@ function buildMissionIntakePreview(
           input: {
             projectId,
             objective: interpretedGoal,
+            intakeObjectiveExecutionMode:
+              targets.length > 0
+                ? "build-or-mutate"
+                : objectiveClassification?.mode,
+            intakeObjectiveProfile:
+              targets.length > 0
+                ? "generic-build"
+                : objectiveClassification?.profile,
             ...(proofTargetPath ? { proofTargetPath } : {}),
             ...(targets.length > 0 ? { targets } : {}),
             cycleIndex: 1,

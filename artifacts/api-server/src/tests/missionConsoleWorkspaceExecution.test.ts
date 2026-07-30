@@ -229,6 +229,14 @@ test(
         path: "sandbox/mirror-generic-build-proof-2.txt",
         allowCreate: true,
       }]);
+      assert.equal(
+        preview.request.input?.intakeObjectiveExecutionMode,
+        "build-or-mutate",
+      );
+      assert.equal(
+        preview.request.input?.intakeObjectiveProfile,
+        "generic-build",
+      );
 
       const createResponse = await fetch(`${baseUrl}/api/missions`, {
         method: "POST",
@@ -243,6 +251,11 @@ test(
         path: "sandbox/mirror-generic-build-proof-2.txt",
         allowCreate: true,
       }]);
+      assert.equal(
+        created.input.intakeObjectiveExecutionMode,
+        "build-or-mutate",
+      );
+      assert.equal(created.input.intakeObjectiveProfile, "generic-build");
 
       const firstApprovalResponse = await fetch(
         `${baseUrl}/api/governance/approvals/${created.approval.id}/approve`,
