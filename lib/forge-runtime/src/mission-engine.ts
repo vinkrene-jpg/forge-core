@@ -567,6 +567,26 @@ export class MissionEngine {
     missionId: string,
     output: Readonly<Record<string, unknown>>,
   ): Promise<MissionRecord> {
+    const current = this.get(missionId);
+
+    if (
+      current?.kind === "operator.autonomous-cycle" &&
+      current.input.objectiveExecutionMode === "build-or-mutate" &&
+      current.input.objectiveProfile === "generic-build" &&
+      (
+        output.objectiveExecutionMode !== "build-or-mutate" ||
+        output.objectiveProfile !== "generic-build" ||
+        typeof output.workspaceExecutionMissionId !== "string" ||
+        output.workspaceExecutionMissionId.length === 0 ||
+        typeof output.workspaceExecutionApprovalId !== "string" ||
+        output.workspaceExecutionApprovalId.length === 0
+      )
+    ) {
+      throw new Error(
+        "Generic build may not complete without a linked workspace execution mission and approval",
+      );
+    }
+
     return this.#updateRunningMission(
       missionId,
       "succeeded",

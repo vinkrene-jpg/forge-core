@@ -79,3 +79,40 @@ test("expliciet create-target houdt runtime in generic-build modus", () => {
   assert.equal(result.objectiveExecutionMode, "build-or-mutate");
   assert.equal(result.objectiveProfile, "generic-build");
 });
+
+test("persisted canonical build intent blijft leidend na hydration", () => {
+  const result = parseAutonomousCycleInput({
+    projectId: "forge-core",
+    objective:
+      "Wijzig geen enkel ander bestand dan het expliciete doelbestand.",
+    cycleIndex: 1,
+    maxCycles: 1,
+    objectiveExecutionMode: "build-or-mutate",
+    objectiveProfile: "generic-build",
+    targets: [{
+      path: "sandbox/mirror-generic-build-proof-12.txt",
+      allowCreate: true,
+    }],
+  });
+
+  assert.equal(result.objectiveExecutionMode, "build-or-mutate");
+  assert.equal(result.objectiveProfile, "generic-build");
+});
+
+test("weigert analyse-intent met expliciet create-target", () => {
+  assert.throws(
+    () => parseAutonomousCycleInput({
+      projectId: "forge-core",
+      objective: "Analyseer het doelbestand.",
+      cycleIndex: 1,
+      maxCycles: 1,
+      objectiveExecutionMode: "analysis-only",
+      objectiveProfile: "generic-analysis",
+      targets: [{
+        path: "sandbox/mirror-generic-build-proof-12.txt",
+        allowCreate: true,
+      }],
+    }),
+    /may not hydrate as an analysis-only mission/,
+  );
+});

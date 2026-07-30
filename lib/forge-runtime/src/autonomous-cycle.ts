@@ -310,6 +310,26 @@ export function parseAutonomousCycleInput(
     .slice(0, 8);
 
   const objective = textInput(input, "objective");
+  const requestedMode = input.objectiveExecutionMode;
+  const requestedProfile = input.objectiveProfile;
+  const hasCanonicalIntent =
+    requestedMode !== undefined || requestedProfile !== undefined;
+
+  if (
+    hasCanonicalIntent &&
+    !(
+      (requestedMode === "analysis-only" &&
+        requestedProfile === "generic-analysis") ||
+      (requestedMode === "build-or-mutate" &&
+        (requestedProfile === "generic-build" ||
+          requestedProfile === "file-create-read-hash"))
+    )
+  ) {
+    throw new Error(
+      "objectiveExecutionMode and objectiveProfile must form a valid canonical pair",
+    );
+  }
+
   const hasExplicitCreateTarget =
     Array.isArray(input.targets) &&
     input.targets.some(
@@ -321,7 +341,24 @@ export function parseAutonomousCycleInput(
         typeof (target as Readonly<Record<string, unknown>>).path === "string" &&
         String((target as Readonly<Record<string, unknown>>).path).trim().length > 0,
     );
-  const classified = hasExplicitCreateTarget
+
+  if (hasExplicitCreateTarget && requestedMode === "analysis-only") {
+    throw new Error(
+      "Explicit create targets may not hydrate as an analysis-only mission",
+    );
+  }
+
+  const classified =
+    (requestedMode === "analysis-only" &&
+      requestedProfile === "generic-analysis") ||
+    (requestedMode === "build-or-mutate" &&
+      (requestedProfile === "generic-build" ||
+        requestedProfile === "file-create-read-hash"))
+      ? Object.freeze({
+          mode: requestedMode,
+          profile: requestedProfile,
+        })
+      : hasExplicitCreateTarget
     ? Object.freeze({
         mode: "build-or-mutate" as const,
         profile: "generic-build" as const,

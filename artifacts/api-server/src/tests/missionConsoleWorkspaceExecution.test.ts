@@ -25,10 +25,12 @@ async function waitForMission(
   status: MissionRecord["status"],
 ): Promise<MissionRecord> {
   const startedAt = Date.now();
+  let lastMission: MissionRecord | null = null;
 
   while (Date.now() - startedAt < 10_000) {
     const response = await fetch(`${baseUrl}/api/missions/${missionId}`);
     const mission = await response.json() as MissionRecord;
+    lastMission = mission;
 
     if (mission.status === status) {
       return mission;
@@ -37,7 +39,10 @@ async function waitForMission(
     await new Promise((resolve) => setTimeout(resolve, 25));
   }
 
-  throw new Error(`Timed out waiting for mission ${missionId} to become ${status}`);
+  throw new Error(
+    `Timed out waiting for mission ${missionId} to become ${status}: ` +
+      JSON.stringify(lastMission),
+  );
 }
 
 async function startApi(runtime: ForgeRuntime): Promise<{
@@ -68,6 +73,20 @@ async function closeApi(
   });
 }
 
+function assertBuildMissionInput(
+  mission: MissionRecord,
+  rawObjective: string,
+  targetPath: string,
+): void {
+  assert.equal(mission.input.rawObjective, rawObjective);
+  assert.deepEqual(mission.input.targets, [{
+    path: targetPath,
+    allowCreate: true,
+  }]);
+  assert.equal(mission.input.objectiveExecutionMode, "build-or-mutate");
+  assert.equal(mission.input.objectiveProfile, "generic-build");
+}
+
 test(
   "Mission Console APIs expose workspace approval and evidence only after approval",
   { concurrency: false },
@@ -80,6 +99,8 @@ test(
     );
     let runtime: ForgeRuntime | null = null;
     let server: ReturnType<typeof createServer> | null = null;
+    let createdMissionId: string | null = null;
+    let liveObjective = "";
 
     try {
       await exec("git", ["init", "-b", "test/api-workspace-execution"], {
@@ -104,7 +125,21 @@ test(
 
       const connector: AiProviderConnector = {
         id: "openai-responses",
-        async execute() {
+        async execute(composition) {
+          assert.ok(runtime);
+          assert.ok(createdMissionId);
+          const missionBeforeProvider = runtime.getMission(createdMissionId);
+          assert.ok(missionBeforeProvider);
+          assertBuildMissionInput(
+            missionBeforeProvider,
+            liveObjective,
+            "sandbox/mirror-generic-build-proof-12.txt",
+          );
+          assert.ok(composition.objective.startsWith(liveObjective.trim()));
+          assert.match(
+            composition.objective,
+            /"path":"sandbox\/mirror-generic-build-proof-12\.txt"/,
+          );
           return Object.freeze({
             providerResponseId: "api-workspace-plan",
             outputText: JSON.stringify({
@@ -112,7 +147,7 @@ test(
               summary:
                 "Assumptions: the requested proof is confined to one new sandbox file and no other repository path may change. Verification guidance: inspect the persisted receipts, file effects, verification runs, artifacts, hashes, and accepted evaluation before treating execution as complete.",
               changes: [{
-                path: "sandbox/mirror-generic-build-proof-9.txt",
+                path: "sandbox/mirror-generic-build-proof-12.txt",
                 expectedSha256: null,
                 content: "created through the governed WorkspaceExecutor\n",
               }],
@@ -280,10 +315,10 @@ test(
       );
       assert.equal(missingManifestResponse.status, 400);
 
-      const liveObjective = [
+      liveObjective = [
         "Maak uitsluitend één nieuw testbestand aan:",
         "",
-        "Pad: sandbox/mirror-generic-build-proof-9.txt",
+        "Pad: sandbox/mirror-generic-build-proof-12.txt",
         "",
         "Exacte inhoud: Forge generic-build live approval proof",
         "Datum: 2026-07-30",
@@ -309,13 +344,13 @@ test(
         };
       };
       assert.deepEqual(preview.request.input?.targets, [{
-        path: "sandbox/mirror-generic-build-proof-9.txt",
+        path: "sandbox/mirror-generic-build-proof-12.txt",
         allowCreate: true,
       }]);
       assert.equal(preview.request.input?.rawObjective, liveObjective);
       assert.equal(
         preview.request.input?.proofTargetPath,
-        "sandbox/mirror-generic-build-proof-9.txt",
+        "sandbox/mirror-generic-build-proof-12.txt",
       );
       assert.equal(
         preview.request.input?.objectiveExecutionMode,
@@ -344,13 +379,13 @@ test(
         readonly approval: { readonly id: string };
       };
       assert.deepEqual(created.input.targets, [{
-        path: "sandbox/mirror-generic-build-proof-9.txt",
+        path: "sandbox/mirror-generic-build-proof-12.txt",
         allowCreate: true,
       }]);
       assert.equal(created.input.rawObjective, liveObjective);
       assert.equal(
         created.input.proofTargetPath,
-        "sandbox/mirror-generic-build-proof-9.txt",
+        "sandbox/mirror-generic-build-proof-12.txt",
       );
       assert.equal(created.input.objectiveExecutionMode, "build-or-mutate");
       assert.equal(created.input.objectiveProfile, "generic-build");
@@ -359,6 +394,33 @@ test(
         "build-or-mutate",
       );
       assert.equal(created.input.intakeObjectiveProfile, "generic-build");
+      createdMissionId = created.id;
+      assertBuildMissionInput(
+        created,
+        liveObjective,
+        "sandbox/mirror-generic-build-proof-12.txt",
+      );
+
+      await closeApi(server);
+      server = null;
+      await runtime.stop();
+      runtime = new ForgeRuntime({
+        aiProviderConnectors: [connector],
+        workspaceVerificationRunner: verificationRunner,
+        missionLoopPollIntervalMs: 100,
+      });
+      await runtime.start();
+      ({ server, baseUrl } = await startApi(runtime));
+
+      const hydratedBeforeApproval = await fetch(
+        `${baseUrl}/api/missions/${created.id}`,
+      ).then((response) => response.json() as Promise<MissionRecord>);
+      assert.equal(hydratedBeforeApproval.status, "awaiting_approval");
+      assertBuildMissionInput(
+        hydratedBeforeApproval,
+        liveObjective,
+        "sandbox/mirror-generic-build-proof-12.txt",
+      );
 
       const firstApprovalResponse = await fetch(
         `${baseUrl}/api/governance/approvals/${created.approval.id}/approve`,
@@ -369,6 +431,14 @@ test(
         },
       );
       assert.equal(firstApprovalResponse.status, 200);
+      const afterFirstApproval = await fetch(
+        `${baseUrl}/api/missions/${created.id}`,
+      ).then((response) => response.json() as Promise<MissionRecord>);
+      assertBuildMissionInput(
+        afterFirstApproval,
+        liveObjective,
+        "sandbox/mirror-generic-build-proof-12.txt",
+      );
 
       const planningMission = await waitForMission(
         baseUrl,
@@ -377,6 +447,9 @@ test(
       );
       assert.equal(planningMission.output?.objectiveExecutionMode, "build-or-mutate");
       assert.equal(planningMission.output?.objectiveProfile, "generic-build");
+      assert.notEqual(planningMission.output?.objectiveExecutionMode, "analysis-only");
+      assert.notEqual(planningMission.output?.objectiveProfile, "generic-analysis");
+      assert.equal(planningMission.output?.evaluation, null);
       const executionMissionId = String(
         planningMission.output?.workspaceExecutionMissionId ?? "",
       );
@@ -444,7 +517,7 @@ test(
       );
       await assert.rejects(
         readFile(
-          path.join(workspaceRoot, "sandbox", "mirror-generic-build-proof-9.txt"),
+          path.join(workspaceRoot, "sandbox", "mirror-generic-build-proof-12.txt"),
           "utf8",
         ),
       );
@@ -477,7 +550,7 @@ test(
       assert.equal(evaluation?.decision, "accepted");
       assert.equal(
         await readFile(
-          path.join(workspaceRoot, "sandbox", "mirror-generic-build-proof-9.txt"),
+          path.join(workspaceRoot, "sandbox", "mirror-generic-build-proof-12.txt"),
           "utf8",
         ),
         "created through the governed WorkspaceExecutor\n",

@@ -479,6 +479,28 @@ export class ForgeRuntime {
     signal: AbortSignal,
   ): Promise<Readonly<Record<string, unknown>>> {
     const input = parseAutonomousCycleInput(mission.input);
+    const persistedBuildIntent =
+      mission.input.objectiveExecutionMode === "build-or-mutate" ||
+      mission.input.objectiveProfile === "generic-build" ||
+      (Array.isArray(mission.input.targets) &&
+        mission.input.targets.some(
+          (target) =>
+            typeof target === "object" &&
+            target !== null &&
+            !Array.isArray(target) &&
+            (target as Readonly<Record<string, unknown>>).allowCreate === true,
+        ));
+
+    if (
+      persistedBuildIntent &&
+      (input.objectiveExecutionMode !== "build-or-mutate" ||
+        input.objectiveProfile !== "generic-build")
+    ) {
+      throw new Error(
+        "Persisted build-or-mutate intent may not hydrate as an analysis mission",
+      );
+    }
+
     const relevantContext = this.#memoryBridge.relevantContext({
       query: input.objective,
       limit: 8,
@@ -1490,8 +1512,10 @@ export class ForgeRuntime {
         ? mission.input.projectId
         : "forge-core";
     const objective =
-      typeof mission.input.objective === "string"
-        ? mission.input.objective.trim()
+      typeof mission.input.rawObjective === "string"
+        ? mission.input.rawObjective.trim()
+        : typeof mission.input.objective === "string"
+          ? mission.input.objective.trim()
         : "";
     const rawTargets = mission.input.targets;
 

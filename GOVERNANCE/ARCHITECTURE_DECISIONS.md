@@ -77,3 +77,7 @@ A terminal mission outcome must always include a structured `missionResult` payl
 ## AD-018 - Local model route is explicit opt-in
 
 Provider route selection may not treat local-model execution as implicitly available. The local model route is enabled only when `FORGE_LOCAL_MODEL_ENABLED=true` is set explicitly. This prevents deterministic misrouting to unreachable local endpoints that produces null-output executions and systematic evaluator rejection unrelated to evaluator correctness.
+
+## AD-019 - Persisted mission intent is authoritative
+
+Canonical `objectiveExecutionMode` and `objectiveProfile` values survive mission persistence, approval and runtime hydration unchanged. An explicit create target may never hydrate as analysis-only. A generic build may reach successful terminal state only after the existing workspace planner has created a linked workspace execution mission and persisted its pending second approval; provider analysis output alone is not completion evidence.
