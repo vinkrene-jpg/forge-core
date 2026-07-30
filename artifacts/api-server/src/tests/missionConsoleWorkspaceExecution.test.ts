@@ -112,7 +112,7 @@ test(
               summary:
                 "Assumptions: the requested proof is confined to one new sandbox file and no other repository path may change. Verification guidance: inspect the persisted receipts, file effects, verification runs, artifacts, hashes, and accepted evaluation before treating execution as complete.",
               changes: [{
-                path: "sandbox/mirror-generic-build-proof-2.txt",
+                path: "sandbox/mirror-generic-build-proof-4.txt",
                 expectedSha256: null,
                 content: "created through the governed WorkspaceExecutor\n",
               }],
@@ -196,7 +196,7 @@ test(
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
-            command: "Maak output.json op basis van config/schema.json.",
+            command: "Maak output.json aan.",
           }),
         },
       );
@@ -211,12 +211,63 @@ test(
         allowCreate: true,
       }]);
 
+      const inlineAmbiguousPreviewResponse = await fetch(
+        `${baseUrl}/api/operator/mission-intake/preview`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            command: "Maak sandbox/first-proof.txt en sandbox/second-proof.txt.",
+          }),
+        },
+      );
+      assert.equal(inlineAmbiguousPreviewResponse.status, 400);
+
+      const labeledPreviewResponse = await fetch(
+        `${baseUrl}/api/operator/mission-intake/preview`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            command: [
+              "Maak uitsluitend het goedgekeurde proofbestand aan.",
+              "Pad: sandbox/mirror-generic-build-proof-4.txt",
+            ].join("\n"),
+          }),
+        },
+      );
+      assert.equal(labeledPreviewResponse.status, 200);
+      const labeledPreview = await labeledPreviewResponse.json() as {
+        readonly request: {
+          readonly input?: Readonly<Record<string, unknown>>;
+        };
+      };
+      assert.deepEqual(labeledPreview.request.input?.targets, [{
+        path: "sandbox/mirror-generic-build-proof-4.txt",
+        allowCreate: true,
+      }]);
+
+      const ambiguousPreviewResponse = await fetch(
+        `${baseUrl}/api/operator/mission-intake/preview`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            command: [
+              "Maak het proofbestand aan.",
+              "sandbox/first-proof.txt",
+              "sandbox/second-proof.txt",
+            ].join("\n"),
+          }),
+        },
+      );
+      assert.equal(ambiguousPreviewResponse.status, 400);
+
       const previewResponse = await fetch(`${baseUrl}/api/operator/mission-intake/preview`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          command:
-            "Maak uitsluitend sandbox/mirror-generic-build-proof-2.txt aan via de bestaande workspace-uitvoering.",
+          command: "sandbox/mirror-generic-build-proof-4.txt",
         }),
       });
       assert.equal(previewResponse.status, 200);
@@ -226,7 +277,7 @@ test(
         };
       };
       assert.deepEqual(preview.request.input?.targets, [{
-        path: "sandbox/mirror-generic-build-proof-2.txt",
+        path: "sandbox/mirror-generic-build-proof-4.txt",
         allowCreate: true,
       }]);
       assert.equal(
@@ -248,7 +299,7 @@ test(
         readonly approval: { readonly id: string };
       };
       assert.deepEqual(created.input.targets, [{
-        path: "sandbox/mirror-generic-build-proof-2.txt",
+        path: "sandbox/mirror-generic-build-proof-4.txt",
         allowCreate: true,
       }]);
       assert.equal(
@@ -319,7 +370,7 @@ test(
       );
       await assert.rejects(
         readFile(
-          path.join(workspaceRoot, "sandbox", "mirror-generic-build-proof-2.txt"),
+          path.join(workspaceRoot, "sandbox", "mirror-generic-build-proof-4.txt"),
           "utf8",
         ),
       );
@@ -352,7 +403,7 @@ test(
       assert.equal(evaluation?.decision, "accepted");
       assert.equal(
         await readFile(
-          path.join(workspaceRoot, "sandbox", "mirror-generic-build-proof-2.txt"),
+          path.join(workspaceRoot, "sandbox", "mirror-generic-build-proof-4.txt"),
           "utf8",
         ),
         "created through the governed WorkspaceExecutor\n",
