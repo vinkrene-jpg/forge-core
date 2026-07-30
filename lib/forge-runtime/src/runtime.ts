@@ -188,6 +188,11 @@ export interface RuntimeMissionCreationResult {
   readonly capabilityAnalysis: CapabilityAnalysisRecord;
 }
 
+type ApprovedWorkspaceMissionCreationResult =
+  RuntimeMissionCreationResult & {
+    readonly approval: ApprovalRecord;
+  };
+
 export interface ForgeRuntimeSnapshot {
   readonly kernel: KernelStateSnapshot;
   readonly health: RuntimeHealthSnapshot;
@@ -669,7 +674,7 @@ export class ForgeRuntime {
         plan,
         planEvidenceMemoryId: planning.evidenceMemoryId,
         workspaceExecutionMissionId: executionMission.mission.id,
-        workspaceExecutionApprovalId: executionMission.approval?.id ?? null,
+        workspaceExecutionApprovalId: executionMission.approval.id,
         evaluation: null,
         executionEvidence: null,
       });
@@ -1650,12 +1655,12 @@ export class ForgeRuntime {
       readonly objectiveExecutionMode: "build-or-mutate";
       readonly objectiveProfile: "generic-build";
     },
-  ): Promise<RuntimeMissionCreationResult> {
+  ): Promise<ApprovedWorkspaceMissionCreationResult> {
     const request = parseWorkspaceChangeRequest(
       plan.request as unknown as Readonly<Record<string, unknown>>,
     );
 
-    return this.createMission({
+    const result = await this.createMission({
       kind: "operator.workspace-change",
       title: `Execute approved workspace plan: ${plan.summary}`,
       input: {
@@ -1668,6 +1673,27 @@ export class ForgeRuntime {
         verification: request.verification,
         commit: request.commit,
       },
+    });
+
+    const publishedApproval = result.approval
+      ? this.#governanceEngine.getApproval(result.approval.id)
+      : null;
+
+    if (
+      result.mission.status !== "awaiting_approval" ||
+      result.governance.decision !== "require_approval" ||
+      publishedApproval === null ||
+      publishedApproval.missionId !== result.mission.id ||
+      publishedApproval.status !== "pending"
+    ) {
+      throw new Error(
+        "Workspace execution mission requires a persisted pending approval",
+      );
+    }
+
+    return Object.freeze({
+      ...result,
+      approval: publishedApproval,
     });
   }
 

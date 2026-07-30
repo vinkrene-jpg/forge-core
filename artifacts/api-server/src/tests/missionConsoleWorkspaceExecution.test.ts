@@ -367,6 +367,28 @@ test(
       );
       assert.ok(executionMissionId);
       assert.ok(executionApprovalId);
+      assert.equal(planningMission.output?.executionEvidence, null);
+
+      const approvalsAfterFirstApproval = await fetch(
+        `${baseUrl}/api/governance/approvals`,
+      ).then(
+        (response) => response.json() as Promise<{
+          approvals: Array<{ id: string; missionId: string; status: string }>;
+        }>,
+      );
+      const executionAfterFirstApproval = await fetch(
+        `${baseUrl}/api/missions/${executionMissionId}`,
+      ).then((response) => response.json() as Promise<MissionRecord>);
+      assert.equal(executionAfterFirstApproval.status, "awaiting_approval");
+      assert.equal(executionAfterFirstApproval.output, null);
+      assert.ok(
+        approvalsAfterFirstApproval.approvals.some(
+          (approval) =>
+            approval.id === executionApprovalId &&
+            approval.missionId === executionMissionId &&
+            approval.status === "pending",
+        ),
+      );
 
       await closeApi(server);
       server = null;

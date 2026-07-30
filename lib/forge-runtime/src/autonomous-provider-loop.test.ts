@@ -623,9 +623,18 @@ test("autonomous provider loop", { concurrency: false }, async (t) => {
           assert.equal(providerCalls, 1);
           assert.ok(executionMissionId);
           assert.ok(executionApprovalId);
+          assert.equal(planningMission?.output?.executionEvidence, null);
           assert.equal(
             runtime.getMission(executionMissionId)?.status,
             "awaiting_approval",
+          );
+          assert.equal(runtime.getMission(executionMissionId)?.output, null);
+          assert.ok(
+            runtime.listApprovals("pending").some(
+              (approval) =>
+                approval.id === executionApprovalId &&
+                approval.missionId === executionMissionId,
+            ),
           );
           await assert.rejects(readFile(path.join(root, "generated.txt"), "utf8"));
           assertNoExecutionEvidence(
