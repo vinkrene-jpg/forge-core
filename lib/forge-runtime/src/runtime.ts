@@ -603,6 +603,110 @@ export class ForgeRuntime {
       }
     }
 
+    if (input.objectiveProfile === "generic-build") {
+      if (
+        !Array.isArray(mission.input.targets) ||
+        mission.input.targets.length === 0
+      ) {
+        const blocked = new Error(
+          "Generic build is blocked: explicit validated target files are required before provider execution.",
+        ) as MissionExecutionFailure;
+        blocked.missionResultStatus = "blocked";
+        blocked.missionResultCause = "workspace-targets";
+        blocked.missionOutput = Object.freeze({
+          cycleIndex: input.cycleIndex,
+          maxCycles: input.maxCycles,
+          rootMissionId: input.rootMissionId ?? mission.id,
+          previousMissionId: input.previousMissionId,
+          objectiveExecutionMode: input.objectiveExecutionMode,
+          objectiveProfile: input.objectiveProfile,
+          executionEvidence: null,
+        });
+        throw blocked;
+      }
+
+      const planning = await this.#executeWorkspacePlan(mission, signal);
+      const plan = planning.plan as WorkspaceChangePlan;
+      const providerExecution =
+        this.#validatedGenericBuildProviderExecution(plan, mission.id);
+
+      if (providerExecution.providerId === "manual-fallback") {
+        const blocked = new Error(
+          "Generic build is blocked because provider route manual-fallback cannot produce a workspace change plan.",
+        ) as MissionExecutionFailure;
+        blocked.missionResultStatus = "blocked";
+        blocked.missionResultCause = "provider-route";
+        blocked.missionOutput = Object.freeze({
+          cycleIndex: input.cycleIndex,
+          maxCycles: input.maxCycles,
+          rootMissionId: input.rootMissionId ?? mission.id,
+          previousMissionId: input.previousMissionId,
+          objectiveExecutionMode: input.objectiveExecutionMode,
+          objectiveProfile: input.objectiveProfile,
+          compositionId: plan.compositionId,
+          executionId: plan.executionId,
+          plan,
+          executionEvidence: null,
+        });
+        throw blocked;
+      }
+
+      const preflight = this.#autonomousEvaluator.evaluate(
+        mission.id,
+        providerExecution,
+        {
+          executionEvidence: this.#createGenericBuildPreflightEvidence(plan),
+          objectiveExecutionMode: "build-or-mutate",
+          objectiveProfile: "generic-build",
+        },
+      );
+
+      if (preflight.decision !== "accepted") {
+        const rejected = new Error(
+          `Generic build plan rejected before mutation by evaluation ${preflight.id} with score ${preflight.score}`,
+        ) as MissionExecutionFailure;
+        rejected.missionResultStatus = "rejected";
+        rejected.missionResultCause = "evaluation";
+        rejected.missionOutput = Object.freeze({
+          cycleIndex: input.cycleIndex,
+          maxCycles: input.maxCycles,
+          rootMissionId: input.rootMissionId ?? mission.id,
+          previousMissionId: input.previousMissionId,
+          objectiveExecutionMode: input.objectiveExecutionMode,
+          objectiveProfile: input.objectiveProfile,
+          compositionId: plan.compositionId,
+          executionId: plan.executionId,
+          plan,
+          preflightEvaluation: preflight,
+          executionEvidence: null,
+        });
+        throw rejected;
+      }
+
+      const executionMission = await this.#createWorkspaceExecutionMission(plan, {
+        sourceAutonomousMissionId: mission.id,
+        objectiveExecutionMode: "build-or-mutate",
+        objectiveProfile: "generic-build",
+      });
+
+      return Object.freeze({
+        cycleIndex: input.cycleIndex,
+        maxCycles: input.maxCycles,
+        rootMissionId: input.rootMissionId ?? mission.id,
+        previousMissionId: input.previousMissionId,
+        objectiveExecutionMode: input.objectiveExecutionMode,
+        objectiveProfile: input.objectiveProfile,
+        compositionId: plan.compositionId,
+        executionId: plan.executionId,
+        plan,
+        planEvidenceMemoryId: planning.evidenceMemoryId,
+        workspaceExecutionMissionId: executionMission.mission.id,
+        workspaceExecutionApprovalId: executionMission.approval?.id ?? null,
+        evaluation: null,
+        executionEvidence: null,
+      });
+    }
+
     if (learningProposalId && targetCapabilityId) {
       const bundle = this.#learningEvidenceTool.collect({
         proposalId: learningProposalId,
@@ -1113,6 +1217,78 @@ export class ForgeRuntime {
     }
 
     const request = parseWorkspaceChangeRequest(mission.input);
+    const sourceAutonomousMissionId =
+      typeof mission.input.sourceAutonomousMissionId === "string"
+        ? mission.input.sourceAutonomousMissionId
+        : null;
+    const sourcePlanningMissionId =
+      typeof mission.input.sourcePlanningMissionId === "string"
+        ? mission.input.sourcePlanningMissionId
+        : null;
+    const sourcePlanningMission = sourcePlanningMissionId
+      ? this.#missionEngine.get(sourcePlanningMissionId)
+      : null;
+    const genericBuildLinked =
+      sourcePlanningMission?.kind === "operator.autonomous-cycle" ||
+      mission.input.objectiveProfile === "generic-build" ||
+      mission.input.sourceAutonomousMissionId !== undefined;
+    let genericBuildProviderExecution: AiExecutionRecord | null = null;
+
+    if (genericBuildLinked && !sourceAutonomousMissionId) {
+      throw new Error(
+        "Generic build execution requires complete autonomous source linkage",
+      );
+    }
+
+    if (sourceAutonomousMissionId) {
+      const sourceMission = this.#missionEngine.get(sourceAutonomousMissionId);
+      const rawPlan = sourceMission?.output?.plan;
+
+      if (
+        sourcePlanningMissionId !== sourceAutonomousMissionId ||
+        mission.input.objectiveExecutionMode !== "build-or-mutate" ||
+        mission.input.objectiveProfile !== "generic-build" ||
+        sourceMission?.kind !== "operator.autonomous-cycle" ||
+        sourceMission.status !== "succeeded" ||
+        typeof rawPlan !== "object" ||
+        rawPlan === null ||
+        Array.isArray(rawPlan)
+      ) {
+        throw new Error("Generic build source mission has no validated workspace plan");
+      }
+
+      const plan = rawPlan as unknown as WorkspaceChangePlan;
+      const sourcePlanId =
+        typeof mission.input.sourcePlanId === "string"
+          ? mission.input.sourcePlanId
+          : null;
+      const providerOutputSha256 =
+        typeof mission.input.providerOutputSha256 === "string"
+          ? mission.input.providerOutputSha256
+          : null;
+
+      if (
+        plan.id !== sourcePlanId ||
+        plan.missionId !== sourceAutonomousMissionId ||
+        plan.projectId !== projectId ||
+        plan.providerOutputSha256 !== providerOutputSha256 ||
+        JSON.stringify(plan.request) !== JSON.stringify(request)
+      ) {
+        throw new Error("Generic build execution does not match its validated workspace plan");
+      }
+
+      genericBuildProviderExecution =
+        this.#validatedGenericBuildProviderExecution(
+          plan,
+          sourceAutonomousMissionId,
+        );
+
+      if (genericBuildProviderExecution.providerId === "manual-fallback") {
+        throw new Error(
+          "Generic build mutation is blocked for provider route manual-fallback",
+        );
+      }
+    }
 
     try {
       const execution = await this.#workspaceExecutor.execute(
@@ -1127,6 +1303,64 @@ export class ForgeRuntime {
         tags: ["workspace-execution", execution.status, execution.branch],
         content: JSON.stringify(execution, null, 2),
       });
+      if (sourceAutonomousMissionId && genericBuildProviderExecution) {
+        const executionEvidence =
+          await this.#createWorkspaceExecutionEvidence(
+            project.rootPath,
+            execution,
+          );
+        const evaluation = this.#autonomousEvaluator.evaluate(
+          sourceAutonomousMissionId,
+          genericBuildProviderExecution,
+          {
+            executionEvidence,
+            objectiveExecutionMode: "build-or-mutate",
+            objectiveProfile: "generic-build",
+          },
+        );
+        const evaluationMemory = await this.#operatorCore.addMemory(projectId, {
+          kind: "evidence",
+          source: `autonomous-cycle:${sourceAutonomousMissionId}`,
+          tags: ["autonomous-cycle", "generic-build", evaluation.decision],
+          content: JSON.stringify({
+            sourceAutonomousMissionId,
+            workspaceExecutionMissionId: mission.id,
+            providerExecutionId: genericBuildProviderExecution.id,
+            evaluation,
+            executionEvidence,
+          }, null, 2),
+        });
+
+        this.#events.publish("autonomous.cycle.evaluated", {
+          missionId: sourceAutonomousMissionId,
+          workspaceExecutionMissionId: mission.id,
+          executionId: genericBuildProviderExecution.id,
+          evaluationId: evaluation.id,
+          decision: evaluation.decision,
+          score: evaluation.score,
+        });
+
+        const output = Object.freeze({
+          ...execution,
+          evidenceMemoryId: evidence.id,
+          sourceAutonomousMissionId,
+          evaluation,
+          evaluationMemoryId: evaluationMemory.id,
+          executionEvidence,
+        });
+
+        if (evaluation.decision !== "accepted") {
+          const failure = new Error(
+            `Generic build rejected by evaluation ${evaluation.id} with score ${evaluation.score}`,
+          ) as MissionExecutionFailure;
+          failure.missionResultStatus = "rejected";
+          failure.missionResultCause = "evaluation";
+          failure.missionOutput = output;
+          throw failure;
+        }
+
+        return output;
+      }
 
       return Object.freeze({
         ...execution,
@@ -1144,6 +1378,188 @@ export class ForgeRuntime {
 
       throw error;
     }
+  }
+
+  async #createWorkspaceExecutionEvidence(
+    rootPath: string,
+    execution: Awaited<ReturnType<WorkspaceChangeExecutor["execute"]>>,
+  ): Promise<AutonomousExecutionEvidence> {
+    const receipts: AutonomousExecutionEvidence["receipts"][number][] = [];
+    const fileEffects: AutonomousExecutionEvidence["fileEffects"][number][] = [];
+    const artifacts: AutonomousExecutionEvidence["artifacts"][number][] = [];
+    const executionDuration = Math.max(
+      0,
+      Date.parse(execution.completedAt) - Date.parse(execution.startedAt),
+    );
+
+    for (const change of execution.changedFiles) {
+      const absolutePath = path.resolve(rootPath, change.path);
+      const readStartedAt = new Date().toISOString();
+      const readStarted = Date.now();
+      const content = await readFile(absolutePath, "utf8");
+      const afterSha256 = sha256Text(content);
+      const existsAfter = await exists(absolutePath);
+      const completedAt = new Date().toISOString();
+      const readDuration = Math.max(0, Date.now() - readStarted);
+
+      if (!existsAfter || afterSha256 !== change.afterSha256) {
+        throw new Error(`Workspace execution evidence mismatch for ${change.path}`);
+      }
+
+      receipts.push(
+        Object.freeze({
+          id: randomUUID(),
+          action: "write-file" as const,
+          targetPath: absolutePath,
+          startedAt: execution.startedAt,
+          completedAt: execution.completedAt,
+          durationMs: executionDuration,
+          ok: true,
+          error: null,
+        }),
+        Object.freeze({
+          id: randomUUID(),
+          action: "read-file" as const,
+          targetPath: absolutePath,
+          startedAt: readStartedAt,
+          completedAt,
+          durationMs: readDuration,
+          ok: true,
+          error: null,
+        }),
+        Object.freeze({
+          id: randomUUID(),
+          action: "compute-sha256" as const,
+          targetPath: absolutePath,
+          startedAt: readStartedAt,
+          completedAt,
+          durationMs: readDuration,
+          ok: true,
+          error: null,
+        }),
+        Object.freeze({
+          id: randomUUID(),
+          action: "verify-file-exists" as const,
+          targetPath: absolutePath,
+          startedAt: readStartedAt,
+          completedAt,
+          durationMs: readDuration,
+          ok: true,
+          error: null,
+        }),
+      );
+      fileEffects.push(Object.freeze({
+        path: absolutePath,
+        existedBefore: change.beforeSha256 !== null,
+        existsAfter,
+        beforeSha256: change.beforeSha256,
+        afterSha256,
+      }));
+      artifacts.push(Object.freeze({
+        id: randomUUID(),
+        kind: "file-hash-proof" as const,
+        path: absolutePath,
+        content,
+        sha256: afterSha256,
+      }));
+    }
+
+    return Object.freeze({
+      objectiveProfile: "generic-build",
+      receipts: Object.freeze(receipts),
+      fileEffects: Object.freeze(fileEffects),
+      verificationRuns: Object.freeze(
+        execution.verification.map((verification) =>
+          Object.freeze({
+            command: verification.command,
+            exitCode: verification.exitCode,
+            stdoutSha256: verification.stdoutSha256,
+            stderrSha256: verification.stderrSha256,
+            durationMs: verification.durationMs,
+          }),
+        ),
+      ),
+      artifacts: Object.freeze(artifacts),
+    });
+  }
+
+  #validatedGenericBuildProviderExecution(
+    plan: WorkspaceChangePlan,
+    missionId: string,
+  ): AiExecutionRecord {
+    const execution = this.#aiGateway.getExecution(plan.executionId);
+
+    if (
+      !execution ||
+      execution.status !== "succeeded" ||
+      execution.missionId !== missionId ||
+      execution.compositionId !== plan.compositionId ||
+      execution.projectId !== plan.projectId ||
+      typeof execution.outputText !== "string" ||
+      createHash("sha256").update(execution.outputText, "utf8").digest("hex") !==
+        plan.providerOutputSha256
+    ) {
+      throw new Error(
+        "Generic build provider execution does not match its validated workspace plan",
+      );
+    }
+
+    return execution;
+  }
+
+  #createGenericBuildPreflightEvidence(
+    plan: WorkspaceChangePlan,
+  ): AutonomousExecutionEvidence {
+    const now = new Date().toISOString();
+
+    return Object.freeze({
+      objectiveProfile: "generic-build",
+      receipts: Object.freeze(
+        plan.request.changes.map((change) =>
+          Object.freeze({
+            id: randomUUID(),
+            action: "write-file" as const,
+            targetPath: change.path,
+            startedAt: now,
+            completedAt: now,
+            durationMs: 0,
+            ok: true,
+            error: null,
+          }),
+        ),
+      ),
+      fileEffects: Object.freeze(
+        plan.request.changes.map((change) =>
+          Object.freeze({
+            path: change.path,
+            existedBefore: change.expectedSha256 !== null,
+            existsAfter: true,
+            beforeSha256: change.expectedSha256,
+            afterSha256: sha256Text(change.content),
+          }),
+        ),
+      ),
+      verificationRuns: Object.freeze([
+        Object.freeze({
+          command: "preflight-only",
+          exitCode: 0,
+          stdoutSha256: sha256Text(""),
+          stderrSha256: sha256Text(""),
+          durationMs: 0,
+        }),
+      ]),
+      artifacts: Object.freeze(
+        plan.request.changes.map((change) =>
+          Object.freeze({
+            id: randomUUID(),
+            kind: "file-hash-proof" as const,
+            path: change.path,
+            content: change.content,
+            sha256: sha256Text(change.content),
+          }),
+        ),
+      ),
+    });
   }
 
   async #executeWorkspacePlan(
@@ -1254,6 +1670,7 @@ export class ForgeRuntime {
         "changes must contain only approved target paths and must copy each expectedSha256 exactly from the manifest.",
         "verification must include typecheck and may additionally include test and build.",
         "commit must contain a concise message and push must be false.",
+        "summary must contain at least 200 characters and explicitly state assumptions and verification guidance.",
         "Never include credentials, environment values, arbitrary commands, deletions or protected paths.",
         "",
         `Approved target manifest: ${JSON.stringify(targets)}`,
@@ -1282,6 +1699,17 @@ export class ForgeRuntime {
       executionId: execution.id,
       outputText: execution.outputText,
     });
+
+    if (
+      plan.summary.length < 200 ||
+      !/assumptions?|aannames?/i.test(plan.summary) ||
+      !/verif|tests?|controle|bewijs/i.test(plan.summary)
+    ) {
+      throw new Error(
+        "Workspace provider plan summary must contain at least 200 characters with explicit assumptions and verification guidance",
+      );
+    }
+
     const evidence = await this.#operatorCore.addMemory(projectId, {
       kind: "evidence",
       source: `workspace-plan:${mission.id}`,
@@ -1299,6 +1727,34 @@ export class ForgeRuntime {
     return Object.freeze({
       plan,
       evidenceMemoryId: evidence.id,
+    });
+  }
+
+  async #createWorkspaceExecutionMission(
+    plan: WorkspaceChangePlan,
+    source?: {
+      readonly sourceAutonomousMissionId: string;
+      readonly objectiveExecutionMode: "build-or-mutate";
+      readonly objectiveProfile: "generic-build";
+    },
+  ): Promise<RuntimeMissionCreationResult> {
+    const request = parseWorkspaceChangeRequest(
+      plan.request as unknown as Readonly<Record<string, unknown>>,
+    );
+
+    return this.createMission({
+      kind: "operator.workspace-change",
+      title: `Execute approved workspace plan: ${plan.summary}`,
+      input: {
+        projectId: plan.projectId,
+        sourcePlanningMissionId: plan.missionId,
+        sourcePlanId: plan.id,
+        providerOutputSha256: plan.providerOutputSha256,
+        ...(source ?? {}),
+        changes: request.changes,
+        verification: request.verification,
+        commit: request.commit,
+      },
     });
   }
 
@@ -1740,19 +2196,7 @@ export class ForgeRuntime {
       ...candidate,
       request,
     });
-    const executionMission = await this.createMission({
-      kind: "operator.workspace-change",
-      title: `Execute approved workspace plan: ${plan.summary}`,
-      input: {
-        projectId: plan.projectId,
-        sourcePlanningMissionId: planningMission.id,
-        sourcePlanId: plan.id,
-        providerOutputSha256: plan.providerOutputSha256,
-        changes: request.changes,
-        verification: request.verification,
-        commit: request.commit,
-      },
-    });
+    const executionMission = await this.#createWorkspaceExecutionMission(plan);
 
     this.#events.publish("workspace.plan.scheduled", {
       planningMissionId: planningMission.id,
