@@ -19,6 +19,56 @@ interface ChatCompletionPayload {
   readonly error?: unknown;
 }
 
+const workspacePlanJsonSchema = Object.freeze({
+  type: "object",
+  additionalProperties: false,
+  required: [
+    "schemaVersion",
+    "summary",
+    "changes",
+    "verification",
+    "commit",
+  ],
+  properties: {
+    schemaVersion: { type: "integer" },
+    summary: { type: "string" },
+    changes: {
+      type: "array",
+      items: {
+        type: "object",
+        additionalProperties: false,
+        required: ["path", "expectedSha256", "content"],
+        properties: {
+          path: { type: "string" },
+          expectedSha256: { type: ["string", "null"] },
+          content: { type: "string" },
+        },
+      },
+    },
+    verification: {
+      type: "array",
+      items: { type: "string" },
+    },
+    commit: {
+      type: "object",
+      additionalProperties: false,
+      required: ["message", "push"],
+      properties: {
+        message: { type: "string" },
+        push: { type: "boolean" },
+      },
+    },
+  },
+});
+
+const workspacePlanSystemPrompt = [
+  "You are Forge's governed workspace planner.",
+  "Return exactly one JSON object that conforms to the supplied JSON Schema.",
+  "Return JSON only: no Markdown fences, preamble, explanation, analysis, or trailing text.",
+  "Use only the approved target manifest and copy every expectedSha256 value exactly.",
+  "Never request push, credentials, arbitrary commands, deletions, or protected paths.",
+].join(" ");
+
 function usage(payload: ChatCompletionPayload): AiUsage {
   if (
     typeof payload.usage !== "object" ||
@@ -100,8 +150,8 @@ export class LocalModelConnector
       "http://127.0.0.1:11434/v1"
     ).replace(/\/$/, "");
     const apiKey = process.env.FORGE_LOCAL_MODEL_API_KEY?.trim();
-    const requiresRawJsonObject = composition.objective.includes(
-      "Return exactly one raw JSON object.",
+    const requiresWorkspacePlan = composition.objective.includes(
+      "WORKSPACE_PLAN_OUTPUT_CONTRACT_V1",
     );
 
     const controller = new AbortController();
@@ -119,14 +169,36 @@ export class LocalModelConnector
         body: JSON.stringify({
           model,
           messages: [
+            ...(requiresWorkspacePlan
+              ? [{
+                  role: "system",
+                  content: workspacePlanSystemPrompt,
+                }]
+              : []),
             {
               role: "user",
-              content: composition.content,
+              content: requiresWorkspacePlan
+                ? [
+                    composition.content,
+                    "",
+                    "Required output JSON Schema:",
+                    JSON.stringify(workspacePlanJsonSchema),
+                  ].join("\n")
+                : composition.content,
             },
           ],
-          temperature: 0.2,
-          ...(requiresRawJsonObject
-            ? { response_format: { type: "json_object" } }
+          temperature: requiresWorkspacePlan ? 0 : 0.2,
+          ...(requiresWorkspacePlan
+            ? {
+                response_format: {
+                  type: "json_schema",
+                  json_schema: {
+                    name: "forge_workspace_execution_plan",
+                    strict: true,
+                    schema: workspacePlanJsonSchema,
+                  },
+                },
+              }
             : {}),
         }),
         signal: controller.signal,

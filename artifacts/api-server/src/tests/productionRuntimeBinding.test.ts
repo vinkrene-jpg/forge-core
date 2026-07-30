@@ -63,6 +63,29 @@ test("production API bundle loads canonical runtime executor", async () => {
     "Voer typecheck uit als verificatie.",
     "Niet pushen.",
   ].join("\n");
+  const liveInvalidOutput = [
+    "Manual fallback response generated at 2026-07-30T17:22:12.314Z.",
+    "Objective: Maak uitsluitend één nieuw testbestand aan:",
+    "",
+    "Pad: sandbox/mirror-generic-build-proof-16.txt",
+    "",
+    "Exacte inhoud:",
+    "Forge generic-build live approval proof",
+    "Datum: 2026-07-30",
+    "Doel: tweede workspace approval en echte execution evidence aantonen",
+    "",
+    "W...",
+    "Assumptions:",
+    "- External provider execution was unavailable or budget-constrained.",
+    "- This response preserves runtime continuity and marks the capability as a gap until verified implementation evidence exists.",
+    "Verification guidance:",
+    "- Run pnpm --filter @workspace/forge-runtime test",
+    "- Run pnpm --filter @workspace/forge-runtime typecheck",
+    "- Confirm no secret material is persisted in runtime evidence",
+    "CAPABILITY_RESULT: GAP",
+    "Next step:",
+    "- Schedule a bounded low-cost follow-up mission using the local model route.",
+  ].join("\n");
   const providerRequestBodies: Readonly<Record<string, unknown>>[] = [];
   const provider = createServer((request, response) => {
     let body = "";
@@ -89,34 +112,20 @@ test("production API bundle loads canonical runtime executor", async () => {
           push: false,
         },
       };
-      const liveInvalidOutput = [
-        "**Provider Output:**",
-        "I understand that I need to complete the typecheck before proceeding.",
-        "",
-        "**Evidence:**",
-        JSON.stringify({
-          missionId: "222fa8fd-b790-428b-b4f2-e23746df40d4",
-          kind: "operator.autonomous-cycle",
-          status: "pending",
-          result: null,
-        }),
-        "",
-        "The provider will provide evidence in its next response.",
-      ].join("\n");
-      const content = body.includes("mirror-generic-build-proof-15.txt")
+      const content = body.includes("mirror-generic-build-proof-16.txt")
         ? liveInvalidOutput
-        : [
-            "Hier is het gevraagde workspace-plan:",
-            "```json",
-            JSON.stringify(plan),
-            "```",
-            "Dit object bevat het volledige plan.",
-          ].join("\n");
+        : JSON.stringify(plan, null, 2);
       response.setHeader("Content-Type", "application/json");
       response.end(JSON.stringify({
-        id: "production-binding-plan",
+        id: "chatcmpl-qwen25coder-workspace-plan",
+        model: "qwen2.5-coder:7b",
         choices: [{
-          message: { content },
+          index: 0,
+          finish_reason: "stop",
+          message: {
+            role: "assistant",
+            content,
+          },
         }],
         usage: {
           prompt_tokens: 20,
@@ -157,7 +166,7 @@ test("production API bundle loads canonical runtime executor", async () => {
         FORGE_AI_PROVIDER: "local-model",
         FORGE_LOCAL_MODEL_ENABLED: "true",
         FORGE_AUTONOMY_ENABLED: "false",
-        FORGE_LOCAL_MODEL_NAME: "test-model",
+        FORGE_LOCAL_MODEL_NAME: "qwen2.5-coder:7b",
         FORGE_LOCAL_MODEL_BASE_URL: `http://127.0.0.1:${providerPort}/v1`,
       },
       stdio: ["ignore", "pipe", "pipe"],
@@ -275,12 +284,30 @@ test("production API bundle loads canonical runtime executor", async () => {
     assert.equal(snapshot.intakeObjectiveProfile, "generic-build");
     assert.equal(snapshot.effectiveObjectiveExecutionMode, "build-or-mutate");
     assert.equal(snapshot.effectiveObjectiveProfile, "generic-build");
-    assert.deepEqual(providerRequestBodies[0]?.response_format, {
-      type: "json_object",
-    });
+    const providerRequest = providerRequestBodies[0];
+    const responseFormat = providerRequest?.response_format as
+      | Readonly<Record<string, unknown>>
+      | undefined;
+    assert.equal(responseFormat?.type, "json_schema");
+    const jsonSchema = responseFormat?.json_schema as
+      | Readonly<Record<string, unknown>>
+      | undefined;
+    assert.equal(jsonSchema?.name, "forge_workspace_execution_plan");
+    assert.equal(jsonSchema?.strict, true);
+    assert.equal(
+      (jsonSchema?.schema as Readonly<Record<string, unknown>>)?.additionalProperties,
+      false,
+    );
+    const messages = providerRequest?.messages as
+      | readonly Readonly<Record<string, unknown>>[]
+      | undefined;
+    assert.deepEqual(messages?.map((message) => message.role), ["system", "user"]);
+    assert.match(String(messages?.[0]?.content), /exactly one JSON object/);
+    assert.match(String(messages?.[1]?.content), /Required output JSON Schema/);
+    assert.equal(providerRequest?.temperature, 0);
     assert.match(output, /Forge runtime binding/);
 
-    const invalidTargetPath = "sandbox/mirror-generic-build-proof-15.txt";
+    const invalidTargetPath = "sandbox/mirror-generic-build-proof-16.txt";
     const invalidObjective = rawObjective.replace(targetPath, invalidTargetPath);
     const invalidCreateResponse = await fetch(`${baseUrl}/api/missions`, {
       method: "POST",
@@ -346,14 +373,37 @@ test("production API bundle loads canonical runtime executor", async () => {
     assert.ok(diagnostics);
     assert.match(
       String(diagnostics.rawOutputExcerpt),
-      /^\*\*Provider Output:\*\*/,
+      /^Manual fallback response generated/,
     );
     assert.match(
       String(diagnostics.parseError),
-      /Unsupported workspace provider plan schemaVersion/,
+      /contains no valid JSON object/,
+    );
+    assert.equal(diagnostics.outputLength, liveInvalidOutput.length);
+    assert.equal(
+      diagnostics.outputFirst500,
+      liveInvalidOutput.slice(0, 500),
+    );
+    assert.equal(
+      diagnostics.outputLast500,
+      liveInvalidOutput.slice(-500),
     );
     assert.equal(diagnostics.truncated, false);
     assert.equal(invalidMission.output?.executionEvidence, null);
+    assert.equal(invalidMission.output?.workspaceExecutionMissionId, undefined);
+    assert.equal(invalidMission.output?.workspaceExecutionApprovalId, undefined);
+    const missionsAfterInvalid = await fetch(`${baseUrl}/api/missions`)
+      .then((response) => response.json() as Promise<{
+        readonly missions: readonly {
+          readonly kind: string;
+          readonly input: Readonly<Record<string, unknown>>;
+        }[];
+      }>);
+    assert.ok(!missionsAfterInvalid.missions.some(
+      (candidate) =>
+        candidate.kind === "operator.workspace-change" &&
+        candidate.input.sourceAutonomousMissionId === invalidCreated.id,
+    ));
     await assert.rejects(
       readFile(path.join(workspaceRoot, invalidTargetPath), "utf8"),
     );

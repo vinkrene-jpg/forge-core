@@ -61,6 +61,12 @@ export function MissionDetails({
   const evaluation = record(executionOutput?.evaluation);
   const preExecutionSnapshot = record(output?.preExecutionSnapshot);
   const providerOutputDiagnostics = record(output?.providerOutputDiagnostics);
+  const providerOutputLength =
+    typeof providerOutputDiagnostics?.outputLength === "number"
+      ? providerOutputDiagnostics.outputLength
+      : null;
+  const providerOutputFirst500 = text(providerOutputDiagnostics?.outputFirst500);
+  const providerOutputLast500 = text(providerOutputDiagnostics?.outputLast500);
   const executionStatus = linkedExecutionMission?.status ??
     (mission.kind === "operator.workspace-change" ? mission.status : null);
   const waitingForExecutionApproval =
@@ -163,6 +169,21 @@ export function MissionDetails({
           <div className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
             Workspace provider output diagnostics
           </div>
+          <div className="mt-2 rounded-md border border-border/50 p-3 text-xs">
+            Output length: {providerOutputLength ?? "onbekend"}
+          </div>
+          <div className="mt-2 text-xs font-semibold text-muted-foreground">
+            Eerste 500 tekens
+          </div>
+          <pre className="mt-1 max-h-48 overflow-auto whitespace-pre-wrap rounded-md border border-border/50 bg-background p-3 text-xs text-muted-foreground">
+            {providerOutputFirst500 ?? "(leeg)"}
+          </pre>
+          <div className="mt-2 text-xs font-semibold text-muted-foreground">
+            Laatste 500 tekens
+          </div>
+          <pre className="mt-1 max-h-48 overflow-auto whitespace-pre-wrap rounded-md border border-border/50 bg-background p-3 text-xs text-muted-foreground">
+            {providerOutputLast500 ?? "(leeg)"}
+          </pre>
           <pre className="mt-2 max-h-64 overflow-auto whitespace-pre-wrap rounded-md border border-border/50 bg-background p-3 text-xs text-muted-foreground">
             {JSON.stringify(providerOutputDiagnostics, null, 2)}
           </pre>

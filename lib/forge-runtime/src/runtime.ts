@@ -308,7 +308,7 @@ async function exists(targetPath: string): Promise<boolean> {
   }
 }
 
-function providerOutputExcerpt(outputText: string, maximum = 4_000): string {
+function sanitizedProviderOutput(outputText: string): string {
   return outputText
     .replace(
       /-----BEGIN [A-Z ]*PRIVATE KEY-----[\s\S]*?-----END [A-Z ]*PRIVATE KEY-----/gi,
@@ -318,8 +318,7 @@ function providerOutputExcerpt(outputText: string, maximum = 4_000): string {
     .replace(
       /\b(api[_-]?key|secret|token|password)\s*[:=]\s*["']?[a-z0-9_./+=-]{16,}/gi,
       "$1=[REDACTED]",
-    )
-    .slice(0, maximum);
+    );
 }
 
 export class ForgeRuntime {
@@ -1671,6 +1670,7 @@ export class ForgeRuntime {
       objective: [
         objective,
         "",
+        "WORKSPACE_PLAN_OUTPUT_CONTRACT_V1",
         "Return exactly one raw JSON object. Do not use Markdown fences or prose outside JSON.",
         "The only allowed top-level fields are schemaVersion, summary, changes, verification and commit.",
         "schemaVersion must equal 1.",
@@ -1711,6 +1711,7 @@ export class ForgeRuntime {
       });
     } catch (error) {
       const parseError = errorMessage(error);
+      const safeOutput = sanitizedProviderOutput(execution.outputText);
       const failure = new Error(
         `Workspace provider plan rejected: ${parseError}`,
       ) as MissionExecutionFailure;
@@ -1726,8 +1727,10 @@ export class ForgeRuntime {
           outputSha256: createHash("sha256")
             .update(execution.outputText, "utf8")
             .digest("hex"),
-          rawOutputExcerpt: providerOutputExcerpt(execution.outputText),
-          truncated: execution.outputText.length > 4_000,
+          rawOutputExcerpt: safeOutput.slice(0, 4_000),
+          outputFirst500: safeOutput.slice(0, 500),
+          outputLast500: safeOutput.slice(-500),
+          truncated: safeOutput.length > 4_000,
           parseError,
         }),
         executionEvidence: null,
