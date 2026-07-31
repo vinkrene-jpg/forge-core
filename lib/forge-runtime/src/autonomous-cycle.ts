@@ -496,6 +496,23 @@ export class AutonomousOutputEvaluator {
     }
 
     if (options.requiredEvidenceId) {
+      if (executionMode === "analysis-only") {
+        checks.push(
+          {
+            id: "assumptions-explicit",
+            passed: /assumptions?|aannames?/i.test(output),
+            detail:
+              "Evidence-bound analysis must state assumptions explicitly.",
+          },
+          {
+            id: "verification-explicit",
+            passed: /verif|tests?|controle|bewijs/i.test(output),
+            detail:
+              "Evidence-bound analysis must contain verification guidance.",
+          },
+        );
+      }
+
       checks.push(
         {
           id: "tool-evidence-cited",

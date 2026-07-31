@@ -289,6 +289,8 @@ test("production restart migrates legacy stale workspace mission without mutatio
   try {
     await waitForJson(`${`http://127.0.0.1:${apiPort}`}/api/healthz`);
     const baseUrl = `http://127.0.0.1:${apiPort}`;
+    assert.match(output, /Server listening/);
+    assert.equal((await fetch(`${baseUrl}/api/healthz`)).status, 200);
     const runtimeSnapshot = await waitForJson<{
       readonly binding: Readonly<Record<string, unknown>>;
     }>(`${baseUrl}/api/runtime`);
@@ -444,8 +446,11 @@ test("production restart migrates legacy stale workspace mission without mutatio
     assert.match(output, /Forge runtime binding/);
 
     await stopApi(api);
+    output = "";
     api = startApi();
     await waitForJson(`${baseUrl}/api/healthz`);
+    assert.match(output, /Server listening/);
+    assert.equal((await fetch(`${baseUrl}/api/healthz`)).status, 200);
 
     const persistedExecutionMission = await waitForJson<{
       readonly status: string;

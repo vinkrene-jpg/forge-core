@@ -27,6 +27,7 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 import {
   AutonomousOutputEvaluator,
+  classifyAutonomousObjective,
   type AutonomousExecutionEvidence,
   extractAutonomousWorkspaceTargets,
   parseCapabilityResult,
@@ -211,6 +212,8 @@ const runtimeBinding = Object.freeze({
   canonicalRepositoryRoot,
   workspaceRoot,
 });
+
+const DEFAULT_WORKSPACE_RECOVERY_TIMEOUT_MS = 60_000;
 import {
   FileWorkspaceBridgeClient,
   type WorkspaceChangeExecutor,
@@ -283,6 +286,7 @@ export interface ForgeRuntimeOptions {
   readonly learningStateStore?: LearningStateStore;
   readonly autonomyStateStore?: AutonomyStateStore;
   readonly workspaceVerificationRunner?: WorkspaceVerificationRunner;
+  readonly workspaceRecoveryTimeoutMs?: number;
   readonly workspaceChangeExecutor?: WorkspaceChangeExecutor;
   readonly aiProviderConnectors?: readonly AiProviderConnector[];
   readonly missionLoopPollIntervalMs?: number;
@@ -300,6 +304,20 @@ interface MissionExecutionFailure extends Error {
   missionResultStatus?: "failed" | "blocked" | "rejected";
   missionResultCause?: string;
   missionOutput?: Readonly<Record<string, unknown>>;
+}
+
+class WorkspaceRecoveryTimeoutError extends Error {
+  readonly missionId: string;
+  readonly timeoutMs: number;
+
+  constructor(missionId: string, timeoutMs: number) {
+    super(
+      `Workspace recovery timed out after ${timeoutMs}ms for mission ${missionId}`,
+    );
+    this.name = "WorkspaceRecoveryTimeoutError";
+    this.missionId = missionId;
+    this.timeoutMs = timeoutMs;
+  }
 }
 
 function sha256Text(value: string): string {
@@ -384,6 +402,7 @@ export class ForgeRuntime {
   readonly #learningEvidenceTool: LearningEvidenceTool;
   readonly #workspaceExecutor: WorkspaceChangeExecutor;
   readonly #workspaceVerificationRunner: WorkspaceVerificationRunner;
+  readonly #workspaceRecoveryTimeoutMs: number;
   readonly #autonomousEvaluator = new AutonomousOutputEvaluator();
   readonly #missionLoop: MissionLoop;
   #persistence = createInitialRuntimeState();
@@ -459,6 +478,11 @@ export class ForgeRuntime {
     this.#workspaceVerificationRunner =
       options.workspaceVerificationRunner ??
       new NodeWorkspaceVerificationRunner();
+    this.#workspaceRecoveryTimeoutMs =
+      Number.isInteger(options.workspaceRecoveryTimeoutMs) &&
+        Number(options.workspaceRecoveryTimeoutMs) >= 100
+        ? Number(options.workspaceRecoveryTimeoutMs)
+        : DEFAULT_WORKSPACE_RECOVERY_TIMEOUT_MS;
     this.#workspaceExecutor =
       options.workspaceChangeExecutor ??
       (bridgeDirectory && bridgeToken
@@ -766,28 +790,6 @@ export class ForgeRuntime {
       const plan = planning.plan as WorkspaceChangePlan;
       const providerExecution =
         this.#validatedGenericBuildProviderExecution(plan, mission.id);
-
-      if (providerExecution.providerId === "manual-fallback") {
-        const blocked = new Error(
-          "Generic build is blocked because provider route manual-fallback cannot produce a workspace change plan.",
-        ) as MissionExecutionFailure;
-        blocked.missionResultStatus = "blocked";
-        blocked.missionResultCause = "provider-route";
-        blocked.missionOutput = Object.freeze({
-          cycleIndex: input.cycleIndex,
-          maxCycles: input.maxCycles,
-          rootMissionId: input.rootMissionId ?? mission.id,
-          previousMissionId: input.previousMissionId,
-          objectiveExecutionMode: input.objectiveExecutionMode,
-          objectiveProfile: input.objectiveProfile,
-          compositionId: plan.compositionId,
-          executionId: plan.executionId,
-          plan,
-          executionEvidence: null,
-          preExecutionSnapshot,
-        });
-        throw blocked;
-      }
 
       const executionMission = await this.#createWorkspaceExecutionMission(plan, {
         sourceAutonomousMissionId: mission.id,
@@ -1646,9 +1648,11 @@ export class ForgeRuntime {
 
     for (const mission of staleMissions) {
       try {
-        const output = mission.output?.workspaceExecutionCheckpoint
-          ? await this.#validatedWorkspaceRecoveryOutput(mission)
-          : await this.#migrateLegacyWorkspaceRecovery(mission);
+        const recoveryContext = this.#workspaceRecoveryContext(mission);
+        const output = await this.#recoverWorkspaceMissionWithTimeout(
+          mission,
+          recoveryContext,
+        );
         await this.#missionEngine.complete(mission.id, output);
         this.#events.publish("mission.recovered", {
           missionId: mission.id,
@@ -1656,6 +1660,8 @@ export class ForgeRuntime {
           mutationReplayed: false,
         });
       } catch (error) {
+        const recoveryContext = this.#workspaceRecoveryContext(mission);
+        const timedOut = error instanceof WorkspaceRecoveryTimeoutError;
         const message =
           `Workspace recovery failed without mutation replay: ${errorMessage(error)}`;
         const failure = new Error(message) as MissionExecutionFailure;
@@ -1667,17 +1673,116 @@ export class ForgeRuntime {
             recoveredAt: new Date().toISOString(),
             mutationReplayed: false,
             validated: false,
+            timedOut,
+            timeoutMs: timedOut ? this.#workspaceRecoveryTimeoutMs : null,
+            missionId: recoveryContext.missionId,
+            sourceAutonomousMissionId:
+              recoveryContext.sourceAutonomousMissionId,
+            sourcePlanningMissionId: recoveryContext.sourcePlanningMissionId,
+            sourcePlanId: recoveryContext.sourcePlanId,
             error: message,
           }),
         });
-        await this.#missionEngine.fail(mission.id, failure);
+        try {
+          await this.#missionEngine.fail(mission.id, failure);
+        } catch (persistError) {
+          this.#events.publish("mission.failed", {
+            missionId: mission.id,
+            kind: mission.kind,
+            recoveryFailure: true,
+            mutationReplayed: false,
+            timedOut,
+            error: message,
+            persistError: errorMessage(persistError),
+          });
+        }
       }
+    }
+  }
+
+  #workspaceRecoveryContext(
+    mission: MissionRecord,
+  ): Readonly<{
+    missionId: string;
+    sourceAutonomousMissionId: string | null;
+    sourcePlanningMissionId: string | null;
+    sourcePlanId: string | null;
+  }> {
+    return Object.freeze({
+      missionId: mission.id,
+      sourceAutonomousMissionId:
+        typeof mission.input.sourceAutonomousMissionId === "string"
+          ? mission.input.sourceAutonomousMissionId
+          : null,
+      sourcePlanningMissionId:
+        typeof mission.input.sourcePlanningMissionId === "string"
+          ? mission.input.sourcePlanningMissionId
+          : null,
+      sourcePlanId:
+        typeof mission.input.sourcePlanId === "string"
+          ? mission.input.sourcePlanId
+          : null,
+    });
+  }
+
+  async #recoverWorkspaceMissionWithTimeout(
+    mission: MissionRecord,
+    context: Readonly<{
+      missionId: string;
+      sourceAutonomousMissionId: string | null;
+      sourcePlanningMissionId: string | null;
+      sourcePlanId: string | null;
+    }>,
+  ): Promise<Readonly<Record<string, unknown>>> {
+    const timeoutController = new AbortController();
+    let timeoutHandle: ReturnType<typeof setTimeout> | undefined;
+    const timeout = new Promise<never>((_, reject) => {
+      timeoutHandle = setTimeout(() => {
+        timeoutController.abort();
+        reject(
+          new WorkspaceRecoveryTimeoutError(
+            context.missionId,
+            this.#workspaceRecoveryTimeoutMs,
+          ),
+        );
+      }, this.#workspaceRecoveryTimeoutMs);
+    });
+
+    try {
+      const recovery = mission.output?.workspaceExecutionCheckpoint
+        ? this.#validatedWorkspaceRecoveryOutput(
+            mission,
+            timeoutController.signal,
+          )
+        : this.#migrateLegacyWorkspaceRecovery(
+            mission,
+            timeoutController.signal,
+          );
+      return await Promise.race([recovery, timeout]);
+    } finally {
+      if (timeoutHandle) {
+        clearTimeout(timeoutHandle);
+      }
+    }
+  }
+
+  #throwIfWorkspaceRecoveryTimedOut(
+    signal: AbortSignal,
+    mission: MissionRecord,
+  ): void {
+    if (signal.aborted) {
+      throw new WorkspaceRecoveryTimeoutError(
+        mission.id,
+        this.#workspaceRecoveryTimeoutMs,
+      );
     }
   }
 
   async #validatedWorkspaceRecoveryOutput(
     mission: MissionRecord,
+    signal: AbortSignal,
   ): Promise<Readonly<Record<string, unknown>>> {
+    this.#throwIfWorkspaceRecoveryTimedOut(signal, mission);
     const output = mission.output;
     const checkpoint =
       output?.workspaceExecutionCheckpoint as
@@ -1697,12 +1802,14 @@ export class ForgeRuntime {
       throw new Error("complete persisted workspace checkpoint is missing");
     }
 
-    return this.#validatedCheckpointRecoveryDetails(mission, output);
+    return this.#validatedCheckpointRecoveryDetails(mission, output, signal);
   }
 
   async #migrateLegacyWorkspaceRecovery(
     mission: MissionRecord,
+    signal: AbortSignal,
   ): Promise<Readonly<Record<string, unknown>>> {
+      this.#throwIfWorkspaceRecoveryTimedOut(signal, mission);
       const approval = this.#governanceEngine.findByMissionId(mission.id);
       if (!approval || approval.status !== "approved") {
         throw new Error("legacy workspace execution approval is not approved");
@@ -1776,6 +1883,7 @@ export class ForgeRuntime {
       }[] = [];
 
       for (const change of request.changes) {
+        this.#throwIfWorkspaceRecoveryTimedOut(signal, mission);
         const absolutePath = path.resolve(project.rootPath, change.path);
         const realTargetPath = await realpath(absolutePath);
         const relativeTargetPath = path.relative(realProjectRoot, realTargetPath);
@@ -1842,13 +1950,13 @@ export class ForgeRuntime {
         }));
       }
 
-      const abortController = new AbortController();
       const verificationResults = [];
       for (const step of request.verification) {
+        this.#throwIfWorkspaceRecoveryTimedOut(signal, mission);
         const result = await this.#workspaceVerificationRunner.run(
           step,
           project.rootPath,
-          abortController.signal,
+          signal,
         );
         if (result.exitCode !== 0) {
           throw new Error(
@@ -1866,6 +1974,7 @@ export class ForgeRuntime {
         }));
       }
       for (const snapshot of targetSnapshots) {
+        this.#throwIfWorkspaceRecoveryTimedOut(signal, mission);
         const content = await readFile(snapshot.absolutePath, "utf8");
         const targetStat = await stat(snapshot.absolutePath);
         if (
@@ -1969,7 +2078,9 @@ export class ForgeRuntime {
   async #validatedCheckpointRecoveryDetails(
     mission: MissionRecord,
     output: Readonly<Record<string, unknown>>,
+    signal: AbortSignal,
   ): Promise<Readonly<Record<string, unknown>>> {
+    this.#throwIfWorkspaceRecoveryTimedOut(signal, mission);
     const approval = this.#governanceEngine.findByMissionId(mission.id);
     if (!approval || approval.status !== "approved") {
       throw new Error("workspace execution approval is not approved");
@@ -2083,6 +2194,7 @@ export class ForgeRuntime {
     }
 
     for (const change of request.changes) {
+      this.#throwIfWorkspaceRecoveryTimedOut(signal, mission);
       const absolutePath = path.resolve(project.rootPath, change.path);
       const content = await readFile(absolutePath, "utf8");
       const expectedSha256 = sha256Text(change.content);
@@ -2293,6 +2405,22 @@ export class ForgeRuntime {
       composition.id,
       mission.id,
     );
+
+    if (execution.providerId === "manual-fallback") {
+      const blocked = new Error(
+        "Generic build is blocked because provider route manual-fallback cannot produce a workspace change plan.",
+      ) as MissionExecutionFailure;
+      blocked.missionResultStatus = "blocked";
+      blocked.missionResultCause = "provider-route";
+      blocked.missionOutput = Object.freeze({
+        objectiveExecutionMode: "build-or-mutate",
+        objectiveProfile: "generic-build",
+        compositionId: composition.id,
+        executionId: execution.id,
+        executionEvidence: null,
+      });
+      throw blocked;
+    }
 
     if (execution.status !== "succeeded" || !execution.outputText) {
       throw new Error(`Workspace provider planning failed: ${execution.error ?? execution.status}`);
@@ -2705,6 +2833,9 @@ export class ForgeRuntime {
 
       if (
         (!Array.isArray(existingTargets) || existingTargets.length === 0) &&
+        missionInput.objectiveProfile !== "file-create-read-hash" &&
+        classifyAutonomousObjective(objective).profile !==
+          "file-create-read-hash" &&
         objective.length > 0
       ) {
         const inferredTargets = extractAutonomousWorkspaceTargets(objective);
@@ -3295,9 +3426,25 @@ export class ForgeRuntime {
     }
 
     const execution = executions[0];
+    const input = parseAutonomousCycleInput(mission.input);
+    const toolEvidenceMemoryId =
+      typeof mission.output?.toolEvidenceMemoryId === "string"
+        ? mission.output.toolEvidenceMemoryId
+        : null;
+    const executionEvidence =
+      mission.output?.executionEvidence as
+        | AutonomousExecutionEvidence
+        | null
+        | undefined;
     const evaluation = this.#autonomousEvaluator.evaluate(
       mission.id,
       execution,
+      {
+        requiredEvidenceId: toolEvidenceMemoryId,
+        executionEvidence: executionEvidence ?? null,
+        objectiveExecutionMode: input.objectiveExecutionMode,
+        objectiveProfile: input.objectiveProfile,
+      },
     );
     const failedCheckIds = evaluation.checks
       .filter((check) => !check.passed)

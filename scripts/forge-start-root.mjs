@@ -8,8 +8,12 @@ const repositoryRoot = path.resolve(__dirname, "..");
 
 function runPnpm(args) {
   return new Promise((resolve, reject) => {
-    const command = process.platform === "win32" ? "cmd" : "pnpm";
-    const commandArgs = process.platform === "win32" ? ["/c", "pnpm", ...args] : args;
+    const command = process.platform === "win32"
+      ? process.env.ComSpec || "cmd.exe"
+      : "pnpm";
+    const commandArgs = process.platform === "win32"
+      ? ["/d", "/s", "/c", "pnpm.cmd", ...args]
+      : args;
 
     const child = spawn(command, commandArgs, {
       cwd: repositoryRoot,

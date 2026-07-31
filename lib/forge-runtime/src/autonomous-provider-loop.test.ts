@@ -479,35 +479,38 @@ test("autonomous provider loop", { concurrency: false }, async (t) => {
         };
         const runtime = new ForgeRuntime({
           aiProviderConnectors: [connector],
+          workspaceVerificationRunner: successfulWorkspaceRunner,
           missionLoopPollIntervalMs: 100,
         });
 
-        await runtime.start();
+        try {
+          await runtime.start();
 
-        const created = await runtime.createMission(proofRequest());
-        assert.ok(created.approval);
-        await runtime.approveApproval(created.approval.id, "integration-test");
+          const created = await runtime.createMission(proofRequest());
+          assert.ok(created.approval);
+          await runtime.approveApproval(created.approval.id, "integration-test");
 
-        await waitFor(() => {
+          await waitFor(() => {
+            const mission = runtime.getMission(created.mission.id);
+            return mission?.status === "succeeded";
+          });
+
           const mission = runtime.getMission(created.mission.id);
-          return mission?.status === "succeeded";
-        });
-
-        const mission = runtime.getMission(created.mission.id);
-        assert.equal(mission?.status, "succeeded");
-        const evidence = mission?.output
-          ?.executionEvidence as {
-          receipts?: readonly unknown[];
-          artifacts?: readonly { readonly kind?: unknown; readonly path?: unknown; readonly sha256?: unknown }[];
-        } | undefined;
-        assert.ok(evidence);
-        assert.ok((evidence?.receipts?.length ?? 0) > 0);
-        assert.ok((evidence?.artifacts?.length ?? 0) > 0);
-        assert.equal(evidence?.artifacts?.[0]?.kind, "file-hash-proof");
-        assert.match(String(evidence?.artifacts?.[0]?.path ?? ""), /forge-proof\.txt/i);
-        assert.match(String(evidence?.artifacts?.[0]?.sha256 ?? ""), /^[a-f0-9]{64}$/);
-
-        await runtime.stop();
+          assert.equal(mission?.status, "succeeded");
+          const evidence = mission?.output
+            ?.executionEvidence as {
+            receipts?: readonly unknown[];
+            artifacts?: readonly { readonly kind?: unknown; readonly path?: unknown; readonly sha256?: unknown }[];
+          } | undefined;
+          assert.ok(evidence);
+          assert.ok((evidence?.receipts?.length ?? 0) > 0);
+          assert.ok((evidence?.artifacts?.length ?? 0) > 0);
+          assert.equal(evidence?.artifacts?.[0]?.kind, "file-hash-proof");
+          assert.match(String(evidence?.artifacts?.[0]?.path ?? ""), /forge-proof\.txt/i);
+          assert.match(String(evidence?.artifacts?.[0]?.sha256 ?? ""), /^[a-f0-9]{64}$/);
+        } finally {
+          await runtime.stop();
+        }
       });
     },
   );
@@ -522,29 +525,36 @@ test("autonomous provider loop", { concurrency: false }, async (t) => {
         delete process.env.FORGE_LOCAL_MODEL_ENABLED;
 
         const runtime = new ForgeRuntime({
+          workspaceVerificationRunner: successfulWorkspaceRunner,
           missionLoopPollIntervalMs: 100,
         });
 
-        await runtime.start();
+        try {
+          await runtime.start();
 
-        const created = await runtime.createMission(proofRequest());
-        assert.ok(created.approval);
-        await runtime.approveApproval(created.approval.id, "integration-test");
+          const created = await runtime.createMission(proofRequest());
+          assert.ok(created.approval);
+          await runtime.approveApproval(created.approval.id, "integration-test");
 
-        await waitFor(() => {
+          await waitFor(() => {
+            const mission = runtime.getMission(created.mission.id);
+            return mission?.status === "failed";
+          });
+
           const mission = runtime.getMission(created.mission.id);
-          return mission?.status === "failed";
-        });
-
-        const mission = runtime.getMission(created.mission.id);
-        assert.equal(mission?.status, "failed");
-        assert.equal(
-          (mission?.output?.missionResult as { status?: unknown } | undefined)?.status,
-          "blocked",
-        );
-        assert.match(mission?.lastError ?? "", /manual-fallback/i);
-
-        await runtime.stop();
+          assert.equal(mission?.status, "failed");
+          assert.equal(
+            (mission?.output?.missionResult as { status?: unknown } | undefined)?.status,
+            "blocked",
+            JSON.stringify({
+              lastError: mission?.lastError,
+              missionResult: mission?.output?.missionResult,
+            }),
+          );
+          assert.match(mission?.lastError ?? "", /manual-fallback/i);
+        } finally {
+          await runtime.stop();
+        }
       });
     },
   );
