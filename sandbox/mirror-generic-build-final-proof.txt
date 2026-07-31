@@ -1,0 +1,3 @@
+Forge Mirror volledige tweestapsflow bewezen
+Datum: 2026-07-30
+Doel: operator approval, workspace approval, execution en evidence end-to-end aantonen
