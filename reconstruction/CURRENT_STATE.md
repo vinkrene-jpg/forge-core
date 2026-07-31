@@ -205,3 +205,15 @@ Status: implemented with focused runtime and API integration evidence.
 - Production restart evidence: `production restart recovers workspace evidence without mutation replay` hard-kills the built API after the target and durable checkpoint exist but before finalization, restarts the same `dist/index.mjs` with the same state, proves the child mission becomes `succeeded`, all evidence fields survive, and target mtime remains unchanged.
 - Existing pre-fix child mission `a11cddcb-1fe2-4806-992d-f9580739b587` has the legacy persisted shape `status=running`, `output=null` while its approved target exists. Startup now migrates this shape from the authoritative mission/governance/provider stores: it validates exact plan/project/approval linkage, canonical target path, content and SHA-256, runs only the approved verification identifiers, rechecks target content/hash/mtime, reconstructs evidence and accepted evaluation, and never calls WorkspaceExecutor or writes the target.
 - Production legacy evidence: `production restart migrates legacy stale workspace mission without mutation replay` rewrites a durable test child to the exact old `running`/null-output form before restarting `dist/index.mjs`; recovery succeeds with full proof/evidence fields and unchanged target mtime.
+
+## MIRROR_PROJECTION_FINAL_01 - verified 2026-07-31
+
+- SQLite health uses the active adapter and resolves the existing shared data file at `C:\Forge\storage\forge.sqlite` from any workspace CWD without creating a second database.
+- Mission intake persists one mission and one linked intake persistence set.
+- Mirror is a read-only, non-persistent projection over authoritative runtime JSON, keyed by `missionId`.
+- `GET /api/mirror/missions` returns 3,015 compact deterministic records in 838 ms and 800 ms live; each source is loaded once per request and projection timeout returns HTTP 503.
+- `GET /api/mirror/missions/:missionId` correlates approvals, runtime audit receipts, evidence, artifacts, assessments and result. Verified mission: `544c805d-790e-4747-ab46-7bd15acf0b06`.
+- List and detail responses were byte-identical before and after one controlled restart. All five source-store SHA-256 values remained unchanged.
+- Root typecheck, frontend build, API build, 25 API tests, 55 runtime tests and 7 focused Mirror tests passed.
+- Live runtime after validation: one port-5000 listener, PID `8652`; root and health HTTP 200 with `status=ok`, `database=ok`, `storage=ok`.
+- Evidence: `reconstruction/MIRROR_PROJECTION_VERIFICATION.json`.

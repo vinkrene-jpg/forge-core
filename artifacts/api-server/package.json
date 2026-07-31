@@ -9,7 +9,7 @@
     "start": "node --enable-source-maps ./dist/index.mjs",
     "test:production-runtime-binding": "pnpm run build && esbuild src/tests/productionRuntimeBinding.test.ts --bundle --platform=node --format=cjs --outfile=dist/tests/productionRuntimeBinding.test.cjs --log-level=warning && node --test dist/tests/productionRuntimeBinding.test.cjs",
     "typecheck": "tsc -p tsconfig.json --noEmit",
-    "test": "esbuild src/tests/evolution.test.ts src/tests/analysis.test.ts src/tests/missionConsoleWorkspaceExecution.test.ts --bundle --platform=node --format=cjs --outdir=dist/tests --out-extension:.js=.cjs --log-level=warning && NODE_ENV=production node --test dist/tests/*.test.cjs"
+    "test": "esbuild src/tests/evolution.test.ts src/tests/analysis.test.ts src/tests/missionConsoleWorkspaceExecution.test.ts src/tests/mirrorProjection.test.ts src/tests/databaseHealth.test.ts --bundle --platform=node --format=cjs --outdir=dist/tests --out-extension:.js=.cjs --external:better-sqlite3 --log-level=warning && node -e \"const { spawnSync } = require('node:child_process'); process.env.NODE_ENV = 'production'; const files = ['dist/tests/evolution.test.cjs', 'dist/tests/analysis.test.cjs', 'dist/tests/missionConsoleWorkspaceExecution.test.cjs', 'dist/tests/mirrorProjection.test.cjs', 'dist/tests/databaseHealth.test.cjs']; const result = spawnSync(process.execPath, ['--test', ...files], { stdio: 'inherit', env: process.env }); process.exit(result.status ?? 1)\""
   },
   "dependencies": {
     "@workspace/api-zod": "workspace:*",

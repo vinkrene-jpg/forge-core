@@ -580,8 +580,6 @@ export function createMissionIntakeRouter(
         runtime,
       );
 
-      await persistMissionIntake(preview, null, runtime);
-
       const result = await runtime.createMission(preview.request);
 
       await persistMissionIntake(preview, result.mission.id, runtime);

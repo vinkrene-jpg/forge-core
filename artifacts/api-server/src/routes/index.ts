@@ -22,6 +22,7 @@ import evolutionRouter from "./evolution";
 import analysisRouter from "./analysis";
 import autonomyRouter from "./autonomy";
 import memoryBridgeRouter from "./memoryBridge";
+import mirrorRouter from "./mirror";
 
 const router: IRouter = Router();
 
@@ -48,5 +49,6 @@ router.use(evolutionRouter);
 router.use(analysisRouter);
 router.use(autonomyRouter);
 router.use(memoryBridgeRouter);
+router.use(mirrorRouter);
 
 export default router;

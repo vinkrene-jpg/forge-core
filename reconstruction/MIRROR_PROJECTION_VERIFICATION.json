@@ -1,0 +1,94 @@
+{
+  "technicalCode": "MIRROR_PROJECTION_FINAL_01",
+  "verifiedAt": "2026-07-31T22:36:00+02:00",
+  "sourceHead": "5ceb008215e1f9db64f34f68ada5002fec1984c6",
+  "validation": {
+    "rootTypecheckExitCode": 0,
+    "frontendBuildExitCode": 0,
+    "apiBuildExitCode": 0,
+    "apiTests": {
+      "exitCode": 0,
+      "passed": 25,
+      "failed": 0
+    },
+    "runtimeTests": {
+      "exitCode": 0,
+      "passed": 55,
+      "failed": 0
+    },
+    "mirrorTests": {
+      "exitCode": 0,
+      "passed": 7,
+      "failed": 0
+    }
+  },
+  "live": {
+    "rootHttpStatus": 200,
+    "healthz": {
+      "httpStatus": 200,
+      "status": "ok",
+      "database": "ok",
+      "storage": "ok"
+    },
+    "mirrorList": {
+      "httpStatus": 200,
+      "firstResponseMs": 838,
+      "secondResponseMs": 800,
+      "missionCount": 3015,
+      "deterministic": true,
+      "compactFields": [
+        "eventCount",
+        "firstOccurredAt",
+        "integrityWarnings",
+        "lastOccurredAt",
+        "missionId",
+        "status",
+        "title"
+      ],
+      "sha256BeforeRestart": "D7A41D63E0CED916BF603B2F305389C689A88B4DA643008573227703903A376A",
+      "sha256AfterRestart": "D7A41D63E0CED916BF603B2F305389C689A88B4DA643008573227703903A376A"
+    },
+    "mirrorDetail": {
+      "missionId": "544c805d-790e-4747-ab46-7bd15acf0b06",
+      "httpStatus": 200,
+      "responseMs": 68,
+      "eventCount": 16,
+      "approvals": 1,
+      "evidence": 4,
+      "artifacts": 1,
+      "assessments": 1,
+      "resultPresent": true,
+      "auditCorrelationPresent": true,
+      "sha256BeforeRestart": "4C214051E13CE8253FE5FD2FF53A918E7D7C7A560061FDC393AB7510ED55D18A",
+      "sha256AfterRestart": "4C214051E13CE8253FE5FD2FF53A918E7D7C7A560061FDC393AB7510ED55D18A"
+    },
+    "unknownMissionHttpStatus": 404,
+    "listenerCount": 1,
+    "pid": 8652
+  },
+  "sourceStoreHashes": {
+    "unchanged": true,
+    "beforeAndAfter": {
+      "storage/forge-runtime/missions.json": "CB3EFEAD14913B95A163159CF62696C2F0C1BD5D9C22D5A98187D58345F11030",
+      "storage/forge-runtime/governance.json": "A07669ADD291C788AC56E9B75220E3A9195FA7B52F22EE98C403C22926A46793",
+      "storage/forge-runtime/ai-gateway.json": "F0F1A732AC6CD64121C230082D7F11B877889E1A939623C1B99FAA4EF566858E",
+      "storage/forge-runtime/learning-engine.json": "10155A165ABDBE516F2F7CB0D893CA9C882749D1B9B6DA54323146023B49721F",
+      "storage/forge-runtime/operator-core.json": "57A45D67AFADA6570A152940275B9B84321049C27C19EC544627FFA81292FEF2"
+    }
+  },
+  "authority": {
+    "mirrorPersistentStoreCreated": false,
+    "mirrorWriteEndpointsCreated": false,
+    "sourceRecordsMutated": false,
+    "singleIntakeMissionCount": 1,
+    "intakePersistenceSets": 1,
+    "guardianGovernorLogicChanged": false
+  },
+  "restart": {
+    "oldPid": 10152,
+    "newPid": 8652,
+    "controlledRestarts": 1,
+    "listProjectionEqual": true,
+    "detailProjectionEqual": true
+  }
+}
