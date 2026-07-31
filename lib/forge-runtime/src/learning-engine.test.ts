@@ -238,14 +238,14 @@ test(
         scheduled.mission.mission.input.targetCapabilityId,
         reconciledProposal.targetCapabilityId,
       );
-      assert.ok(scheduled.mission.mission.input.reasonForSelection);
-      assert.ok(
-        scheduled.mission.mission.input.expectedNewEvidence.length > 0,
-      );
-      assert.match(
-        scheduled.mission.mission.input.reasonForSelection,
-        /open blockage|recent/i,
-      );
+      const reasonForSelection =
+        scheduled.mission.mission.input.reasonForSelection;
+      const expectedNewEvidence =
+        scheduled.mission.mission.input.expectedNewEvidence;
+      assert.ok(typeof reasonForSelection === "string");
+      assert.ok(Array.isArray(expectedNewEvidence));
+      assert.ok(expectedNewEvidence.length > 0);
+      assert.match(reasonForSelection, /open blockage|recent/i);
 
       await assert.rejects(
         reconciled.scheduleLearningProposal(reconciledProposal.id),
@@ -344,9 +344,24 @@ test(
         "learning-failure-test",
       );
       await waitFor(
-        () =>
-          reconciled.getMission(failedScheduled.mission.mission.id)?.status ===
-          "failed",
+        () => {
+          const status = reconciled.getMission(
+            failedScheduled.mission.mission.id,
+          )?.status;
+          return status === "failed" || status === "succeeded";
+        },
+      );
+
+      const failedMission = reconciled.getMission(
+        failedScheduled.mission.mission.id,
+      );
+      assert.equal(
+        failedMission?.status,
+        "failed",
+        JSON.stringify({
+          lastError: failedMission?.lastError,
+          missionResult: failedMission?.output?.missionResult,
+        }),
       );
 
       assert.equal(providerCalls, 3);

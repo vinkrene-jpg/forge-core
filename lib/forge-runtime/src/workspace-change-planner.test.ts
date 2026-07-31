@@ -58,7 +58,8 @@ test("provider workspace planner", { concurrency: false }, async (t) => {
           providerResponseId: "workspace-plan-response",
           outputText: JSON.stringify({
             schemaVersion: 1,
-            summary: "Update the approved sample",
+            summary:
+              "Assumptions: sample.txt is the only approved target and its supplied SHA-256 still identifies the current source. Verification guidance: run typecheck and tests, then inspect the committed file and persisted executor evidence before accepting this bounded update.",
             changes: [{
               path: "sample.txt",
               expectedSha256: sha256(source),
@@ -168,5 +169,105 @@ test("provider workspace planner", { concurrency: false }, async (t) => {
         commit: { message: "test: rejected hash", push: false },
       }),
     }), /changed the source precondition/);
+  });
+
+  await t.test("extracts exactly one wrapped JSON object and diagnoses invalid output", () => {
+    const base = {
+      missionId: "live-proof-14",
+      projectId: "forge-core",
+      objective: "Create the approved proof file",
+      targets: [{
+        path: "sandbox/mirror-generic-build-proof-14.txt",
+        expectedSha256: null,
+        exists: false,
+      }],
+      compositionId: "composition",
+      executionId: "execution",
+    } as const;
+    const validPlan = {
+      schemaVersion: 1,
+      summary: "Assumptions and verification guidance for one approved file.",
+      changes: [{
+        path: "sandbox/mirror-generic-build-proof-14.txt",
+        expectedSha256: null,
+        content: "Forge generic-build live approval proof\n",
+      }],
+      verification: ["typecheck"],
+      commit: { message: "test: proof 14", push: false },
+    };
+    const parsed = parseWorkspaceProviderPlan({
+      ...base,
+      outputText: [
+        "The requested plan follows.",
+        "```json",
+        JSON.stringify(validPlan),
+        "```",
+      ].join("\n"),
+    });
+    assert.equal(
+      parsed.request.changes[0].path,
+      "sandbox/mirror-generic-build-proof-14.txt",
+    );
+
+    assert.throws(
+      () => parseWorkspaceProviderPlan({
+        ...base,
+        outputText: "```json\n{\"schemaVersion\":1\n```",
+      }),
+      /no valid JSON object \(unterminated object at offset 8\)/,
+    );
+    assert.throws(
+      () => parseWorkspaceProviderPlan({
+        ...base,
+        outputText: `${JSON.stringify(validPlan)}\n${JSON.stringify(validPlan)}`,
+      }),
+      /contains 2 valid JSON objects; exactly one is required/,
+    );
+    assert.throws(
+      () => parseWorkspaceProviderPlan({
+        ...base,
+        outputText: [
+          "**Provider Output:**",
+          "I will complete the typecheck before proceeding.",
+          "",
+          "**Evidence:**",
+          JSON.stringify({
+            missionId: "222fa8fd-b790-428b-b4f2-e23746df40d4",
+            kind: "operator.autonomous-cycle",
+            status: "pending",
+            result: null,
+          }),
+          "",
+          "The provider will provide evidence in its next response.",
+        ].join("\n"),
+      }),
+      /Unsupported workspace provider plan schemaVersion/,
+    );
+
+    const mapped = parseWorkspaceProviderPlan({
+      ...base,
+      outputText: JSON.stringify({
+        ...validPlan,
+        verification: [
+          "Run pnpm --filter @workspace/forge-runtime typecheck",
+          "Run pnpm --filter @workspace/forge-runtime test",
+        ],
+      }),
+    });
+    assert.deepEqual(mapped.request.verification, ["typecheck", "test"]);
+
+    assert.throws(
+      () => parseWorkspaceProviderPlan({
+        ...base,
+        outputText: JSON.stringify({
+          ...validPlan,
+          verification: [
+            "Run pnpm --filter @workspace/forge-runtime test",
+            "Invoke arbitrary-command",
+          ],
+        }),
+      }),
+      /Unsupported verification step: Invoke arbitrary-command/,
+    );
   });
 });

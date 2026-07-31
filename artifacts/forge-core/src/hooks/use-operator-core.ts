@@ -5,12 +5,15 @@ import {
 } from "@tanstack/react-query";
 import {
   operatorApi,
-  type MissionIntakePreview,
   type ModelBudget,
   type ModelPrivacy,
   type ModelTaskType,
   type ProjectMemoryKind,
 } from "@/lib/operator-api";
+import {
+  startMissionFromCurrentIntake,
+  type MissionConsoleRequestDiagnostic,
+} from "@/pages/mission-console-submit";
 
 const keys = {
   summary: ["operator", "summary"] as const,
@@ -157,9 +160,15 @@ export function useStartMissionFromIntake() {
 
   return useMutation({
     mutationFn: (request: {
-      command: string;
-      preview: MissionIntakePreview;
-    }) => operatorApi.missionIntakeStart(request.command),
+      readonly rawObjective: string;
+      readonly onRequest?: (
+        diagnostic: MissionConsoleRequestDiagnostic,
+      ) => void;
+    }) =>
+      startMissionFromCurrentIntake(
+        request.rawObjective,
+        request.onRequest,
+      ),
     onSuccess: async (result) => {
       await Promise.all([
         queryClient.invalidateQueries({

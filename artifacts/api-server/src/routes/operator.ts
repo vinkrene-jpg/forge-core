@@ -1,11 +1,14 @@
 import { Router, type IRouter } from "express";
 import {
   assessMissionRequest,
+  classifyAutonomousObjective,
+  extractAutonomousWorkspaceTargets,
   forgeRuntime,
   requirementsForMission,
   type CapabilityStatus,
   type CreateProjectMemoryRequest,
   type CreateMissionRequest,
+  type ForgeRuntime,
   type ModelRouteRequest,
   type MissionKind,
   type ProjectMemoryKind,
@@ -67,7 +70,12 @@ function normalizeCommand(value: unknown): string {
     throw new Error("command must be a string");
   }
 
-  const normalized = value.trim().replace(/\s+/g, " ");
+  const normalized = value
+    .replace(/\r\n?/g, "\n")
+    .split("\n")
+    .map((line) => line.trim().replace(/[ \t]+/g, " "))
+    .filter((line) => line.length > 0)
+    .join("\n");
 
   if (normalized.length < 8) {
     throw new Error("command must be at least 8 characters");
@@ -80,8 +88,28 @@ function normalizeCommand(value: unknown): string {
   return normalized;
 }
 
-function pickProjectId(): string {
-  return forgeRuntime.listOperatorProjects()[0]?.id ?? "forge-core";
+function rawCommand(value: unknown): string {
+  if (typeof value !== "string") {
+    throw new Error("command must be a string");
+  }
+
+  return value;
+}
+
+type MissionIntakeRuntime = Pick<
+  ForgeRuntime,
+  | "listOperatorProjects"
+  | "autonomySummary"
+  | "getCapability"
+  | "addProjectMemory"
+  | "recordMemoryBridgeDecision"
+  | "recordMemoryBridgeLearning"
+  | "upsertMemoryBridgeContext"
+  | "createMission"
+>;
+
+function pickProjectId(runtime: MissionIntakeRuntime = forgeRuntime): string {
+  return runtime.listOperatorProjects()[0]?.id ?? "forge-core";
 }
 
 function extractMaxCycles(command: string): number {
@@ -124,14 +152,16 @@ function extractDurationMs(command: string): number {
   return Math.min(Math.round(amount * 3_600_000), 300_000);
 }
 
-function extractProofTargetPath(command: string): string | null {
-  const match = command.match(/\b([a-z0-9][a-z0-9._-]*proof[a-z0-9._-]*\.txt)\b/i);
+function extractWorkspaceTargets(
+  command: string,
+  includeInlineMutationTarget: boolean,
+): readonly { readonly path: string; readonly allowCreate: true }[] {
+  return extractAutonomousWorkspaceTargets(command, includeInlineMutationTarget);
+}
 
-  if (!match) {
-    return null;
-  }
-
-  return match[1].toLowerCase();
+function hasRepositoryPathReference(command: string): boolean {
+  return /(?:^|[\s"'`])(?:[a-z0-9._-]+[\\/])+[a-z0-9][a-z0-9._-]*(?=$|[\s,.;:!?'"`])/i
+    .test(command);
 }
 
 function chooseMissionKind(command: string): MissionKind {
@@ -146,11 +176,51 @@ function chooseMissionKind(command: string): MissionKind {
   return "operator.autonomous-cycle";
 }
 
-function buildMissionIntakePreview(command: string): MissionIntakePreview {
-  const projectId = pickProjectId();
+function buildMissionIntakePreview(
+  command: string,
+  rawObjective = command,
+  runtime: MissionIntakeRuntime = forgeRuntime,
+): MissionIntakePreview {
+  const projectId = pickProjectId(runtime);
   const missionKind = chooseMissionKind(command);
   const interpretedGoal = command;
-  const proofTargetPath = extractProofTargetPath(command);
+  const objectiveClassification =
+    missionKind === "operator.autonomous-cycle"
+      ? classifyAutonomousObjective(interpretedGoal)
+      : null;
+  const targets = extractWorkspaceTargets(
+    command,
+    objectiveClassification?.mode === "build-or-mutate",
+  );
+  const objectiveExecutionMode =
+    targets.length > 0
+      ? "build-or-mutate"
+      : objectiveClassification?.mode;
+  const objectiveProfile =
+    targets.length > 0
+      ? "generic-build"
+      : objectiveClassification?.profile;
+  const proofTargetPath = targets[0]?.path;
+
+  if (
+    objectiveClassification?.mode === "build-or-mutate" &&
+    hasRepositoryPathReference(command) &&
+    targets.length !== 1
+  ) {
+    throw new Error(
+      "Mutation mission with a repository path requires exactly one target manifest",
+    );
+  }
+
+  if (
+    hasRepositoryPathReference(command) &&
+    targets.length === 1 &&
+    !targets[0].path.includes("/")
+  ) {
+    throw new Error(
+      "Mission intake may not discard workspace target directory components",
+    );
+  }
 
   const request: CreateMissionRequest =
     missionKind === "operator.autonomous-cycle"
@@ -160,7 +230,13 @@ function buildMissionIntakePreview(command: string): MissionIntakePreview {
           input: {
             projectId,
             objective: interpretedGoal,
+            rawObjective,
+            objectiveExecutionMode,
+            objectiveProfile,
+            intakeObjectiveExecutionMode: objectiveExecutionMode,
+            intakeObjectiveProfile: objectiveProfile,
             ...(proofTargetPath ? { proofTargetPath } : {}),
+            ...(targets.length > 0 ? { targets } : {}),
             cycleIndex: 1,
             maxCycles: extractMaxCycles(command),
             continuationAuthorized: false,
@@ -186,9 +262,9 @@ function buildMissionIntakePreview(command: string): MissionIntakePreview {
           };
 
   const assessment = assessMissionRequest(request);
-  const autonomy = forgeRuntime.autonomySummary();
+  const autonomy = runtime.autonomySummary();
   const expectedCapabilities = requirementsForMission(missionKind).map((requirement) => {
-    const current = forgeRuntime.getCapability(requirement.capabilityId);
+    const current = runtime.getCapability(requirement.capabilityId);
 
     return Object.freeze({
       capabilityId: requirement.capabilityId,
@@ -224,17 +300,18 @@ function buildMissionIntakePreview(command: string): MissionIntakePreview {
 async function persistMissionIntake(
   preview: MissionIntakePreview,
   missionId: string | null,
+  runtime: MissionIntakeRuntime = forgeRuntime,
 ): Promise<void> {
-  const projectId = pickProjectId();
+  const projectId = pickProjectId(runtime);
 
-  await forgeRuntime.addProjectMemory(projectId, {
+  await runtime.addProjectMemory(projectId, {
     kind: "task",
     source: "desktop-mission-intake",
     tags: ["mission-intake", "command"],
     content: preview.originalCommand,
   });
 
-  await forgeRuntime.addProjectMemory(projectId, {
+  await runtime.addProjectMemory(projectId, {
     kind: "decision",
     source: "desktop-mission-intake",
     tags: ["mission-intake", "interpretation", preview.missionKind],
@@ -250,14 +327,14 @@ async function persistMissionIntake(
     ),
   });
 
-  await forgeRuntime.recordMemoryBridgeDecision({
+  await runtime.recordMemoryBridgeDecision({
     title: "Operator opdrachtinvoer",
     content: preview.originalCommand,
     tags: ["desktop-intake", "command"],
     sourceMissionId: missionId,
   });
 
-  await forgeRuntime.recordMemoryBridgeDecision({
+  await runtime.recordMemoryBridgeDecision({
     title: "Operator interpretatie",
     content: [
       `Goal: ${preview.interpretedGoal}`,
@@ -273,7 +350,7 @@ async function persistMissionIntake(
     sourceMissionId: missionId,
   });
 
-  await forgeRuntime.upsertMemoryBridgeContext({
+  await runtime.upsertMemoryBridgeContext({
     summary: [
       `Operator goal: ${preview.interpretedGoal}`,
       `Mission kind: ${preview.missionKind}`,
@@ -473,32 +550,42 @@ router.get(
   },
 );
 
-router.post(
-  "/operator/mission-intake/preview",
-  (req, res): void => {
+export function createMissionIntakeRouter(
+  runtime: MissionIntakeRuntime = forgeRuntime,
+): IRouter {
+  const intakeRouter: IRouter = Router();
+
+  intakeRouter.post("/operator/mission-intake/preview", (req, res): void => {
     try {
-      const command = normalizeCommand(req.body?.command);
-      const preview = buildMissionIntakePreview(command);
+      const rawObjective = rawCommand(req.body?.command);
+      const command = normalizeCommand(rawObjective);
+      const preview = buildMissionIntakePreview(
+        command,
+        rawObjective,
+        runtime,
+      );
       res.json(preview);
     } catch (error) {
       res.status(400).json({ error: message(error) });
     }
-  },
-);
+  });
 
-router.post(
-  "/operator/mission-intake/start",
-  async (req, res): Promise<void> => {
+  intakeRouter.post("/operator/mission-intake/start", async (req, res): Promise<void> => {
     try {
-      const command = normalizeCommand(req.body?.command);
-      const preview = buildMissionIntakePreview(command);
+      const rawObjective = rawCommand(req.body?.command);
+      const command = normalizeCommand(rawObjective);
+      const preview = buildMissionIntakePreview(
+        command,
+        rawObjective,
+        runtime,
+      );
 
-      await persistMissionIntake(preview, null);
+      await persistMissionIntake(preview, null, runtime);
 
-      const result = await forgeRuntime.createMission(preview.request);
+      const result = await runtime.createMission(preview.request);
 
-      await persistMissionIntake(preview, result.mission.id);
-      await forgeRuntime.recordMemoryBridgeLearning({
+      await persistMissionIntake(preview, result.mission.id, runtime);
+      await runtime.recordMemoryBridgeLearning({
         title: `Mission gestart: ${result.mission.id}`,
         content: [
           `Command: ${preview.originalCommand}`,
@@ -521,8 +608,12 @@ router.post(
     } catch (error) {
       res.status(400).json({ error: message(error) });
     }
-  },
-);
+  });
+
+  return intakeRouter;
+}
+
+router.use(createMissionIntakeRouter());
 
 router.post(
   "/operator/mission-intake/:missionId/record-result",

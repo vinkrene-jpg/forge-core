@@ -58,7 +58,7 @@ if (existsSync(frontendDist)) {
       return;
     }
 
-    res.sendFile(path.join(frontendDist, "index.html"));
+    res.sendFile("index.html", { root: frontendDist });
   });
 }
 

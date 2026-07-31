@@ -1,30 +1,32 @@
 # Forge Next Mission
 
-## FG-005.150 - Validate evaluator stability across provider modes
+## Issue #4 follow-up - Deploy and confirm canonical live runtime
 
-Status: ready.
+Status: ready after production-built legacy null-output recovery passed without replay.
 
 ## Objective
 
-Demonstrate stable, evidence-based evaluator outcomes across both real-provider and fallback-provider routes, with explicit proof that accepted and rejected decisions match execution evidence.
+Deploy the verified commit to the canonical checkout and perform one final operator-visible confirmation without bypassing either approval.
 
 ## Required chapters
 
-1. Run one governed autonomous mission on a real configured provider route (if available) and capture acceptance evidence.
-2. Run one governed autonomous mission on fallback route and capture acceptance or rejection evidence with full check breakdown.
-3. Verify evaluator checks map directly to provider execution state and output text characteristics (substantive content, assumptions, verification guidance, secret safety).
-4. Publish comparative evidence under `reconstruction/` with mission, execution, evaluation and memory IDs for both routes.
+1. Fast-forward the clean canonical checkout at `C:\Forge\forge-core` to the verified commit.
+2. Rebuild and restart exclusively through Forge Control v9.
+3. Confirm Runtime Details reports module and workspace roots under `C:\Forge\forge-core`.
+4. Confirm legacy child mission `a11cddcb-1fe2-4806-992d-f9580739b587` migrates from `running`/null-output to `succeeded`.
+5. Confirm Mission Details shows mission result, proof fields, verification, execution evidence and `legacyMigrated=true` without changing the target mtime.
+6. Persist the live recovery evidence under `reconstruction/`.
 
 ## Failure rules
 
-- Shared typecheck, test or build failure blocks completion.
-- Provider availability or quota failures are isolated and must not trigger automatic retry.
-- No destructive operations and no history rewrite.
+- Provider availability or quota failure remains isolated and must not trigger automatic retry.
+- Do not bypass the second approval or use a parallel execution path.
+- No destructive operations, protected-path changes or history rewrite.
 
 ## Resume checklist
 
-1. Confirm runtime/API health.
-2. Validate provider routing and connectivity preflight for both configured real-provider and fallback-provider modes.
-3. Execute governed missions and capture evaluator check-level outcomes.
-4. Capture comparative evidence IDs and hashes across mission/evaluation/memory stores.
-5. Commit only after verification succeeds.
+1. Fast-forward the clean canonical checkout at `C:\Forge\forge-core`, then rebuild and restart exclusively through Forge Control v9. Verify Mission Details reports the new commit, `runtimeRepositoryRoot`, `workspaceRoot` and `canonicalRepositoryRoot` as `C:\Forge\forge-core`, and `runtimeModulePath` as `C:\Forge\forge-core\artifacts\api-server\dist\index.mjs`.
+2. Confirm runtime and API health.
+3. Confirm the visible build marker is `mission-console-mounted-submit-2026-07-30.2`, execute the two-approval flow from Mission Console with the next proof objective, and confirm client diagnostics and persisted mission input retain full `rawObjective`, one full-path `allowCreate` target, and canonical `generic-build` / `build-or-mutate`; then confirm the linked pending workspace approval is immediately visible after the first approval.
+4. Capture live mission, approval, evidence and artifact identifiers.
+5. Update `CURRENT_STATE.md` only after the live file effect and evaluation are verified.
