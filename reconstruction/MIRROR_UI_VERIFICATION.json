@@ -1,0 +1,91 @@
+{
+  "technicalCode": "MIRROR_UI_01",
+  "verifiedAt": "2026-08-01",
+  "sourceHead": "46ea9b8",
+  "routes": [
+    "/mirror",
+    "/mirror/:missionId"
+  ],
+  "apiEndpoints": [
+    "GET /api/mirror/missions",
+    "GET /api/mirror/missions/:missionId"
+  ],
+  "validation": {
+    "frontendTypecheckExitCode": 0,
+    "frontendBuildExitCode": 0,
+    "frontendTests": {
+      "exitCode": 0,
+      "existingMissionConsolePassed": 1,
+      "mirrorPassed": 13,
+      "mirrorFailed": 0,
+      "requirementsCovered": 15
+    },
+    "apiMirrorTests": {
+      "exitCode": 0,
+      "passed": 7,
+      "failed": 0
+    },
+    "runtimeTests": {
+      "exitCode": 0,
+      "passed": 55,
+      "failed": 0
+    },
+    "gitDiffCheckExitCode": 0
+  },
+  "performance": {
+    "testedMissionCount": 3000,
+    "liveMissionCount": 3015,
+    "pageSize": 50,
+    "testRenderMs": 94.1145,
+    "listRequests": 1,
+    "detailRequestsPerListRow": 0
+  },
+  "live": {
+    "mirrorHttpStatus": 200,
+    "overviewVisible": true,
+    "openedMissionId": "a11cddcb-1fe2-4806-992d-f9580739b587",
+    "timelineEventCount": 5,
+    "linkedSectionsVisible": [
+      "Goedkeuringen",
+      "Bewijs",
+      "Bestanden",
+      "Beoordelingen",
+      "Resultaat"
+    ],
+    "integrityWarningsVisible": true,
+    "missingLinksVisible": true,
+    "mirrorRequests": [
+      {
+        "method": "GET",
+        "path": "/api/mirror/missions"
+      },
+      {
+        "method": "GET",
+        "path": "/api/mirror/missions/a11cddcb-1fe2-4806-992d-f9580739b587"
+      }
+    ],
+    "writeRequestCount": 0,
+    "consoleErrors": 0,
+    "pageErrors": 0,
+    "mobile": {
+      "viewportWidth": 390,
+      "visible": true,
+      "bodyScrollWidth": 390
+    },
+    "rootHttpStatus": 200,
+    "healthHttpStatus": 200,
+    "healthStatus": "ok",
+    "database": "ok",
+    "storage": "ok",
+    "listenerCount": 1,
+    "pid": 8652,
+    "runtimeRestartCountDuringMission": 0
+  },
+  "safety": {
+    "readOnly": true,
+    "writeRoutesAdded": false,
+    "approvalActionsAdded": false,
+    "artifactExecutionAdded": false,
+    "parallelLocalStorageTruthAdded": false
+  }
+}

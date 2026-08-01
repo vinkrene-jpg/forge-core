@@ -30,6 +30,7 @@ import CoreComponents from "@/pages/core-components";
 import AuditLogs from "@/pages/audit-logs";
 import Learning from "@/pages/learning-live";
 import AutonomyLive from "@/pages/autonomy-live";
+import { MirrorDetailPage, MirrorOverviewPage } from "@/pages/mirror";
 import NotFound from "@/pages/not-found";
 
 const queryClient = new QueryClient({
@@ -57,6 +58,8 @@ function Router() {
         <Route path="/autonomy" component={AutonomyLive} />
         <Route path="/events" component={Events} />
         <Route path="/operator" component={OperatorCorePage} />
+        <Route path="/mirror/:missionId" component={MirrorDetailPage} />
+        <Route path="/mirror" component={MirrorOverviewPage} />
 
         <Route path="/projects" component={Projects} />
         <Route path="/tasks" component={Tasks} />

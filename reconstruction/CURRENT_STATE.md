@@ -217,3 +217,14 @@ Status: implemented with focused runtime and API integration evidence.
 - Root typecheck, frontend build, API build, 25 API tests, 55 runtime tests and 7 focused Mirror tests passed.
 - Live runtime after validation: one port-5000 listener, PID `8652`; root and health HTTP 200 with `status=ok`, `database=ok`, `storage=ok`.
 - Evidence: `reconstruction/MIRROR_PROJECTION_VERIFICATION.json`.
+
+## MIRROR_UI_01 - verified 2026-08-01
+
+- Forge Control exposes `Mirror` in the existing live-control navigation at `/mirror`, with read-only detail at `/mirror/:missionId`.
+- The overview reads only `GET /api/mirror/missions`, searches missionId/title, filters status, sorts newest activity first and renders at most 50 of 3,015 compact records per page.
+- Detail reads one `GET /api/mirror/missions/:missionId` and renders the endpoint timeline, approvals, evidence, artifacts, assessments, result, integrity warnings and missing links without reconstructing state.
+- Frontend tests cover all 15 requested behaviors; the final 3,000-record test rendered 50 rows in 94 ms with one list request and no detail N+1 traffic.
+- Frontend typecheck/build, 14 frontend tests, 7 Mirror API tests, 55 runtime tests and `git diff --check` passed.
+- Live browser verification opened mission `a11cddcb-1fe2-4806-992d-f9580739b587`: list and detail each made one GET, no writes occurred, and console/page errors were empty.
+- Root and health remained HTTP 200 with database/storage `ok`; one listener remained active on PID `8652`. No runtime restart was required.
+- Evidence: `reconstruction/MIRROR_UI_VERIFICATION.json`.

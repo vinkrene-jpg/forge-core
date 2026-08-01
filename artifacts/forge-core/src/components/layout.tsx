@@ -14,6 +14,7 @@ import {
   ListChecks,
   Lock,
   MessageSquarePlus,
+  Milestone,
   Package,
   Radio,
   ShieldCheck,
@@ -27,6 +28,7 @@ const LIVE_NAV_ITEMS = [
   { href: "/runtime", label: "Runtime", icon: LayoutDashboard },
   { href: "/autonomy", label: "Autonomy", icon: Activity },
   { href: "/missions", label: "Missions", icon: ListChecks },
+  { href: "/mirror", label: "Mirror", icon: Milestone },
   { href: "/approvals", label: "Approvals", icon: ShieldCheck },
   { href: "/capabilities", label: "Capabilities", icon: Boxes },
   { href: "/evolution", label: "Evolution", icon: TrendingUp },
@@ -110,8 +112,8 @@ export function Layout({
         : "bg-amber-500";
 
   return (
-    <div className="flex h-screen overflow-hidden bg-background text-foreground dark">
-      <aside className="flex w-72 flex-shrink-0 flex-col border-r border-border bg-sidebar">
+    <div className="flex h-screen flex-col overflow-hidden bg-background text-foreground dark md:flex-row">
+      <aside className="flex h-[42vh] w-full flex-shrink-0 flex-col border-b border-border bg-sidebar md:h-auto md:w-72 md:border-b-0 md:border-r">
         <div className="flex h-16 items-center border-b border-border px-6">
           <div className="flex items-center gap-2 text-primary">
             <BrainCircuit className="h-6 w-6" />
@@ -157,7 +159,7 @@ export function Layout({
         </div>
       </aside>
 
-      <main className="relative flex flex-1 flex-col overflow-auto">
+      <main className="relative flex min-h-0 min-w-0 flex-1 flex-col overflow-auto">
         <div
           className="pointer-events-none absolute inset-0 opacity-[0.02]"
           style={{
