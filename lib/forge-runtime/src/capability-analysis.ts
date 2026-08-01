@@ -54,6 +54,14 @@ function requiredText(
 export function requirementsForMission(
   kind: MissionKind,
 ): readonly CapabilityRequirement[] {
+  if (kind === "operator.mirror-intake") {
+    return Object.freeze([{
+      capabilityId: "governance.risk.assess",
+      minimumStatus: "operational",
+      reason: "Mission intake must pass deterministic governance assessment without execution.",
+    }]);
+  }
+
   const shared: CapabilityRequirement[] = [
     {
       capabilityId: "mission.loop.execute",

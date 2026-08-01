@@ -26,6 +26,8 @@ Object.assign(globalThis, {
   HTMLElement: dom.window.HTMLElement,
   HTMLInputElement: dom.window.HTMLInputElement,
   HTMLSelectElement: dom.window.HTMLSelectElement,
+  HTMLTextAreaElement: dom.window.HTMLTextAreaElement,
+  FormData: dom.window.FormData,
   Event: dom.window.Event,
   MouseEvent: dom.window.MouseEvent,
   MutationObserver: dom.window.MutationObserver,
@@ -380,6 +382,85 @@ test("MIRROR_UI_01 frontend acceptance", { concurrency: false }, async (suite) =
     assert.equal(panel?.querySelectorAll("a").length, 10);
     assert.equal(panel?.querySelector("button"), null);
     assert.match(panel?.textContent ?? "", /Meerdere hervatbare missies/);
+    await unmount(mounted.root);
+  });
+
+  await suite.test("Nieuwe missie toont begrijpelijke velden en servervalidatie", async () => {
+    dom.window.history.replaceState({}, "", "/mirror");
+    const mounted = await mount(<Router><MirrorOverviewPage /></Router>, async (input, init) => {
+      if ((init?.method ?? "GET") === "POST") {
+        return Response.json({ error: "De missie-invoer is door de server geweigerd" }, { status: 400 });
+      }
+      return listFetcher()(input, init);
+    });
+    await waitFor(() => mounted.container.textContent?.includes("Nieuwe missie") === true, "intakeknop");
+    const openButton = [...mounted.container.querySelectorAll("button")].find((item) => item.textContent?.includes("Nieuwe missie"));
+    assert.ok(openButton);
+    await act(async () => openButton.dispatchEvent(new dom.window.MouseEvent("click", { bubbles: true })));
+    await waitFor(() => document.body.textContent?.includes("Forge start nog geen uitvoering") === true, "intakedialoog");
+    for (const label of ["Titel", "Doel", "Context", "Prioriteit", "Randvoorwaarden", "Acceptatiecriteria"]) {
+      assert.match(document.body.textContent ?? "", new RegExp(label));
+    }
+    const title = document.querySelector("#mirror-title") as HTMLInputElement;
+    const objective = document.querySelector("#mirror-objective") as HTMLTextAreaElement;
+    title.value = "Servervalidatie";
+    title.dispatchEvent(new dom.window.Event("input", { bubbles: true }));
+    objective.value = "Valideer de foutweergave.";
+    objective.dispatchEvent(new dom.window.Event("input", { bubbles: true }));
+    const submit = [...document.body.querySelectorAll("button")].find((item) => item.textContent?.includes("Missie opslaan"));
+    assert.ok(submit);
+    await act(async () => submit.dispatchEvent(new dom.window.MouseEvent("click", { bubbles: true })));
+    await waitFor(() => document.body.textContent?.includes("door de server geweigerd") === true, "servervalidatie");
+    assert.equal(mounted.requests.filter((request) => request.method === "POST").length, 1);
+    await unmount(mounted.root);
+  });
+
+  await suite.test("opslaan blokkeert dubbele klik en opent het geretourneerde detail", async () => {
+    dom.window.history.replaceState({}, "", "/mirror");
+    const postedBody: { current: Readonly<Record<string, unknown>> | null } = { current: null };
+    let releasePost!: () => void;
+    const postGate = new Promise<void>((resolve) => { releasePost = resolve; });
+    const mounted = await mount(<Router><MirrorOverviewPage /></Router>, async (input, init) => {
+      if ((init?.method ?? "GET") === "POST") {
+        postedBody.current = JSON.parse(String(init?.body)) as Readonly<Record<string, unknown>>;
+        await postGate;
+        return Response.json({
+          missionId: "mission-new",
+          status: "NOT_STARTED",
+          createdAt: "2026-08-01T12:00:00.000Z",
+          detailUrl: "/mirror/mission-new",
+        }, { status: 201 });
+      }
+      return listFetcher()(input, init);
+    });
+    const openButton = [...mounted.container.querySelectorAll("button")].find((item) => item.textContent?.includes("Nieuwe missie"));
+    assert.ok(openButton);
+    await act(async () => openButton.dispatchEvent(new dom.window.MouseEvent("click", { bubbles: true })));
+    await waitFor(() => document.querySelector("#mirror-title") !== null, "intakevelden");
+    const setValue = (selector: string, value: string) => {
+      const field = document.querySelector(selector) as HTMLInputElement | HTMLTextAreaElement | null;
+      assert.ok(field);
+      field.value = value;
+      field.dispatchEvent(new dom.window.Event("input", { bubbles: true }));
+    };
+    setValue("#mirror-title", "Nieuwe gecontroleerde missie");
+    setValue("#mirror-objective", "Leg de missie vast zonder uitvoering.");
+    setValue("#mirror-context", "Lokale operatorintake.");
+    setValue("#mirror-constraints", "Geen uitvoering\nGeen approval");
+    setValue("#mirror-acceptance", "input_received zichtbaar");
+    const submit = [...document.body.querySelectorAll("button")].find((item) => item.textContent?.includes("Missie opslaan"));
+    assert.ok(submit);
+    await act(async () => {
+      submit.dispatchEvent(new dom.window.MouseEvent("click", { bubbles: true }));
+      submit.dispatchEvent(new dom.window.MouseEvent("click", { bubbles: true }));
+      await new Promise((resolve) => setTimeout(resolve, 0));
+    });
+    assert.equal(mounted.requests.filter((request) => request.method === "POST").length, 1);
+    releasePost();
+    await waitFor(() => dom.window.location.pathname === "/mirror/mission-new", "detailnavigatie");
+    assert.equal(postedBody.current?.title, "Nieuwe gecontroleerde missie");
+    assert.deepEqual(postedBody.current?.constraints, ["Geen uitvoering", "Geen approval"]);
+    assert.equal(typeof postedBody.current?.requestId, "string");
     await unmount(mounted.root);
   });
 });

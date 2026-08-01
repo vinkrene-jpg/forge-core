@@ -1,0 +1,47 @@
+{
+  "technicalCode": "MIRROR_INTAKE_01",
+  "verifiedAt": "2026-08-01T08:49:20+02:00",
+  "sourceBaseline": "f8922dde6f82ab2e9f449063eef3820a7ec3acbf",
+  "authoritativeRoute": "ForgeRuntime.createMission -> MissionEngine.enqueue -> FileMissionStateStore",
+  "endpoint": "POST /api/mirror/missions",
+  "idempotency": {
+    "key": "mission.input.idempotencyKey",
+    "boundary": "MissionEngine serialized mutation",
+    "sequentialRetrySameMissionId": true,
+    "concurrentRetrySameMissionId": true,
+    "separateStoreCreated": false
+  },
+  "tests": {
+    "frontend": { "passed": 18, "failed": 0 },
+    "api": { "passed": 44, "failed": 0 },
+    "intake": { "passed": 2, "failed": 0 },
+    "runtime": { "passed": 55, "failed": 0 },
+    "typecheck": "passed",
+    "build": "passed"
+  },
+  "live": {
+    "requestId": "mirror-intake-live-20260801-0847",
+    "missionId": "5c3701ef-2226-47ff-8a52-eb94a594f2a7",
+    "title": "Claude Mirror intake validatie",
+    "firstPostStatus": 201,
+    "secondPostStatus": 201,
+    "sameMissionId": true,
+    "missionRecords": 1,
+    "missionStatus": "not_started",
+    "attempts": 0,
+    "timeline": ["input_received"],
+    "sessionStatus": "NOT_STARTED",
+    "resumeStatus": "NOT_STARTED",
+    "automaticExecution": false,
+    "approvalEvent": false,
+    "guardianOrGovernorEvent": false,
+    "browserPostCountAfterDoubleClick": 1,
+    "browserFollowingMethods": ["GET", "GET"],
+    "browserConsoleErrors": 0,
+    "restartPreserved": true,
+    "rootStatus": 200,
+    "health": { "status": "ok", "database": "ok", "storage": "ok" },
+    "listenerCount": 1,
+    "listenerPid": 17556
+  }
+}

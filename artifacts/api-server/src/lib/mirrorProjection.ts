@@ -313,16 +313,20 @@ export class MirrorProjectionService {
       payloadReference: "mission.input",
       status: mission.status,
     }));
-    events.push(createEvent(mission.id, {
-      eventType: "interpretation_created",
-      occurredAt: mission.createdAt,
-      sourceType: "mission",
-      sourceId: mission.id,
-      actorType: "forge",
-      summary: text(mission.input.objective) ?? mission.title,
-      payloadReference: "mission.input.objective",
-      status: "created",
-    }));
+    const isInertMirrorIntake =
+      mission.kind === "operator.mirror-intake" && mission.status === "not_started";
+    if (!isInertMirrorIntake) {
+      events.push(createEvent(mission.id, {
+        eventType: "interpretation_created",
+        occurredAt: mission.createdAt,
+        sourceType: "mission",
+        sourceId: mission.id,
+        actorType: "forge",
+        summary: text(mission.input.objective) ?? mission.title,
+        payloadReference: "mission.input.objective",
+        status: "created",
+      }));
+    }
 
     const approvals = snapshot.approvalsByMissionId.get(mission.id) ?? [];
     for (const approval of approvals) {
@@ -535,10 +539,10 @@ export class MirrorProjectionService {
     if (mission.status === "succeeded" && !resultRecord(mission)) {
       missingLinks.push("result");
     }
-    if (!events.some((event) => event.eventType === "guardian_reviewed")) {
+    if (!isInertMirrorIntake && !events.some((event) => event.eventType === "guardian_reviewed")) {
       missingLinks.push("guardian_review");
     }
-    if (!events.some((event) => event.eventType === "governor_released" || event.eventType === "governor_blocked")) {
+    if (!isInertMirrorIntake && !events.some((event) => event.eventType === "governor_released" || event.eventType === "governor_blocked")) {
       missingLinks.push("governor_decision");
     }
     const integrityWarnings = Object.freeze([

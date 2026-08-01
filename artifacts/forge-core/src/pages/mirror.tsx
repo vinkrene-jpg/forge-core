@@ -1,11 +1,15 @@
-import { useDeferredValue, useEffect, useState } from "react";
-import { AlertTriangle, ArrowLeft, ChevronLeft, ChevronRight, Search } from "lucide-react";
-import { Link, useParams } from "wouter";
+import { useDeferredValue, useEffect, useRef, useState, type FormEvent } from "react";
+import { AlertTriangle, ArrowLeft, ChevronLeft, ChevronRight, Plus, Search, X } from "lucide-react";
+import { Link, useLocation, useParams } from "wouter";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
+import { useToast } from "@/hooks/use-toast";
 import {
+  createMirrorMission,
   EVENT_LABELS,
   filterMirrorMissions,
   MISSING_LINK_LABELS,
@@ -61,6 +65,7 @@ export function MirrorOverviewPage() {
   const [search, setSearch] = useState("");
   const [status, setStatus] = useState("all");
   const [page, setPage] = useState(1);
+  const [intakeOpen, setIntakeOpen] = useState(false);
   const deferredSearch = useDeferredValue(search);
   const records = missions.data?.missions ?? [];
   const statuses = [...new Set(records.map((mission) => mission.status))].sort();
@@ -73,10 +78,22 @@ export function MirrorOverviewPage() {
   return (
     <div className="space-y-6" data-testid="mirror-overview">
       <header>
-        <div className="mb-2 text-xs font-semibold uppercase tracking-[0.2em] text-primary">Mirror</div>
-        <h1 className="text-3xl font-bold tracking-tight">Missies</h1>
-        <p className="mt-1 text-muted-foreground">Lees de volledige missieketen zonder de runtime te wijzigen.</p>
+        <div className="flex flex-wrap items-end justify-between gap-4">
+          <div>
+            <div className="mb-2 text-xs font-semibold uppercase tracking-[0.2em] text-primary">Mirror</div>
+            <h1 className="text-3xl font-bold tracking-tight">Missies</h1>
+            <p className="mt-1 text-muted-foreground">Bekijk missies en leg gecontroleerd nieuw werk vast.</p>
+          </div>
+          <Button onClick={() => setIntakeOpen(true)}><Plus className="mr-2 h-4 w-4" />Nieuwe missie</Button>
+        </div>
       </header>
+
+      {intakeOpen ? (
+        <MirrorIntakeForm
+          onCancel={() => setIntakeOpen(false)}
+          onCreated={() => setIntakeOpen(false)}
+        />
+      ) : null}
 
       <Card data-testid="mirror-resume" className="border-primary/30">
         <CardHeader className="border-b border-border/60">
@@ -388,5 +405,85 @@ export function MirrorDetailPage() {
         </aside>
       </div>
     </div>
+  );
+}
+
+function lines(value: string): readonly string[] {
+  return value.split(/\r?\n/).map((item) => item.trim()).filter(Boolean);
+}
+
+function newRequestId(): string {
+  return globalThis.crypto?.randomUUID?.() ?? `mirror-${Date.now()}-${Math.random().toString(16).slice(2)}`;
+}
+
+function MirrorIntakeForm({ onCancel, onCreated }: {
+  readonly onCancel: () => void;
+  readonly onCreated: () => void;
+}) {
+  const [, navigate] = useLocation();
+  const { toast } = useToast();
+  const submitting = useRef(false);
+  const requestId = useRef<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+
+  async function submit(event: FormEvent<HTMLFormElement>): Promise<void> {
+    event.preventDefault();
+    if (submitting.current) return;
+    submitting.current = true;
+    setIsSubmitting(true);
+    setError(null);
+    const form = new FormData(event.currentTarget);
+    requestId.current ??= newRequestId();
+    try {
+      const result = await createMirrorMission({
+        requestId: requestId.current,
+        title: String(form.get("title") ?? ""),
+        objective: String(form.get("objective") ?? ""),
+        context: String(form.get("context") ?? ""),
+        requestedBy: "owner",
+        priority: String(form.get("priority") ?? "NORMAL") as "LOW" | "NORMAL" | "HIGH" | "CRITICAL",
+        constraints: lines(String(form.get("constraints") ?? "")),
+        acceptanceCriteria: lines(String(form.get("acceptanceCriteria") ?? "")),
+      });
+      toast({
+        title: "Missie opgeslagen",
+        description: `MissionId: ${result.missionId}`,
+      });
+      onCreated();
+      navigate(result.detailUrl);
+    } catch (cause) {
+      setError(cause instanceof Error ? cause.message : "De missie kon niet worden opgeslagen.");
+    } finally {
+      submitting.current = false;
+      setIsSubmitting(false);
+    }
+  }
+
+  return (
+    <section role="dialog" aria-labelledby="mirror-intake-title" className="border-y border-border bg-muted/20 py-5">
+      <div className="mb-5 flex items-start justify-between gap-4">
+        <div>
+          <h2 id="mirror-intake-title" className="text-xl font-semibold">Nieuwe missie</h2>
+          <p className="mt-1 text-sm text-muted-foreground">Leg de opdracht vast. Forge start nog geen uitvoering.</p>
+        </div>
+        <Button type="button" size="icon" variant="ghost" aria-label="Intake sluiten" onClick={onCancel}><X className="h-4 w-4" /></Button>
+      </div>
+      <form className="grid gap-4" onSubmit={(event) => void submit(event)}>
+        <div className="grid gap-2"><Label htmlFor="mirror-title">Titel</Label><Input id="mirror-title" name="title" maxLength={160} required /></div>
+        <div className="grid gap-2"><Label htmlFor="mirror-objective">Doel</Label><Textarea id="mirror-objective" name="objective" maxLength={4000} required /></div>
+        <div className="grid gap-2"><Label htmlFor="mirror-context">Context</Label><Textarea id="mirror-context" name="context" maxLength={8000} /></div>
+        <div className="grid gap-2">
+          <Label htmlFor="mirror-priority">Prioriteit</Label>
+          <select id="mirror-priority" name="priority" defaultValue="NORMAL" className="h-9 rounded-md border border-input bg-background px-3 text-sm">
+            <option value="LOW">Laag</option><option value="NORMAL">Normaal</option><option value="HIGH">Hoog</option><option value="CRITICAL">Kritiek</option>
+          </select>
+        </div>
+        <div className="grid gap-2"><Label htmlFor="mirror-constraints">Randvoorwaarden</Label><Textarea id="mirror-constraints" name="constraints" placeholder="Eén randvoorwaarde per regel" /></div>
+        <div className="grid gap-2"><Label htmlFor="mirror-acceptance">Acceptatiecriteria</Label><Textarea id="mirror-acceptance" name="acceptanceCriteria" placeholder="Eén criterium per regel" /></div>
+        {error ? <p role="alert" className="text-sm text-destructive">{error}</p> : null}
+        <div className="flex justify-end"><Button type="submit" disabled={isSubmitting}>{isSubmitting ? "Opslaan..." : "Missie opslaan"}</Button></div>
+      </form>
+    </section>
   );
 }

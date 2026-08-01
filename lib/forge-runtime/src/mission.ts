@@ -3,9 +3,11 @@ export type MissionKind =
   | "runtime.stability-window"
   | "operator.autonomous-cycle"
   | "operator.workspace-change"
-  | "operator.workspace-plan";
+  | "operator.workspace-plan"
+  | "operator.mirror-intake";
 
 export type MissionStatus =
+  | "not_started"
   | "awaiting_approval"
   | "queued"
   | "running"
@@ -46,10 +48,12 @@ export interface CreateMissionRequest {
   readonly kind: MissionKind;
   readonly title?: string;
   readonly input?: Readonly<Record<string, unknown>>;
+  readonly idempotencyKey?: string;
 }
 
 export interface MissionSummary {
   readonly total: number;
+  readonly notStarted: number;
   readonly awaitingApproval: number;
   readonly queued: number;
   readonly running: number;

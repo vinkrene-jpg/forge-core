@@ -30,9 +30,11 @@ const missionKinds = new Set<MissionKind>([
   "operator.autonomous-cycle",
   "operator.workspace-change",
   "operator.workspace-plan",
+  "operator.mirror-intake",
 ]);
 
 const missionStatuses = new Set<MissionStatus>([
+  "not_started",
   "awaiting_approval",
   "queued",
   "running",

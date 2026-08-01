@@ -7,6 +7,7 @@ export type RuntimeEventType =
   | "kernel.stopping"
   | "kernel.stopped"
   | "kernel.failed"
+  | "mission.intake-recorded"
   | "mission.enqueued"
   | "mission.awaiting_approval"
   | "mission.approved"

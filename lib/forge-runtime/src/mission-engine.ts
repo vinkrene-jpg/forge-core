@@ -44,7 +44,7 @@ export interface MissionEngineOptions {
 
 type InitialMissionStatus = Extract<
   MissionStatus,
-  "queued" | "awaiting_approval"
+  "not_started" | "queued" | "awaiting_approval"
 >;
 
 function cloneMission(mission: MissionRecord): MissionRecord {
@@ -154,7 +154,8 @@ function assertSupportedKind(kind: unknown): asserts kind is MissionKind {
     kind !== "runtime.stability-window" &&
     kind !== "operator.autonomous-cycle" &&
     kind !== "operator.workspace-change" &&
-    kind !== "operator.workspace-plan"
+    kind !== "operator.workspace-plan" &&
+    kind !== "operator.mirror-intake"
   ) {
     throw new Error(`Unsupported mission kind: ${String(kind)}`);
   }
@@ -338,6 +339,7 @@ export class MissionEngine {
     this.#ensureInitialized();
 
     const counts = {
+      not_started: 0,
       awaiting_approval: 0,
       queued: 0,
       running: 0,
@@ -352,6 +354,7 @@ export class MissionEngine {
 
     return Object.freeze({
       total: this.#state.missions.length,
+      notStarted: counts.not_started,
       awaitingApproval: counts.awaiting_approval,
       queued: counts.queued,
       running: counts.running,
@@ -370,6 +373,18 @@ export class MissionEngine {
     assertSupportedKind(request.kind);
 
     return this.#mutate(async () => {
+      const idempotencyKey = request.idempotencyKey?.trim();
+      if (idempotencyKey) {
+        const existing = this.#state.missions.find(
+          (mission) =>
+            mission.kind === request.kind &&
+            mission.input.idempotencyKey === idempotencyKey,
+        );
+        if (existing) {
+          return cloneMission(existing);
+        }
+      }
+
       const now = new Date().toISOString();
       const title =
         request.title?.trim() ||
@@ -382,7 +397,9 @@ export class MissionEngine {
                 ? "Autonomous provider cycle"
                 : request.kind === "operator.workspace-change"
                   ? "Governed workspace change"
-                  : "Governed provider workspace plan"
+                  : request.kind === "operator.workspace-plan"
+                    ? "Governed provider workspace plan"
+                    : "Claude Mirror mission"
         );
 
       const mission = cloneMission({
@@ -396,7 +413,10 @@ export class MissionEngine {
         completedAt: null,
         attempts: 0,
         interruptedCount: 0,
-        input: Object.freeze({ ...(request.input ?? {}) }),
+        input: Object.freeze({
+          ...(request.input ?? {}),
+          ...(idempotencyKey ? { idempotencyKey } : {}),
+        }),
         output: null,
         lastError: null,
       });
@@ -412,7 +432,9 @@ export class MissionEngine {
       await this.#stateStore.save(this.#state);
 
       this.#events.publish(
-        initialStatus === "queued"
+        initialStatus === "not_started"
+          ? "mission.intake-recorded"
+          : initialStatus === "queued"
           ? "mission.enqueued"
           : "mission.awaiting_approval",
         {
@@ -892,6 +914,10 @@ export class MissionEngine {
       }
 
       return this.#executeWorkspacePlan(mission, signal);
+    }
+
+    if (mission.kind === "operator.mirror-intake") {
+      throw new Error("Mirror intake missions cannot be executed automatically");
     }
 
     const exhaustiveCheck: never = mission.kind;

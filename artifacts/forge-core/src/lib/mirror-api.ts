@@ -132,6 +132,24 @@ interface MirrorMissionListResponse {
   readonly missions: readonly MirrorMissionListItem[];
 }
 
+export interface MirrorMissionIntakeRequest {
+  readonly requestId: string;
+  readonly title: string;
+  readonly objective: string;
+  readonly context: string;
+  readonly requestedBy: string;
+  readonly priority: "LOW" | "NORMAL" | "HIGH" | "CRITICAL";
+  readonly constraints: readonly string[];
+  readonly acceptanceCriteria: readonly string[];
+}
+
+export interface MirrorMissionIntakeResponse {
+  readonly missionId: string;
+  readonly status: "NOT_STARTED";
+  readonly createdAt: string;
+  readonly detailUrl: string;
+}
+
 export class MirrorApiError extends Error {
   readonly status: number;
 
@@ -153,6 +171,29 @@ async function getJson<T>(url: string, signal?: AbortSignal): Promise<T> {
     );
   }
   return response.json() as Promise<T>;
+}
+
+export async function createMirrorMission(
+  request: MirrorMissionIntakeRequest,
+): Promise<MirrorMissionIntakeResponse> {
+  const response = await fetch("/api/mirror/missions", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      "Idempotency-Key": request.requestId,
+      "X-Forge-Actor": request.requestedBy,
+      "X-Forge-Role": "owner",
+    },
+    body: JSON.stringify(request),
+  });
+  if (!response.ok) {
+    const body = await response.json().catch(() => null) as { error?: unknown } | null;
+    throw new MirrorApiError(
+      response.status,
+      typeof body?.error === "string" ? body.error : "De missie kon niet worden opgeslagen.",
+    );
+  }
+  return response.json() as Promise<MirrorMissionIntakeResponse>;
 }
 
 export function useMirrorMissions() {

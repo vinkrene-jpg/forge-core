@@ -252,3 +252,16 @@ Status: implemented with focused runtime and API integration evidence.
 - Live default Resume returned HTTP 200 with five ambiguity candidates. Explicit mission `a11cddcb-1fe2-4806-992d-f9580739b587` returned `BLOCKED`, progress `30`, last completed step `approval_granted`, one blocker and HIGH-confidence `RESOLVE_BLOCKER` advice.
 - Forge Control shows `Verdergaan`; `Open missie` and `Bekijk tijdlijn` resolve to the selected mission and timeline anchor. Browser traffic was GET-only and console errors were empty.
 - Live runtime after one controlled bundle reload: one port-5000 listener, PID `39800`; root and health HTTP 200 with database/storage `ok`.
+
+## MIRROR_INTAKE_01 - verified 2026-08-01
+
+- `POST /api/mirror/missions` is the first controlled Claude Mirror write capability and delegates to the existing `ForgeRuntime.createMission -> MissionEngine.enqueue` chain.
+- Intake writes one `operator.mirror-intake` record with persistent status `not_started` in the authoritative missionstore; MissionLoop claims only `queued` records and therefore cannot execute intake automatically.
+- Required title/objective, field lengths, priority, requestId, actor/role, markup/script content, absolute local paths and optional projectId are validated server-side. Audit records correlate the authorized actor to missionId without mission text or local paths.
+- Idempotency uses the requestId stored in `mission.input` and is checked inside the existing serialized MissionEngine mutation boundary. Sequential retries, concurrent equal requests and restart retries return the same missionId without a second store or timeline event.
+- Mirror projects an inert intake as exactly one `input_received` event. Session and explicit Resume derive `NOT_STARTED`; no approval, execution, AI provider, Guardian or Governor event is created.
+- Frontend typecheck/build passed. Frontend tests passed 18/18 total; API tests passed 44/44; focused intake passed 2/2; runtime tests passed 55/55. Existing Mirror, Session and Resume regressions remained green.
+- Live mission `5c3701ef-2226-47ff-8a52-eb94a594f2a7`, title `Claude Mirror intake validatie`, returned HTTP 201 twice for requestId `mirror-intake-live-20260801-0847` with the same missionId and one persisted record.
+- Live browser double-click produced one POST followed by two GETs, opened the correct detail, displayed confirmation, `input_received` and `Nog niet gestart`, and produced no console errors.
+- Restart preserved missionId, `not_started`, zero attempts and exactly one `input_received`. Final root/health were HTTP 200 with database/storage `ok`; one listener remained on PID `17556`.
+- Evidence: `reconstruction/MIRROR_INTAKE_VERIFICATION.json`.

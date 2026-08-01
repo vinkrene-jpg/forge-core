@@ -142,6 +142,18 @@ export function assessMissionRequest(
     });
   }
 
+  if (request.kind === "operator.mirror-intake") {
+    return Object.freeze({
+      policyVersion: GOVERNANCE_POLICY_VERSION,
+      action: "mission.execute",
+      missionKind: request.kind,
+      riskLevel: "low",
+      decision: "allow",
+      reason: "Recording an inert local operator mission intake does not grant execution authority.",
+      assessedAt,
+    });
+  }
+
   const durationValue = request.input?.durationMs;
   const durationMs =
     typeof durationValue === "number"

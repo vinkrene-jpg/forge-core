@@ -6,6 +6,7 @@ export type KernelStatus =
   | "failed";
 
 export type MissionStatus =
+  | "not_started"
   | "awaiting_approval"
   | "queued"
   | "running"
@@ -162,7 +163,8 @@ export interface MissionRecord {
     | "runtime.stability-window"
     | "operator.autonomous-cycle"
     | "operator.workspace-plan"
-    | "operator.workspace-change";
+    | "operator.workspace-change"
+    | "operator.mirror-intake";
   readonly title: string;
   readonly status: MissionStatus;
   readonly createdAt: string;

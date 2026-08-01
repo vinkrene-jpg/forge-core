@@ -2910,6 +2910,20 @@ export class ForgeRuntime {
     const governance =
       this.#governanceEngine.assess(request);
 
+    if (request.kind === "operator.mirror-intake") {
+      const mission = await this.#missionEngine.enqueue(
+        request,
+        "not_started",
+      );
+
+      return Object.freeze({
+        mission,
+        governance,
+        approval: null,
+        capabilityAnalysis,
+      });
+    }
+
     if (governance.decision === "allow") {
       const mission =
         await this.#missionEngine.enqueue(
