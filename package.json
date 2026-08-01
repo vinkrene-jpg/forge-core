@@ -6,6 +6,8 @@
                     "preinstall":  "node ./scripts/enforce-pnpm.mjs",
                     "build":  "pnpm run typecheck \u0026\u0026 pnpm -r --if-present run build",
                     "forge:start":  "node ./scripts/forge-start-root.mjs",
+                    "forge:validate":  "node ./scripts/forge-validate-root.mjs",
+                    "validate":  "node ./scripts/forge-validate-root.mjs",
                     "typecheck:libs":  "tsc --build",
                     "typecheck":  "pnpm run typecheck:libs \u0026\u0026 pnpm -r --filter \"./artifacts/**\" --filter \"./scripts\" --if-present run typecheck"
                 },

@@ -1,8 +1,8 @@
 # Forge Next Mission
 
-## Resume point after MIRROR_INTAKE_01
+## Resume point after FORGE_VALIDATE_01
 
-Status: Mirror projection, Session projection, deterministic Resume and controlled mission intake complete and live verified.
+Status: Mirror projection, Session projection, deterministic Resume, controlled mission intake and the central validation framework complete and live verified.
 
 ## Verified baseline
 
@@ -16,10 +16,12 @@ Status: Mirror projection, Session projection, deterministic Resume and controll
 8. Runtime 55/55, frontend 16/16, Resume 12/12, Mirror 12/12, typechecks, builds and live browser/API validation are green.
 9. `POST /api/mirror/missions` records one idempotent `not_started` mission through the authoritative MissionEngine and grants no execution or approval authority.
 10. Live validation mission `5c3701ef-2226-47ff-8a52-eb94a594f2a7` survives restart with one `input_received` event and zero attempts.
+11. `pnpm forge:validate` runs the config-driven Git, typecheck, build, test, runtime and HTTP street without AI, source mutation, deployment or Git writes.
+12. The restart-enabled street completed 21 steps with 20 PASS, one expected dirty-tree Git WARNING, zero errors and exit code 0; isolated restart proof left live PID `17556` and its single listener untouched.
 
 ## Next action
 
-Use the deterministic Resume response when the operator asks to continue, then require an explicit missionId when the response is ambiguous. Intake creates work only; any future start/approve capability must remain a separately governed mission with explicit authority.
+Use `pnpm forge:validate` as the standard evidence gate for the next bounded mission. Use deterministic Resume when the operator asks to continue, then require an explicit missionId when the response is ambiguous. Intake creates work only; any future start/approve capability must remain a separately governed mission with explicit authority.
 
 ## Failure rules
 
@@ -30,3 +32,4 @@ Use the deterministic Resume response when the operator asks to continue, then r
 - Do not introduce a parallel mission, approval, audit, artifact or memory truth.
 - Provider failure remains isolated and must not trigger automatic retry.
 - No destructive operations, protected-path changes or history rewrite.
+- Extend `config/forge-validation.json` for future module checks; do not create a parallel validation runner or evidence truth.

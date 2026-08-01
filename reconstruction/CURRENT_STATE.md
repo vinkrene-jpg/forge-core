@@ -265,3 +265,14 @@ Status: implemented with focused runtime and API integration evidence.
 - Live browser double-click produced one POST followed by two GETs, opened the correct detail, displayed confirmation, `input_received` and `Nog niet gestart`, and produced no console errors.
 - Restart preserved missionId, `not_started`, zero attempts and exactly one `input_received`. Final root/health were HTTP 200 with database/storage `ok`; one listener remained on PID `17556`.
 - Evidence: `reconstruction/MIRROR_INTAKE_VERIFICATION.json`.
+
+## FORGE_VALIDATE_01 - verified 2026-08-01
+
+- `pnpm forge:validate` is the central AI-independent validation command; `--restart` adds an isolated two-start/two-stop proof after configured builds and tests.
+- `config/forge-validation.json` declares generic Git, command, runtime and HTTP steps. Future modules can add command or HTTP checks without changing runner code.
+- Git checks include branch/commit, staged, unstaged and untracked files plus cached and uncached whitespace checks. A dirty development tree is explicit `WARNING`, while validation defects are `FAIL`.
+- The report is confined to ignored `reports/validation-report.json` and contains timestamps, duration, branch, commit, statuses, exit codes, runtime PID/listener state, HTTP results and bounded errors without raw child-process output.
+- Exit codes are deterministic: 0 for a technically green street, 1 for validation failure and 2 for configuration/process/infrastructure failure. The validator never mutates source, deploys, commits or pushes.
+- Final restart-enabled validation completed 21 steps: 20 `PASS`, one expected Git `WARNING`, zero errors and exit code 0. Framework regression tests passed, including Windows command-shim execution and report path confinement.
+- The isolated built API started and stopped twice on port 5010. The authoritative port-5000 runtime remained one listener on PID `17556`; root, health, Mirror, Session and Resume returned HTTP 200, and health reported `status=ok`, `database=ok`, `storage=ok`.
+- Evidence: `reconstruction/FORGE_VALIDATION_VERIFICATION.json`.

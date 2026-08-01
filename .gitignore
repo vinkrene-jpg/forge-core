@@ -54,3 +54,6 @@ Thumbs.db
 !.env.example
 storage/
 lib/forge-runtime/storage/
+
+# generated Forge validation evidence
+/reports/validation-report.json

@@ -107,3 +107,7 @@ Pre-checkpoint legacy `running` workspace missions with `output: null` are migra
 ## AD-023 - Claude Mirror intake is inert and mission-store authoritative
 
 Claude Mirror mission intake writes exactly one `operator.mirror-intake` record to the existing authoritative MissionEngine state. Intake records persist as `not_started`, are never claimable by MissionLoop and create no approval, provider, Guardian or Governor authority. A validated requestId is persisted in the mission input and deduplicated inside the existing serialized MissionEngine mutation boundary, so retries and concurrent equal requests return the same missionId without a separate idempotency store. Mirror, Session and Resume remain read-only projections over that missionrecord.
+
+## AD-024 - Validation is deterministic, config-driven and non-authoritative
+
+Forge exposes one AI-independent validation command whose ordered Git, typecheck, build, test, runtime and HTTP checks are declared in `config/forge-validation.json`. The runner emits only bounded status output, assigns exit code 0 to a green street, 1 to validation failure and 2 to infrastructure failure, and writes one generated JSON report under `reports/`. Validation never creates runtime truth, mutates source, deploys, commits or pushes. Requested restart proof uses a separate port and temporary state, starts and stops the built API twice, and does not replace the authoritative listener.

@@ -1,0 +1,32 @@
+{
+  "version": 1,
+  "reportPath": "reports/validation-report.json",
+  "runtime": {
+    "baseUrl": "http://127.0.0.1:5000",
+    "port": 5000,
+    "restartPort": 5010,
+    "restartCommand": ["node", "--enable-source-maps", "./artifacts/api-server/dist/index.mjs"]
+  },
+  "steps": [
+    { "id": "git", "label": "Git", "type": "git", "dirtyStatus": "WARNING" },
+    { "id": "typecheck-frontend", "label": "Typecheck frontend", "type": "command", "command": ["pnpm.cmd", "--filter", "@workspace/forge-core", "typecheck"] },
+    { "id": "typecheck-backend", "label": "Typecheck backend", "type": "command", "command": ["pnpm.cmd", "--filter", "@workspace/api-server", "typecheck"] },
+    { "id": "typecheck-runtime", "label": "Typecheck runtime", "type": "command", "command": ["pnpm.cmd", "--filter", "@workspace/forge-runtime", "typecheck"] },
+    { "id": "build-frontend", "label": "Build frontend", "type": "command", "command": ["pnpm.cmd", "--filter", "@workspace/forge-core", "build"] },
+    { "id": "build-backend", "label": "Build backend", "type": "command", "command": ["pnpm.cmd", "--filter", "@workspace/api-server", "build"] },
+    { "id": "test-frontend", "label": "Tests frontend", "type": "command", "command": ["pnpm.cmd", "--filter", "@workspace/forge-core", "test:frontend"] },
+    { "id": "test-api", "label": "Tests API", "type": "command", "command": ["pnpm.cmd", "--filter", "@workspace/api-server", "test"] },
+    { "id": "test-runtime", "label": "Tests runtime", "type": "command", "command": ["pnpm.cmd", "--filter", "@workspace/forge-runtime", "test"] },
+    { "id": "test-mirror", "label": "Tests Mirror", "type": "command", "command": ["pnpm.cmd", "--filter", "@workspace/forge-core", "test:mirror"] },
+    { "id": "test-session", "label": "Tests Session", "type": "command", "command": ["pnpm.cmd", "--filter", "@workspace/api-server", "test:mirror-session"] },
+    { "id": "test-resume", "label": "Tests Resume", "type": "command", "command": ["pnpm.cmd", "--filter", "@workspace/api-server", "test:mirror-resume"] },
+    { "id": "test-intake", "label": "Tests Intake", "type": "command", "command": ["pnpm.cmd", "--filter", "@workspace/api-server", "test:mirror-intake"] },
+    { "id": "test-validation-framework", "label": "Tests validation framework", "type": "command", "command": ["pnpm.cmd", "--filter", "@workspace/scripts", "forge:validate:test"] },
+    { "id": "runtime", "label": "Runtime", "type": "runtime" },
+    { "id": "http-root", "label": "HTTP root", "type": "http", "path": "/", "expectStatus": 200 },
+    { "id": "http-health", "label": "HTTP health", "type": "http", "path": "/api/healthz", "expectStatus": 200, "expectJson": { "status": "ok", "database": "ok", "storage": "ok" } },
+    { "id": "http-mirror", "label": "HTTP Mirror", "type": "http", "path": "/api/mirror/missions", "expectStatus": 200, "captureMissionId": true },
+    { "id": "http-session", "label": "HTTP Session", "type": "http", "path": "/api/mirror/session/{missionId}", "expectStatus": 200 },
+    { "id": "http-resume", "label": "HTTP Resume", "type": "http", "path": "/api/mirror/resume/{missionId}", "expectStatus": 200 }
+  ]
+}

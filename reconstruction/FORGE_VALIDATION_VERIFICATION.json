@@ -1,0 +1,60 @@
+{
+  "technicalCode": "FORGE_VALIDATE_01",
+  "verifiedAt": "2026-08-01T07:11:48.345Z",
+  "sourceBaseline": "352d2dff107f712a9d566329bd686d4b94bbf321",
+  "command": "pnpm forge:validate --restart",
+  "configuration": "config/forge-validation.json",
+  "generatedReport": "reports/validation-report.json",
+  "result": {
+    "status": "WARNING",
+    "exitCode": 0,
+    "steps": 21,
+    "passed": 20,
+    "warnings": 1,
+    "failed": 0,
+    "errors": 0,
+    "warningReason": "Git worktree contains the validation milestone under development"
+  },
+  "frameworkTests": {
+    "passed": 4,
+    "failed": 0,
+    "covers": [
+      "generic command extension",
+      "configuration rejection",
+      "deterministic exit codes",
+      "report path confinement",
+      "Windows command shim execution"
+    ]
+  },
+  "restart": {
+    "isolated": true,
+    "port": 5010,
+    "starts": 2,
+    "liveRuntimeReplaced": false
+  },
+  "live": {
+    "baseUrl": "http://127.0.0.1:5000",
+    "listenerCount": 1,
+    "listenerPid": 17556,
+    "http": {
+      "root": 200,
+      "health": 200,
+      "mirror": 200,
+      "session": 200,
+      "resume": 200
+    },
+    "health": {
+      "status": "ok",
+      "database": "ok",
+      "storage": "ok"
+    }
+  },
+  "safety": {
+    "aiCalls": 0,
+    "sourceMutationsByValidator": 0,
+    "deployments": 0,
+    "commits": 0,
+    "pushes": 0,
+    "rawCommandOutputPersisted": false
+  }
+}

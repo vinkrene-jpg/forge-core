@@ -8,6 +8,8 @@
     "hello": "tsx ./src/hello.ts",
     "forge:self-review": "tsx ./src/forge-self-review.ts",
     "forge:self-review:test": "tsx --test ./src/forge-self-review.test.ts",
+    "forge:validate": "tsx ./src/forge-validate.ts",
+    "forge:validate:test": "tsx --test ./src/forge-validate.test.ts",
     "typecheck": "tsc -p tsconfig.json --noEmit"
   },
   "devDependencies": {
