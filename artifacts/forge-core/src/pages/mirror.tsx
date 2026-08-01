@@ -13,7 +13,9 @@ import {
   sortTimeline,
   useMirrorMission,
   useMirrorMissions,
+  useMirrorResume,
   useMirrorSession,
+  type MirrorResumeModel,
   type MirrorSessionModel,
   type MirrorTimelineEvent,
 } from "@/lib/mirror-api";
@@ -55,6 +57,7 @@ function WarningList({ warnings }: { readonly warnings: readonly string[] }) {
 
 export function MirrorOverviewPage() {
   const missions = useMirrorMissions();
+  const resume = useMirrorResume();
   const [search, setSearch] = useState("");
   const [status, setStatus] = useState("all");
   const [page, setPage] = useState(1);
@@ -74,6 +77,48 @@ export function MirrorOverviewPage() {
         <h1 className="text-3xl font-bold tracking-tight">Missies</h1>
         <p className="mt-1 text-muted-foreground">Lees de volledige missieketen zonder de runtime te wijzigen.</p>
       </header>
+
+      <Card data-testid="mirror-resume" className="border-primary/30">
+        <CardHeader className="border-b border-border/60">
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <CardTitle className="text-xl">Verdergaan</CardTitle>
+            {resume.data?.resume ? <Badge variant="outline">{resume.data.resume.fieldCertainty.currentState}</Badge> : null}
+          </div>
+        </CardHeader>
+        <CardContent className="pt-5">
+          {resume.isPending ? (
+            <p role="status" className="text-sm text-muted-foreground">Hervatstatus laden...</p>
+          ) : resume.isError ? (
+            <p role="alert" className="text-sm text-destructive">Hervatstatus kon niet worden geladen.</p>
+          ) : !resume.data.resumeAvailable ? (
+            <p className="text-sm text-muted-foreground">{resume.data.nextRecommendedAction.explanation}</p>
+          ) : resume.data.ambiguous ? (
+            <div className="space-y-4">
+              <div>
+                <p className="font-medium">Meerdere mogelijke missies</p>
+                <p className="mt-1 text-sm text-muted-foreground">{resume.data.nextRecommendedAction.explanation}</p>
+              </div>
+              <div className="divide-y divide-border rounded-md border border-border">
+                {resume.data.candidates.map((candidate) => (
+                  <div key={candidate.missionId} className="flex flex-wrap items-center justify-between gap-3 p-3">
+                    <div className="min-w-0">
+                      <div className="font-medium">{candidate.missionTitle}</div>
+                      <div className="mt-1 break-all font-mono text-xs text-muted-foreground">{candidate.missionId}</div>
+                    </div>
+                    <div className="flex gap-2">
+                      <Button asChild size="sm" variant="outline"><Link href={`/mirror/${encodeURIComponent(candidate.missionId)}`}>Open missie</Link></Button>
+                      <Button asChild size="sm" variant="ghost"><Link href={`/mirror/${encodeURIComponent(candidate.missionId)}#mirror-timeline`}>Bekijk tijdlijn</Link></Button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+              <WarningList warnings={resume.data.integrityWarnings} />
+            </div>
+          ) : resume.data.resume ? (
+            <ResumeSummary resume={resume.data.resume} />
+          ) : null}
+        </CardContent>
+      </Card>
 
       <div className="flex flex-wrap items-end gap-3 rounded-md border border-border bg-card p-4">
         <label className="min-w-64 flex-1 text-sm font-medium">
@@ -209,6 +254,34 @@ const SESSION_STATUS_LABELS: Readonly<Record<MirrorSessionModel["status"], strin
   BLOCKED: "Geblokkeerd",
 };
 
+function ResumeSummary({ resume }: { readonly resume: MirrorResumeModel }) {
+  return (
+    <div className="grid gap-5 lg:grid-cols-[minmax(0,1fr)_auto]">
+      <div className="space-y-3">
+        <div className="flex flex-wrap items-center gap-2">
+          <Badge variant={resume.resumeStatus === "BLOCKED" ? "destructive" : "secondary"}>{SESSION_STATUS_LABELS[resume.resumeStatus]}</Badge>
+          <span className="font-medium">{resume.missionTitle}</span>
+        </div>
+        <dl className="grid gap-3 text-sm sm:grid-cols-3">
+          <div><dt className="text-muted-foreground">Laatst bewezen</dt><dd className="mt-1">{resume.lastCompletedStep}</dd></div>
+          <div><dt className="text-muted-foreground">Voortgang</dt><dd className="mt-1 tabular-nums">{resume.completionPercentage}%</dd></div>
+          <div><dt className="text-muted-foreground">Tijdstip</dt><dd className="mt-1">{formatDate(resume.lastVerifiedAt)}</dd></div>
+        </dl>
+        <div><div className="text-sm text-muted-foreground">Volgende veilige actie</div><p className="mt-1 font-medium">{resume.nextRecommendedAction.explanation}</p></div>
+        <div>
+          <div className="text-sm text-muted-foreground">Blockers</div>
+          {resume.activeBlockers.length === 0 ? <p className="mt-1 text-sm text-emerald-400">Geen actieve blockers</p> : <ul className="mt-1 text-sm text-destructive">{resume.activeBlockers.map((blocker) => <li key={blocker}>{blocker}</li>)}</ul>}
+        </div>
+        <WarningList warnings={resume.integrityWarnings} />
+      </div>
+      <div className="flex items-start gap-2">
+        <Button asChild variant="outline"><Link href={`/mirror/${encodeURIComponent(resume.missionId)}`}>Open missie</Link></Button>
+        <Button asChild variant="ghost"><Link href={`/mirror/${encodeURIComponent(resume.missionId)}#mirror-timeline`}>Bekijk tijdlijn</Link></Button>
+      </div>
+    </div>
+  );
+}
+
 function ClaudeMirrorSession({ session }: { readonly session: MirrorSessionModel }) {
   return (
     <Card data-testid="claude-mirror-session" className="border-primary/30 bg-primary/[0.04]">
@@ -304,7 +377,7 @@ export function MirrorDetailPage() {
       )}
 
       <div className="grid gap-6 xl:grid-cols-[minmax(0,2fr)_minmax(320px,1fr)]">
-        <section>
+        <section id="mirror-timeline">
           <h2 className="mb-5 text-xl font-semibold">Chronologische tijdlijn</h2>
           <Timeline events={timeline} />
         </section>

@@ -5,6 +5,7 @@ import {
   MirrorProjectionTimeoutError,
   type MirrorProjectionSource,
 } from "../lib/mirrorProjection";
+import { selectMirrorResume } from "../lib/mirrorResume";
 import { projectMirrorSession } from "../lib/mirrorSession";
 
 export function createMirrorRouter(
@@ -53,6 +54,28 @@ export function createMirrorRouter(
     }
 
     res.json(projectMirrorSession(mission));
+  });
+
+  router.get("/mirror/resume", (_req, res): void => {
+    try {
+      res.json(selectMirrorResume(projection.listMissionProjections()));
+    } catch (error) {
+      if (error instanceof MirrorProjectionTimeoutError) {
+        res.status(503).json({ error: "Mirror resume projection timed out" });
+        return;
+      }
+      throw error;
+    }
+  });
+
+  router.get("/mirror/resume/:missionId", (req, res): void => {
+    const mission = projection.getMission(req.params.missionId);
+    if (!mission) {
+      res.status(404).json({ error: "Mirror resume projection not found" });
+      return;
+    }
+
+    res.json(selectMirrorResume([mission], req.params.missionId));
   });
 
   return router;

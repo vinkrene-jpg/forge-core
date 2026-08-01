@@ -240,3 +240,15 @@ Status: implemented with focused runtime and API integration evidence.
 - Live mission `3af535ff-e793-47c6-b99b-0cb3c9c692c0` returned HTTP 200 with status `BLOCKED`, progress `45`, an explainable next action and its persisted blocker.
 - Browser verification on mission `a11cddcb-1fe2-4806-992d-f9580739b587` showed the complete Claude Mirror panel, only GET requests and no console errors.
 - Live runtime after validation: one port-5000 listener, PID `19116`; root and health HTTP 200 with database/storage `ok`.
+
+## MIRROR_RESUME_01 - verified 2026-08-01
+
+- Claude Mirror Resume deterministically derives restart- and chat-independent resume state from the existing Mirror projection and SessionModel; it adds no resume, mission, session, approval, memory or status store.
+- Selection priority is explicit missionId, active/blocked candidates, open governance work, then unfinished work. Multiple candidates produce an explicit ambiguity response with at most five deterministically ordered candidates and no persisted selection.
+- ResumeModel exposes proven last activity and evidence sources, derived current state and advice, unknown unlinked commit/runtime fields, blockers, missing data and integrity warnings.
+- `GET /api/mirror/resume` and `GET /api/mirror/resume/:missionId` are GET-only. Unknown missionId returns 404; a source set containing only completed missions returns HTTP 200 with `resumeAvailable=false`.
+- Focused Resume tests passed 12/12, existing Mirror tests 12/12, frontend tests 16/16 total, and runtime tests 55/55 with exit code 0.
+- Frontend and API typechecks and builds passed with exit code 0. Unchanged source data produces byte-identical Resume selection before and after restart projection.
+- Live default Resume returned HTTP 200 with five ambiguity candidates. Explicit mission `a11cddcb-1fe2-4806-992d-f9580739b587` returned `BLOCKED`, progress `30`, last completed step `approval_granted`, one blocker and HIGH-confidence `RESOLVE_BLOCKER` advice.
+- Forge Control shows `Verdergaan`; `Open missie` and `Bekijk tijdlijn` resolve to the selected mission and timeline anchor. Browser traffic was GET-only and console errors were empty.
+- Live runtime after one controlled bundle reload: one port-5000 listener, PID `39800`; root and health HTTP 200 with database/storage `ok`.

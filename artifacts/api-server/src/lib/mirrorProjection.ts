@@ -259,26 +259,31 @@ export class MirrorProjectionService {
   }
 
   listMissions(timeoutMs = 1_250): readonly MirrorMissionListItem[] {
-    const deadline = performance.now() + timeoutMs;
-    const snapshot = this.#loadSnapshot(deadline);
-    const missions = snapshot.missions.map((mission, index) => {
-      if (index % 100 === 0) assertBeforeDeadline(deadline);
-      const projection = this.#projectMission(mission, snapshot);
-      return Object.freeze({
-        missionId: mission.id,
-        title: mission.title,
-        status: mission.status,
-        firstOccurredAt: projection.timeline[0]?.occurredAt ?? mission.createdAt,
-        lastOccurredAt: projection.timeline.at(-1)?.occurredAt ?? mission.updatedAt,
-        eventCount: projection.timeline.length,
-        integrityWarnings: projection.integrityWarnings,
-      });
-    });
+    const projections = this.listMissionProjections(timeoutMs);
+    const missions = projections.map((projection) => Object.freeze({
+      missionId: projection.mission.id,
+      title: projection.mission.title,
+      status: projection.mission.status,
+      firstOccurredAt: projection.timeline[0]?.occurredAt ?? projection.mission.createdAt,
+      lastOccurredAt: projection.timeline.at(-1)?.occurredAt ?? projection.mission.updatedAt,
+      eventCount: projection.timeline.length,
+      integrityWarnings: projection.integrityWarnings,
+    }));
     missions.sort((left, right) =>
       left.firstOccurredAt.localeCompare(right.firstOccurredAt) ||
       left.missionId.localeCompare(right.missionId));
-    assertBeforeDeadline(deadline);
     return Object.freeze(missions);
+  }
+
+  listMissionProjections(timeoutMs = 1_250): readonly MirrorMissionProjection[] {
+    const deadline = performance.now() + timeoutMs;
+    const snapshot = this.#loadSnapshot(deadline);
+    const projections = snapshot.missions.map((mission, index) => {
+      if (index % 100 === 0) assertBeforeDeadline(deadline);
+      return this.#projectMission(mission, snapshot);
+    });
+    assertBeforeDeadline(deadline);
+    return Object.freeze(projections);
   }
 
   getMission(missionId: string): MirrorMissionProjection | null {

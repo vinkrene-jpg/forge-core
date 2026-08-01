@@ -7,7 +7,7 @@ import { act } from "react";
 import { createRoot, type Root } from "react-dom/client";
 import { Route, Router } from "wouter";
 import { Layout } from "@/components/layout";
-import { filterMirrorMissions, sortTimeline, type MirrorTimelineEvent } from "@/lib/mirror-api";
+import { filterMirrorMissions, sortTimeline, type MirrorResumeResponse, type MirrorTimelineEvent } from "@/lib/mirror-api";
 import { MirrorDetailPage, MirrorOverviewPage } from "@/pages/mirror";
 
 const dom = new JSDOM("<!doctype html><html><body><div id=\"root\"></div></body></html>", {
@@ -114,6 +114,54 @@ const sessionResponse = {
   nextRecommendedAction: "Geen actie nodig; het resultaat is gepubliceerd.",
 };
 
+const resumeResponse: MirrorResumeResponse = {
+  resumeAvailable: true,
+  ambiguous: false,
+  resume: {
+    missionId: "mission-alpha",
+    sessionId: "mirror-session-1234567890abcdef12345678",
+    missionTitle: "Bouw de Mirror-interface",
+    resumeStatus: "BLOCKED",
+    lastVerifiedAt: "2026-07-31T11:00:00.000Z",
+    lastVerifiedEventId: "event-3",
+    lastCompletedPhase: "Bewijs",
+    lastCompletedStep: "evidence_created",
+    currentPhase: "Geblokkeerd",
+    currentStep: "error_recorded",
+    completionPercentage: 45,
+    activeBlockers: ["Runtime-test ontbreekt"],
+    pendingApprovals: 0,
+    pendingEvidence: false,
+    pendingGuardian: true,
+    pendingGovernor: false,
+    lastKnownCommit: { value: null, certainty: "ONBEKEND", source: null },
+    lastKnownRuntimeState: { value: null, certainty: "ONBEKEND", source: null },
+    nextRecommendedAction: {
+      actionType: "RESOLVE_BLOCKER",
+      explanation: "Voer de ontbrekende runtime-test uit.",
+      source: "SessionModel.activeBlockers",
+      prerequisite: "Testbewijs vereist.",
+      forbiddenActions: ["Niet automatisch uitvoeren."],
+      confidence: "HIGH",
+    },
+    resumeReason: "Bewezen event.",
+    integrityWarnings: ["missing guardian_review"],
+    fieldCertainty: { currentState: "AFGELEID" },
+    evidenceSources: [],
+    missingData: ["lastKnownCommit"],
+  },
+  candidates: [],
+  nextRecommendedAction: {
+    actionType: "RESOLVE_BLOCKER",
+    explanation: "Voer de ontbrekende runtime-test uit.",
+    source: "SessionModel.activeBlockers",
+    prerequisite: "Testbewijs vereist.",
+    forbiddenActions: ["Niet automatisch uitvoeren."],
+    confidence: "HIGH",
+  },
+  integrityWarnings: ["missing guardian_review"],
+};
+
 async function waitFor(predicate: () => boolean, message: string, timeoutMs = 2_000): Promise<void> {
   const deadline = Date.now() + timeoutMs;
   while (!predicate()) {
@@ -154,9 +202,10 @@ function rootContainer(root: Root): HTMLElement | null {
     ._internalRoot?.containerInfo ?? null;
 }
 
-function listFetcher(missions = [baseMission]): typeof fetch {
+function listFetcher(missions = [baseMission], resume = resumeResponse): typeof fetch {
   return async (input) => {
     if (String(input) === "/api/mirror/missions") return Response.json({ missions });
+    if (String(input) === "/api/mirror/resume") return Response.json(resume);
     return Response.json({ error: "unexpected" }, { status: 500 });
   };
 }
@@ -189,6 +238,7 @@ test("MIRROR_UI_01 frontend acceptance", { concurrency: false }, async (suite) =
     const mounted = await mount(<MirrorOverviewPage />, listFetcher());
     await waitFor(() => mounted.container.textContent?.includes("Bouw de Mirror-interface") === true, "lijst");
     assert.equal(mounted.requests.filter((request) => request.url === "/api/mirror/missions").length, 1);
+    assert.equal(mounted.requests.filter((request) => request.url === "/api/mirror/resume").length, 1);
     assert.equal(mounted.requests.some((request) => request.url.includes("/api/mirror/missions/")), false);
     await unmount(mounted.root);
   });
@@ -212,7 +262,8 @@ test("MIRROR_UI_01 frontend acceptance", { concurrency: false }, async (suite) =
 
   await suite.test("7. API-fout stopt en opnieuw proberen werkt", async () => {
     let attempts = 0;
-    const mounted = await mount(<MirrorOverviewPage />, async () => {
+    const mounted = await mount(<MirrorOverviewPage />, async (input) => {
+      if (String(input) === "/api/mirror/resume") return Response.json(resumeResponse);
       attempts += 1;
       return attempts === 1 ? Response.json({ error: "offline" }, { status: 500 }) : Response.json({ missions: [baseMission] });
     });
@@ -286,7 +337,49 @@ test("MIRROR_UI_01 frontend acceptance", { concurrency: false }, async (suite) =
     const elapsedMs = performance.now() - startedAt;
     assert.equal(mounted.container.querySelectorAll("tbody tr").length, 50);
     assert.ok(elapsedMs < 2_000, `begrensde render duurde ${elapsedMs.toFixed(0)} ms`);
-    assert.equal(mounted.requests.length, 1);
+    assert.equal(mounted.requests.length, 2);
+    await unmount(mounted.root);
+  });
+
+  await suite.test("16-17. Verdergaan toont bewezen resume-data en alleen navigatieacties", async () => {
+    dom.window.history.replaceState({}, "", "/mirror");
+    const mounted = await mount(<MirrorOverviewPage />, listFetcher());
+    await waitFor(() => mounted.container.querySelector("[data-testid=\"mirror-resume\"]")?.textContent?.includes("Runtime-test ontbreekt") === true, "resume");
+    const panel = mounted.container.querySelector("[data-testid=\"mirror-resume\"]");
+    const text = panel?.textContent ?? "";
+    for (const value of ["Verdergaan", "evidence_created", "45%", "Voer de ontbrekende runtime-test uit", "AFGELEID"]) assert.match(text, new RegExp(value));
+    assert.deepEqual([...panel?.querySelectorAll("a") ?? []].map((link) => link.textContent), ["Open missie", "Bekijk tijdlijn"]);
+    assert.equal(panel?.querySelector("button"), null);
+    assert.deepEqual([...new Set(mounted.requests.map((request) => request.method))], ["GET"]);
+    await unmount(mounted.root);
+  });
+
+  await suite.test("ambiguïteit toont maximaal vijf kandidaten zonder schrijfknop", async () => {
+    const candidates = Array.from({ length: 5 }, (_, index) => ({
+      missionId: `candidate-${index}`,
+      missionTitle: `Kandidaat ${index}`,
+      resumeStatus: "ACTIVE" as const,
+      lastVerifiedAt: "2026-08-01T10:00:00.000Z",
+      selectionReason: "actieve missie",
+    }));
+    const ambiguous: MirrorResumeResponse = {
+      ...resumeResponse,
+      ambiguous: true,
+      resume: null,
+      candidates,
+      nextRecommendedAction: {
+        ...resumeResponse.nextRecommendedAction,
+        actionType: "CHOOSE_MISSION",
+        explanation: "Kies expliciet één missie om te hervatten.",
+      },
+      integrityWarnings: ["Meerdere hervatbare missies."],
+    };
+    const mounted = await mount(<MirrorOverviewPage />, listFetcher([baseMission], ambiguous));
+    await waitFor(() => mounted.container.textContent?.includes("Meerdere mogelijke missies") === true, "ambiguïteit");
+    const panel = mounted.container.querySelector("[data-testid=\"mirror-resume\"]");
+    assert.equal(panel?.querySelectorAll("a").length, 10);
+    assert.equal(panel?.querySelector("button"), null);
+    assert.match(panel?.textContent ?? "", /Meerdere hervatbare missies/);
     await unmount(mounted.root);
   });
 });

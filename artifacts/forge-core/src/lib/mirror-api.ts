@@ -69,6 +69,65 @@ export interface MirrorSessionModel {
   readonly nextRecommendedAction: string;
 }
 
+export interface MirrorResumeAction {
+  readonly actionType: string;
+  readonly explanation: string;
+  readonly source: string;
+  readonly prerequisite: string;
+  readonly forbiddenActions: readonly string[];
+  readonly confidence: "HIGH" | "MEDIUM" | "LOW";
+}
+
+export interface MirrorResumeModel {
+  readonly missionId: string;
+  readonly sessionId: string;
+  readonly missionTitle: string;
+  readonly resumeStatus: MirrorSessionModel["status"];
+  readonly lastVerifiedAt: string;
+  readonly lastVerifiedEventId: string | null;
+  readonly lastCompletedPhase: string;
+  readonly lastCompletedStep: string;
+  readonly currentPhase: string;
+  readonly currentStep: string;
+  readonly completionPercentage: number;
+  readonly activeBlockers: readonly string[];
+  readonly pendingApprovals: number;
+  readonly pendingEvidence: boolean;
+  readonly pendingGuardian: boolean;
+  readonly pendingGovernor: boolean;
+  readonly lastKnownCommit: {
+    readonly value: string | null;
+    readonly certainty: string;
+    readonly source: string | null;
+  };
+  readonly lastKnownRuntimeState: {
+    readonly value: Readonly<Record<string, unknown>> | null;
+    readonly certainty: string;
+    readonly source: string | null;
+  };
+  readonly nextRecommendedAction: MirrorResumeAction;
+  readonly resumeReason: string;
+  readonly integrityWarnings: readonly string[];
+  readonly fieldCertainty: { readonly currentState: string };
+  readonly evidenceSources: readonly Readonly<Record<string, unknown>>[];
+  readonly missingData: readonly string[];
+}
+
+export interface MirrorResumeResponse {
+  readonly resumeAvailable: boolean;
+  readonly ambiguous: boolean;
+  readonly resume: MirrorResumeModel | null;
+  readonly candidates: readonly {
+    readonly missionId: string;
+    readonly missionTitle: string;
+    readonly resumeStatus: MirrorSessionModel["status"];
+    readonly lastVerifiedAt: string;
+    readonly selectionReason: string;
+  }[];
+  readonly nextRecommendedAction: MirrorResumeAction;
+  readonly integrityWarnings: readonly string[];
+}
+
 interface MirrorMissionListResponse {
   readonly missions: readonly MirrorMissionListItem[];
 }
@@ -127,6 +186,20 @@ export function useMirrorSession(missionId: string) {
         `/api/mirror/session/${encodeURIComponent(missionId)}`,
         signal,
       ),
+    retry: false,
+    refetchOnWindowFocus: false,
+  });
+}
+
+export function useMirrorResume(missionId?: string) {
+  return useQuery({
+    queryKey: ["mirror", "resume", missionId ?? "default"],
+    queryFn: ({ signal }) => getJson<MirrorResumeResponse>(
+      missionId
+        ? `/api/mirror/resume/${encodeURIComponent(missionId)}`
+        : "/api/mirror/resume",
+      signal,
+    ),
     retry: false,
     refetchOnWindowFocus: false,
   });
