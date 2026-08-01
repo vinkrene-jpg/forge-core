@@ -44,6 +44,31 @@ export interface MirrorMissionDetail {
   readonly integrityWarnings: readonly string[];
 }
 
+export interface MirrorSessionModel {
+  readonly sessionId: string;
+  readonly missionId: string;
+  readonly startedAt: string;
+  readonly lastActivity: string;
+  readonly status:
+    | "NOT_STARTED"
+    | "ACTIVE"
+    | "WAITING_APPROVAL"
+    | "WAITING_EVIDENCE"
+    | "WAITING_REVIEW"
+    | "READY_FOR_RELEASE"
+    | "COMPLETED"
+    | "BLOCKED";
+  readonly currentPhase: string;
+  readonly currentStep: string;
+  readonly completionPercentage: number;
+  readonly activeBlockers: readonly string[];
+  readonly pendingApprovals: number;
+  readonly pendingEvidence: boolean;
+  readonly pendingGuardian: boolean;
+  readonly pendingGovernor: boolean;
+  readonly nextRecommendedAction: string;
+}
+
 interface MirrorMissionListResponse {
   readonly missions: readonly MirrorMissionListItem[];
 }
@@ -87,6 +112,19 @@ export function useMirrorMission(missionId: string) {
     queryFn: ({ signal }) =>
       getJson<MirrorMissionDetail>(
         `/api/mirror/missions/${encodeURIComponent(missionId)}`,
+        signal,
+      ),
+    retry: false,
+    refetchOnWindowFocus: false,
+  });
+}
+
+export function useMirrorSession(missionId: string) {
+  return useQuery({
+    queryKey: ["mirror", "session", missionId],
+    queryFn: ({ signal }) =>
+      getJson<MirrorSessionModel>(
+        `/api/mirror/session/${encodeURIComponent(missionId)}`,
         signal,
       ),
     retry: false,

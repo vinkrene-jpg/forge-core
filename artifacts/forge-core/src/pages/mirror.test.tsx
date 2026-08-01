@@ -97,6 +97,23 @@ const detailResponse = {
   integrityWarnings: ["missing guardian_review", "duplicate source approval/approval-1 (2)"],
 };
 
+const sessionResponse = {
+  sessionId: "mirror-session-1234567890abcdef12345678",
+  missionId: "mission-alpha",
+  startedAt: "2026-07-31T10:00:00.000Z",
+  lastActivity: "2026-07-31T11:00:00.000Z",
+  status: "COMPLETED",
+  currentPhase: "Afgerond",
+  currentStep: "result_published",
+  completionPercentage: 30,
+  activeBlockers: [] as readonly string[],
+  pendingApprovals: 0,
+  pendingEvidence: false,
+  pendingGuardian: true,
+  pendingGovernor: false,
+  nextRecommendedAction: "Geen actie nodig; het resultaat is gepubliceerd.",
+};
+
 async function waitFor(predicate: () => boolean, message: string, timeoutMs = 2_000): Promise<void> {
   const deadline = Date.now() + timeoutMs;
   while (!predicate()) {
@@ -142,6 +159,17 @@ function listFetcher(missions = [baseMission]): typeof fetch {
     if (String(input) === "/api/mirror/missions") return Response.json({ missions });
     return Response.json({ error: "unexpected" }, { status: 500 });
   };
+}
+
+function detailFetcher(input: RequestInfo | URL): Promise<Response> {
+  const url = String(input);
+  if (url === "/api/mirror/missions/mission-alpha") {
+    return Promise.resolve(Response.json(detailResponse));
+  }
+  if (url === "/api/mirror/session/mission-alpha") {
+    return Promise.resolve(Response.json(sessionResponse));
+  }
+  return Promise.resolve(Response.json({ error: "unexpected" }, { status: 500 }));
 }
 
 test("MIRROR_UI_01 frontend acceptance", { concurrency: false }, async (suite) => {
@@ -200,9 +228,13 @@ test("MIRROR_UI_01 frontend acceptance", { concurrency: false }, async (suite) =
 
   await suite.test("8. detail laadt alle gekoppelde secties", async () => {
     dom.window.history.replaceState({}, "", "/mirror/mission-alpha");
-    const mounted = await mount(<Router><Route path="/mirror/:missionId"><MirrorDetailPage /></Route></Router>, async () => Response.json(detailResponse));
+    const mounted = await mount(<Router><Route path="/mirror/:missionId"><MirrorDetailPage /></Route></Router>, detailFetcher);
     await waitFor(() => mounted.container.textContent?.includes("Chronologische tijdlijn") === true, "detail");
     for (const label of ["Goedkeuringen", "Bewijs", "Bestanden", "Beoordelingen", "Resultaat"]) assert.match(mounted.container.textContent ?? "", new RegExp(label));
+    assert.match(mounted.container.textContent ?? "", /Claude Mirror/);
+    assert.match(mounted.container.textContent ?? "", /Voortgang/);
+    assert.match(mounted.container.textContent ?? "", /Volgende stap/);
+    assert.match(mounted.container.textContent ?? "", /Geen actieve blockers/);
     await unmount(mounted.root);
   });
 
@@ -218,7 +250,7 @@ test("MIRROR_UI_01 frontend acceptance", { concurrency: false }, async (suite) =
 
   await suite.test("11-12. integriteitswaarschuwingen en ontbrekende schakels zijn zichtbaar", async () => {
     dom.window.history.replaceState({}, "", "/mirror/mission-alpha");
-    const mounted = await mount(<Router><Route path="/mirror/:missionId"><MirrorDetailPage /></Route></Router>, async () => Response.json(detailResponse));
+    const mounted = await mount(<Router><Route path="/mirror/:missionId"><MirrorDetailPage /></Route></Router>, detailFetcher);
     await waitFor(() => mounted.container.textContent?.includes("Guardian-beoordeling ontbreekt") === true, "ontbrekende schakel");
     assert.match(mounted.container.textContent ?? "", /Dubbele gebeurtenis gedetecteerd/);
     assert.match(mounted.container.textContent ?? "", /missing guardian_review/);
@@ -235,9 +267,13 @@ test("MIRROR_UI_01 frontend acceptance", { concurrency: false }, async (suite) =
 
   await suite.test("14. Mirror UI verstuurt uitsluitend GET", async () => {
     dom.window.history.replaceState({}, "", "/mirror/mission-alpha");
-    const mounted = await mount(<Router><Route path="/mirror/:missionId"><MirrorDetailPage /></Route></Router>, async () => Response.json(detailResponse));
-    await waitFor(() => mounted.container.querySelector("[data-testid=\"mirror-detail\"]") !== null, "detailrequest");
+    const mounted = await mount(<Router><Route path="/mirror/:missionId"><MirrorDetailPage /></Route></Router>, detailFetcher);
+    await waitFor(() => mounted.container.querySelector("[data-testid=\"claude-mirror-session\"]") !== null, "sessionrequest");
     assert.deepEqual([...new Set(mounted.requests.map((request) => request.method))], ["GET"]);
+    assert.deepEqual(mounted.requests.map((request) => request.url).sort(), [
+      "/api/mirror/missions/mission-alpha",
+      "/api/mirror/session/mission-alpha",
+    ]);
     await unmount(mounted.root);
   });
 

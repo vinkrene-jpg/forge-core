@@ -228,3 +228,15 @@ Status: implemented with focused runtime and API integration evidence.
 - Live browser verification opened mission `a11cddcb-1fe2-4806-992d-f9580739b587`: list and detail each made one GET, no writes occurred, and console/page errors were empty.
 - Root and health remained HTTP 200 with database/storage `ok`; one listener remained active on PID `8652`. No runtime restart was required.
 - Evidence: `reconstruction/MIRROR_UI_VERIFICATION.json`.
+
+## MIRROR_SESSION_01 - verified 2026-08-01
+
+- Claude Mirror projects exactly one deterministic read-only SessionModel per authoritative `missionId`; it adds no session, mission, approval, memory or status store.
+- Session identity, status, progress, blockers and next action are derived exclusively from the existing Mirror mission projection and persisted timeline evidence.
+- `GET /api/mirror/session/:missionId` is GET-only, returns a clean 404 for an unknown mission and survives restart without Session persistence.
+- Forge Control renders status, evidence-backed progress, next action and blockers above the existing Mirror timeline.
+- Runtime tests passed 55/55 with exit code 0; frontend tests passed 14/14; API tests passed 30/30.
+- Initial live 404 was deployment staleness: PID `8652` started before the Session-enabled `dist/index.mjs` was written. Reloading that existing bundle exposed the already registered route without a source change.
+- Live mission `3af535ff-e793-47c6-b99b-0cb3c9c692c0` returned HTTP 200 with status `BLOCKED`, progress `45`, an explainable next action and its persisted blocker.
+- Browser verification on mission `a11cddcb-1fe2-4806-992d-f9580739b587` showed the complete Claude Mirror panel, only GET requests and no console errors.
+- Live runtime after validation: one port-5000 listener, PID `19116`; root and health HTTP 200 with database/storage `ok`.

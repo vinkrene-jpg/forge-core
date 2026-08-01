@@ -5,6 +5,7 @@ import {
   MirrorProjectionTimeoutError,
   type MirrorProjectionSource,
 } from "../lib/mirrorProjection";
+import { projectMirrorSession } from "../lib/mirrorSession";
 
 export function createMirrorRouter(
   runtime: MirrorProjectionSource = forgeRuntime,
@@ -42,6 +43,16 @@ export function createMirrorRouter(
     }
 
     res.json(mission);
+  });
+
+  router.get("/mirror/session/:missionId", (req, res): void => {
+    const mission = projection.getMission(req.params.missionId);
+    if (!mission) {
+      res.status(404).json({ error: "Mirror session projection not found" });
+      return;
+    }
+
+    res.json(projectMirrorSession(mission));
   });
 
   return router;

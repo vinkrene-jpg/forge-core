@@ -13,6 +13,8 @@ import {
   sortTimeline,
   useMirrorMission,
   useMirrorMissions,
+  useMirrorSession,
+  type MirrorSessionModel,
   type MirrorTimelineEvent,
 } from "@/lib/mirror-api";
 
@@ -196,9 +198,76 @@ function ReadOnlySection({ title, values }: { readonly title: string; readonly v
   );
 }
 
+const SESSION_STATUS_LABELS: Readonly<Record<MirrorSessionModel["status"], string>> = {
+  NOT_STARTED: "Nog niet gestart",
+  ACTIVE: "Actief",
+  WAITING_APPROVAL: "Wacht op goedkeuring",
+  WAITING_EVIDENCE: "Wacht op bewijs",
+  WAITING_REVIEW: "Wacht op beoordeling",
+  READY_FOR_RELEASE: "Klaar voor vrijgave",
+  COMPLETED: "Afgerond",
+  BLOCKED: "Geblokkeerd",
+};
+
+function ClaudeMirrorSession({ session }: { readonly session: MirrorSessionModel }) {
+  return (
+    <Card data-testid="claude-mirror-session" className="border-primary/30 bg-primary/[0.04]">
+      <CardHeader className="border-b border-border/60">
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <div>
+            <div className="text-xs font-semibold uppercase tracking-[0.2em] text-primary">Gedeelde werkcontext</div>
+            <CardTitle className="mt-1 text-xl">Claude Mirror</CardTitle>
+          </div>
+          <Badge variant={session.status === "BLOCKED" ? "destructive" : "secondary"}>
+            {SESSION_STATUS_LABELS[session.status]}
+          </Badge>
+        </div>
+      </CardHeader>
+      <CardContent className="grid gap-5 pt-6 lg:grid-cols-[minmax(0,1fr)_minmax(260px,0.7fr)]">
+        <div className="space-y-5">
+          <div>
+            <div className="flex items-center justify-between text-sm">
+              <span className="font-medium">Voortgang</span>
+              <span className="tabular-nums">{session.completionPercentage}%</span>
+            </div>
+            <div className="mt-2 h-2 overflow-hidden rounded-full bg-muted">
+              <div className="h-full bg-primary" style={{ width: `${session.completionPercentage}%` }} />
+            </div>
+          </div>
+          <dl className="grid gap-3 text-sm sm:grid-cols-2">
+            <div><dt className="text-muted-foreground">Fase</dt><dd className="mt-1 font-medium">{session.currentPhase}</dd></div>
+            <div><dt className="text-muted-foreground">Huidige stap</dt><dd className="mt-1 font-mono text-xs">{session.currentStep}</dd></div>
+          </dl>
+          <div>
+            <div className="text-sm text-muted-foreground">Volgende stap</div>
+            <p className="mt-1 font-medium">{session.nextRecommendedAction}</p>
+          </div>
+        </div>
+        <div className="rounded-md border border-border/70 bg-background/50 p-4">
+          <h3 className="font-semibold">Blockers</h3>
+          {session.activeBlockers.length === 0 ? (
+            <p className="mt-2 text-sm text-emerald-400">Geen actieve blockers</p>
+          ) : (
+            <ul className="mt-2 space-y-2 text-sm text-destructive">
+              {session.activeBlockers.map((blocker) => <li key={blocker}>{blocker}</li>)}
+            </ul>
+          )}
+          <div className="mt-4 grid grid-cols-2 gap-2 text-xs text-muted-foreground">
+            <span>Goedkeuringen: {session.pendingApprovals}</span>
+            <span>Bewijs: {session.pendingEvidence ? "open" : "gereed"}</span>
+            <span>Guardian: {session.pendingGuardian ? "open" : "gereed"}</span>
+            <span>Governor: {session.pendingGovernor ? "open" : "gereed"}</span>
+          </div>
+        </div>
+      </CardContent>
+    </Card>
+  );
+}
+
 export function MirrorDetailPage() {
   const { missionId = "" } = useParams<{ missionId: string }>();
   const detail = useMirrorMission(missionId);
+  const session = useMirrorSession(missionId);
 
   if (detail.isPending) return <div role="status" className="p-8 text-center text-muted-foreground">Missiedetail laden...</div>;
   if (detail.isError) {
@@ -225,6 +294,14 @@ export function MirrorDetailPage() {
           <div><dt className="text-xs text-muted-foreground">Gebeurtenissen</dt><dd className="mt-1 text-sm">{timeline.length}</dd></div>
         </dl>
       </header>
+
+      {session.isPending ? (
+        <div role="status" className="rounded-md border border-border p-5 text-sm text-muted-foreground">Claude Mirror-sessie laden...</div>
+      ) : session.isError ? (
+        <div role="alert" className="rounded-md border border-destructive/50 bg-destructive/10 p-5 text-sm text-destructive">Claude Mirror-sessie kon niet worden geladen.</div>
+      ) : (
+        <ClaudeMirrorSession session={session.data} />
+      )}
 
       <div className="grid gap-6 xl:grid-cols-[minmax(0,2fr)_minmax(320px,1fr)]">
         <section>

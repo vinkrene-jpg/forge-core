@@ -362,6 +362,11 @@ test(
       );
       assert.equal(projectionResponse.status, 200);
       const beforeRestart = await projectionResponse.json();
+      const sessionResponse = await fetch(
+        `${api.baseUrl}/api/mirror/session/${intake.mission.id}`,
+      );
+      assert.equal(sessionResponse.status, 200);
+      const sessionBeforeRestart = await sessionResponse.json();
 
       const unknownResponse = await fetch(
         `${api.baseUrl}/api/mirror/missions/unknown-mission-id`,
@@ -387,6 +392,11 @@ test(
       );
       assert.equal(restartedResponse.status, 200);
       assert.deepEqual(await restartedResponse.json(), beforeRestart);
+      const restartedSessionResponse = await fetch(
+        `${api.baseUrl}/api/mirror/session/${intake.mission.id}`,
+      );
+      assert.equal(restartedSessionResponse.status, 200);
+      assert.deepEqual(await restartedSessionResponse.json(), sessionBeforeRestart);
 
       const storedPaths = await readdir(storageRoot, { recursive: true });
       assert.equal(storedPaths.some((entry) => entry.toLowerCase().includes("mirror")), false);
