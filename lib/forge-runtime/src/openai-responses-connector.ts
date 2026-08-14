@@ -5,6 +5,11 @@ import type {
   AiUsage,
 } from "./ai-gateway";
 import type { PromptComposition } from "./operator";
+import {
+  requiresWorkspacePlanContract,
+  workspacePlanJsonSchema,
+  workspacePlanSystemPrompt,
+} from "./workspace-plan-contract";
 
 interface ResponsesApiContent {
   readonly type?: unknown;
@@ -132,6 +137,9 @@ export class OpenAiResponsesConnector
     }
 
     const controller = new AbortController();
+    const requiresWorkspacePlan = requiresWorkspacePlanContract(
+      composition.objective,
+    );
     const timeout = setTimeout(
       () => controller.abort(),
       90_000,
@@ -151,6 +159,19 @@ export class OpenAiResponsesConnector
             input: composition.content,
             max_output_tokens:
               status.maxOutputTokens,
+            ...(requiresWorkspacePlan
+              ? {
+                  instructions: workspacePlanSystemPrompt,
+                  text: {
+                    format: {
+                      type: "json_schema",
+                      name: "forge_workspace_execution_plan",
+                      strict: true,
+                      schema: workspacePlanJsonSchema,
+                    },
+                  },
+                }
+              : {}),
           }),
           signal: controller.signal,
         },

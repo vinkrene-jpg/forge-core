@@ -5,6 +5,11 @@ import type {
   AiUsage,
 } from "./ai-gateway";
 import type { PromptComposition } from "./operator";
+import {
+  requiresWorkspacePlanContract,
+  workspacePlanJsonSchema,
+  workspacePlanSystemPrompt,
+} from "./workspace-plan-contract";
 
 interface ChatCompletionChoice {
   readonly message?: {
@@ -18,58 +23,6 @@ interface ChatCompletionPayload {
   readonly usage?: unknown;
   readonly error?: unknown;
 }
-
-const workspacePlanJsonSchema = Object.freeze({
-  type: "object",
-  additionalProperties: false,
-  required: [
-    "schemaVersion",
-    "changes",
-    "verification",
-    "commit",
-  ],
-  properties: {
-    schemaVersion: { type: "integer" },
-    changes: {
-      type: "array",
-      items: {
-        type: "object",
-        additionalProperties: false,
-        required: ["path", "expectedSha256", "content"],
-        properties: {
-          path: { type: "string" },
-          expectedSha256: { type: ["string", "null"] },
-          content: { type: "string" },
-        },
-      },
-    },
-    verification: {
-      type: "array",
-      items: {
-        type: "string",
-        enum: ["typecheck", "test", "build"],
-      },
-    },
-    commit: {
-      type: "object",
-      additionalProperties: false,
-      required: ["message", "push"],
-      properties: {
-        message: { type: "string" },
-        push: { type: "boolean" },
-      },
-    },
-  },
-});
-
-const workspacePlanSystemPrompt = [
-  "You are Forge's governed workspace planner.",
-  "Return exactly one JSON object that conforms to the supplied JSON Schema.",
-  "Return JSON only: no Markdown fences, preamble, explanation, analysis, or trailing text.",
-  "verification may contain only the identifiers typecheck, test, and build. To request the Forge runtime test, use test; never return a shell command.",
-  "Use only the approved target manifest and copy every expectedSha256 value exactly.",
-  "Never request push, credentials, arbitrary commands, deletions, or protected paths.",
-].join(" ");
 
 function usage(payload: ChatCompletionPayload): AiUsage {
   if (
@@ -152,8 +105,8 @@ export class LocalModelConnector
       "http://127.0.0.1:11434/v1"
     ).replace(/\/$/, "");
     const apiKey = process.env.FORGE_LOCAL_MODEL_API_KEY?.trim();
-    const requiresWorkspacePlan = composition.objective.includes(
-      "WORKSPACE_PLAN_OUTPUT_CONTRACT_V1",
+    const requiresWorkspacePlan = requiresWorkspacePlanContract(
+      composition.objective,
     );
 
     const controller = new AbortController();
