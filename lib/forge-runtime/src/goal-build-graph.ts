@@ -4,6 +4,7 @@ import type { MissionRecord } from "./mission";
 import {
   parseWorkspaceChangeRequest,
   type WorkspaceChangeRequest,
+  type WorkspaceExecutionResult,
 } from "./workspace-executor";
 
 export interface GoalAcceptanceCriterion {
@@ -51,6 +52,17 @@ export interface BuildGraphIntegrationEvaluation {
   readonly decision: "accepted" | "blocked" | "rejected";
   readonly nodeMissionIds: readonly string[];
   readonly learningEligible: boolean;
+  readonly evaluatedAt: string;
+}
+
+export interface BuildGraphComponentEvaluation {
+  readonly id: string;
+  readonly missionId: string;
+  readonly decision: "accepted" | "rejected";
+  readonly checks: readonly {
+    readonly id: "executor-succeeded" | "targets-exact" | "verification-complete";
+    readonly passed: boolean;
+  }[];
   readonly evaluatedAt: string;
 }
 
@@ -282,6 +294,44 @@ export function evaluateBuildGraphIntegration(
     decision,
     nodeMissionIds: Object.freeze(graph.nodes.map((node) => node.missionId)),
     learningEligible: decision === "accepted",
+    evaluatedAt: new Date().toISOString(),
+  });
+}
+
+export function evaluateBuildGraphComponent(
+  missionId: string,
+  request: WorkspaceChangeRequest,
+  execution: WorkspaceExecutionResult,
+): BuildGraphComponentEvaluation {
+  const expectedTargets = request.changes.map((change) => change.path);
+  const actualTargets = execution.changedFiles.map((change) => change.path);
+  const checks = Object.freeze([
+    Object.freeze({
+      id: "executor-succeeded" as const,
+      passed: execution.status === "verified" || execution.status === "committed" || execution.status === "pushed",
+    }),
+    Object.freeze({
+      id: "targets-exact" as const,
+      passed:
+        new Set(actualTargets).size === actualTargets.length &&
+        JSON.stringify(actualTargets) === JSON.stringify(expectedTargets),
+    }),
+    Object.freeze({
+      id: "verification-complete" as const,
+      passed:
+        request.verification.every((step) =>
+          execution.verification.some((receipt) =>
+            receipt.command.includes(step) && receipt.exitCode === 0
+          )
+        ) && execution.verification.every((receipt) => receipt.exitCode === 0),
+    }),
+  ]);
+
+  return Object.freeze({
+    id: randomUUID(),
+    missionId,
+    decision: checks.every((check) => check.passed) ? "accepted" : "rejected",
+    checks,
     evaluatedAt: new Date().toISOString(),
   });
 }

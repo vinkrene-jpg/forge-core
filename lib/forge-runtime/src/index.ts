@@ -162,11 +162,13 @@ export {
 } from "./workspace-change-planner";
 export {
   createBuildGraph,
+  evaluateBuildGraphComponent,
   evaluateBuildGraphIntegration,
   parseBuildGraphProposal,
   parseGoalSpec,
   type BuildGraph,
   type BuildGraphComponentProposal,
+  type BuildGraphComponentEvaluation,
   type BuildGraphIntegrationEvaluation,
   type BuildGraphNode,
   type BuildGraphProposal,

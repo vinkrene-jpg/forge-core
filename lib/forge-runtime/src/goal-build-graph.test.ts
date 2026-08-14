@@ -3,6 +3,7 @@ import test from "node:test";
 import type { CapabilityRecord } from "./capability";
 import {
   createBuildGraph,
+  evaluateBuildGraphComponent,
   evaluateBuildGraphIntegration,
   parseBuildGraphProposal,
   parseGoalSpec,
@@ -202,4 +203,39 @@ test("rejects missing goal coverage and non-existing or duplicate mission ids", 
     ),
     /duplicate missionId/,
   );
+});
+
+test("accepts a component only with exact targets and all fixed verification receipts", () => {
+  const request = component("foundation").workspaceChange;
+  const execution = {
+    id: "execution-1",
+    missionId: "mission-1",
+    status: "committed" as const,
+    branch: "forge-sync-primary",
+    changedFiles: [{
+      path: "sandbox/foundation.txt",
+      beforeSha256: null,
+      afterSha256: "a".repeat(64),
+    }],
+    verification: ["typecheck", "test", "build"].map((command) => ({
+      command: `pnpm run ${command}`,
+      exitCode: 0,
+      stdoutChars: 0,
+      stderrChars: 0,
+      stdoutSha256: "a".repeat(64),
+      stderrSha256: "a".repeat(64),
+      durationMs: 1,
+    })),
+    rollbackPerformed: false,
+    commitSha: "a".repeat(40),
+    error: null,
+    startedAt: "2026-08-14T00:00:00.000Z",
+    completedAt: "2026-08-14T00:00:01.000Z",
+  };
+
+  assert.equal(evaluateBuildGraphComponent("mission-1", request, execution).decision, "accepted");
+  assert.equal(evaluateBuildGraphComponent("mission-1", request, {
+    ...execution,
+    verification: execution.verification.slice(0, 2),
+  }).decision, "rejected");
 });

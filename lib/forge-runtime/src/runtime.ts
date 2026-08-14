@@ -159,6 +159,7 @@ import {
 } from "./workspace-executor";
 import {
   createBuildGraph,
+  evaluateBuildGraphComponent,
   evaluateBuildGraphIntegration,
   parseBuildGraphProposal,
   parseGoalSpec,
@@ -1530,16 +1531,24 @@ export class ForgeRuntime {
         return output;
       }
 
+      const rawGoalBuildGraph = mission.input.goalBuildGraph;
+      const goalBuildGraph = typeof rawGoalBuildGraph === "object" && rawGoalBuildGraph !== null && !Array.isArray(rawGoalBuildGraph)
+        ? rawGoalBuildGraph as Readonly<Record<string, unknown>>
+        : null;
+      const graphEvaluation = goalBuildGraph
+        ? evaluateBuildGraphComponent(mission.id, request, execution)
+        : null;
+      const executionEvidence = await this.#createWorkspaceExecutionEvidence(
+        project.rootPath,
+        execution,
+      );
       const output = Object.freeze({
         ...execution,
         evidenceMemoryId: evidence.id,
         workspaceExecutionApprovalId:
           this.#governanceEngine.findByMissionId(mission.id)?.id ?? null,
-        executionEvidence:
-          await this.#createWorkspaceExecutionEvidence(
-            project.rootPath,
-            execution,
-          ),
+        executionEvidence,
+        ...(graphEvaluation ? { evaluation: graphEvaluation } : {}),
         proofFilePath: request.changes[0]?.path ?? null,
         proofContent: request.changes[0]?.content ?? null,
         proofSha256:
@@ -1553,6 +1562,15 @@ export class ForgeRuntime {
           mutationCompleted: true,
         }),
       });
+      if (graphEvaluation?.decision === "rejected") {
+        const failure = new Error(
+          `Build graph component rejected by evaluation ${graphEvaluation.id}`,
+        ) as MissionExecutionFailure;
+        failure.missionResultStatus = "rejected";
+        failure.missionResultCause = "evaluation";
+        failure.missionOutput = output;
+        throw failure;
+      }
       await this.#missionEngine.checkpointRunning(mission.id, output);
       return output;
     } catch (error) {
