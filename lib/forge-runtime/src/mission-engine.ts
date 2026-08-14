@@ -35,6 +35,10 @@ export interface MissionEngineOptions {
     mission: MissionRecord,
     signal: AbortSignal,
   ) => Promise<Readonly<Record<string, unknown>>>;
+  readonly executeGoalBuild?: (
+    mission: MissionRecord,
+    signal: AbortSignal,
+  ) => Promise<Readonly<Record<string, unknown>>>;
   readonly executeWorkspaceChange?: (
     mission: MissionRecord,
     signal: AbortSignal,
@@ -164,6 +168,7 @@ function assertSupportedKind(kind: unknown): asserts kind is MissionKind {
     kind !== "runtime.self-check" &&
     kind !== "runtime.stability-window" &&
     kind !== "operator.autonomous-cycle" &&
+    kind !== "operator.goal-build" &&
     kind !== "operator.workspace-change" &&
     kind !== "operator.workspace-plan" &&
     kind !== "operator.mirror-intake"
@@ -229,6 +234,8 @@ export class MissionEngine {
   readonly #getRuntimeHealth: () => RuntimeHealthSnapshot;
   readonly #executeAutonomousCycle:
     MissionEngineOptions["executeAutonomousCycle"];
+  readonly #executeGoalBuild:
+    MissionEngineOptions["executeGoalBuild"];
   readonly #executeWorkspaceChange:
     MissionEngineOptions["executeWorkspaceChange"];
   readonly #executeWorkspacePlan:
@@ -248,6 +255,7 @@ export class MissionEngine {
     this.#getRuntimeHealth = options.getRuntimeHealth;
     this.#executeAutonomousCycle =
       options.executeAutonomousCycle;
+    this.#executeGoalBuild = options.executeGoalBuild;
     this.#executeWorkspaceChange =
       options.executeWorkspaceChange;
     this.#executeWorkspacePlan =
@@ -410,6 +418,8 @@ export class MissionEngine {
               ? "Runtime stability window"
               : request.kind === "operator.autonomous-cycle"
                 ? "Autonomous provider cycle"
+                : request.kind === "operator.goal-build"
+                  ? "Governed GoalSpec build"
                 : request.kind === "operator.workspace-change"
                   ? "Governed workspace change"
                   : request.kind === "operator.workspace-plan"
@@ -928,6 +938,13 @@ export class MissionEngine {
       }
 
       return this.#executeAutonomousCycle(mission, signal);
+    }
+
+    if (mission.kind === "operator.goal-build") {
+      if (!this.#executeGoalBuild) {
+        throw new Error("Goal build executor is not configured");
+      }
+      return this.#executeGoalBuild(mission, signal);
     }
 
     if (mission.kind === "operator.workspace-change") {

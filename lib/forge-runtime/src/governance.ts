@@ -108,6 +108,19 @@ export function assessMissionRequest(
     });
   }
 
+  if (request.kind === "operator.goal-build") {
+    return Object.freeze({
+      policyVersion: GOVERNANCE_POLICY_VERSION,
+      action: "mission.execute",
+      missionKind: request.kind,
+      riskLevel: "high",
+      decision: "require_approval",
+      reason:
+        "A bounded GoalSpec mandate authorizes multiple local workspace missions and requires one explicit operator approval.",
+      assessedAt,
+    });
+  }
+
   if (request.kind === "operator.workspace-change") {
     const commit = request.input?.commit;
     const pushes =

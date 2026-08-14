@@ -2,6 +2,17 @@
 
 Verified through: 2026-07-12 19:16 +02:00
 
+## GoalSpec-level authorization - deterministic verification
+
+- `operator.goal-build` is the single approval-bearing parent for one bounded GoalSpec and its validated BuildGraph proposal.
+- Approval materializes existing `operator.workspace-change` children idempotently. Each child retains capability analysis and a high-risk governance assessment but receives no child approval record while the parent mandate matches.
+- Runtime execution rechecks persisted parent approval, exact allowed paths, total child count, deadline, estimated cost delta, hard-protected core/guardian paths and predecessor acceptance.
+- Provider-generated push is forbidden. WorkspaceExecutor rollback remains active when deadline aborts execution.
+- Final reporting is derived from linked mission evidence and includes accepted components, verification receipts, rejected reasons, cost and mandate boundary failures.
+- `POST /api/goal-builds` and `GET /api/goal-builds/:missionId/report` expose the canonical runtime path without another state store.
+- Forge Desktop distinguishes approval loading/error/empty states, preserves orphan pending approvals and shows GoalSpec path, mission, duration and cost limits.
+- Deterministic evidence: complete runtime suite 82/82 passed; GoalSpec authorization focus 4/4 passed; approval visibility 2/2 passed; API and Desktop typechecks passed.
+
 ## Repository
 
 - Local path at recovery time: `C:\Forge\forge-core` (informational only; code must use repository-relative paths).

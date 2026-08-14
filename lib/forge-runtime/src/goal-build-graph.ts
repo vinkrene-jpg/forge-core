@@ -177,6 +177,9 @@ export function parseBuildGraphProposal(
     const workspaceChange = parseWorkspaceChangeRequest(
       record(component.workspaceChange, `buildGraph.components[${index}].workspaceChange`),
     );
+    if (workspaceChange.commit?.push === true) {
+      throw new Error(`Component ${id} may not request Git push`);
+    }
     const changeTargets = workspaceChange.changes.map((change) => change.path);
 
     if (new Set(targets).size !== targets.length || JSON.stringify(targets) !== JSON.stringify(changeTargets)) {
@@ -229,7 +232,7 @@ export function createBuildGraph(
   proposal: BuildGraphProposal,
   missionIds: ReadonlyMap<string, string>,
   missionExists: (missionId: string) => boolean,
-  graphId = randomUUID(),
+  graphId: string = randomUUID(),
 ): BuildGraph {
   const coveredCriteria = new Set(
     proposal.components.flatMap((component) =>
@@ -333,5 +336,78 @@ export function evaluateBuildGraphComponent(
     decision: checks.every((check) => check.passed) ? "accepted" : "rejected",
     checks,
     evaluatedAt: new Date().toISOString(),
+  });
+}
+
+export interface GoalBuildFinalReport {
+  readonly graphId: string;
+  readonly decision: BuildGraphIntegrationEvaluation["decision"];
+  readonly builtComponents: readonly {
+    readonly componentId: string;
+    readonly missionId: string;
+    readonly verification: readonly unknown[];
+  }[];
+  readonly rejectedComponents: readonly {
+    readonly componentId: string;
+    readonly missionId: string;
+    readonly reason: string;
+  }[];
+  readonly actualEstimatedCostUsd: number;
+  readonly boundaryFailures: readonly {
+    readonly componentId: string;
+    readonly boundary: string;
+    readonly limit: unknown;
+    readonly actual: unknown;
+  }[];
+  readonly generatedAt: string;
+}
+
+export function createGoalBuildFinalReport(
+  graph: BuildGraph,
+  getMission: (missionId: string) => MissionRecord | null,
+  actualEstimatedCostUsd: number,
+): GoalBuildFinalReport {
+  const integration = evaluateBuildGraphIntegration(graph, getMission);
+  const builtComponents: Array<GoalBuildFinalReport["builtComponents"][number]> = [];
+  const rejectedComponents: Array<GoalBuildFinalReport["rejectedComponents"][number]> = [];
+  const boundaryFailures: Array<GoalBuildFinalReport["boundaryFailures"][number]> = [];
+
+  for (const node of graph.nodes) {
+    const mission = getMission(node.missionId);
+    const evaluation = mission?.output?.evaluation as Readonly<Record<string, unknown>> | undefined;
+    const mandateBoundary = mission?.output?.mandateBoundary as Readonly<Record<string, unknown>> | undefined;
+    if (mission?.status === "succeeded" && evaluation?.decision === "accepted") {
+      builtComponents.push(Object.freeze({
+        componentId: node.id,
+        missionId: node.missionId,
+        verification: Object.freeze(
+          Array.isArray(mission.output?.verification) ? mission.output.verification : [],
+        ),
+      }));
+    } else if (mission?.status === "failed" || mission?.status === "cancelled" || evaluation?.decision === "rejected") {
+      rejectedComponents.push(Object.freeze({
+        componentId: node.id,
+        missionId: node.missionId,
+        reason: mission?.lastError ?? `Component evaluation decision: ${String(evaluation?.decision ?? "missing")}`,
+      }));
+    }
+    if (mandateBoundary && typeof mandateBoundary.boundary === "string") {
+      boundaryFailures.push(Object.freeze({
+        componentId: node.id,
+        boundary: mandateBoundary.boundary,
+        limit: mandateBoundary.limit,
+        actual: mandateBoundary.actual,
+      }));
+    }
+  }
+
+  return Object.freeze({
+    graphId: graph.id,
+    decision: integration.decision,
+    builtComponents: Object.freeze(builtComponents),
+    rejectedComponents: Object.freeze(rejectedComponents),
+    actualEstimatedCostUsd: Math.max(0, actualEstimatedCostUsd),
+    boundaryFailures: Object.freeze(boundaryFailures),
+    generatedAt: new Date().toISOString(),
   });
 }

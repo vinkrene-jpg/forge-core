@@ -162,6 +162,7 @@ export {
 } from "./workspace-change-planner";
 export {
   createBuildGraph,
+  createGoalBuildFinalReport,
   evaluateBuildGraphComponent,
   evaluateBuildGraphIntegration,
   parseBuildGraphProposal,
@@ -173,8 +174,20 @@ export {
   type BuildGraphNode,
   type BuildGraphProposal,
   type GoalAcceptanceCriterion,
+  type GoalBuildFinalReport,
   type GoalSpec,
 } from "./goal-build-graph";
+export {
+  assertGoalMandateBoundaries,
+  authorizeGoalMandate,
+  GoalMandateBoundaryError,
+  isHardProtectedGoalPath,
+  normalizeGoalMandatePath,
+  parseGoalMandateRequest,
+  type AuthorizedGoalMandate,
+  type GoalMandateBoundary,
+  type GoalMandateRequest,
+} from "./goal-mandate";
 export {
   CapabilityAnalyzer,
   requirementsForMission,

@@ -17,6 +17,61 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
+import {
+  approvalQueueState,
+  pendingApprovalRows,
+} from "./approval-view";
+
+function GoalMandateDetails({ input }: { readonly input: unknown }) {
+  if (typeof input !== "object" || input === null || Array.isArray(input)) {
+    return (
+      <div className="mt-4 rounded-md border border-border/60 p-3 text-xs text-muted-foreground">
+        Mandate details are still loading; the approval remains pending.
+      </div>
+    );
+  }
+
+  const mandate = input as Readonly<Record<string, unknown>>;
+  const allowedPaths = Array.isArray(mandate.allowedPaths)
+    ? mandate.allowedPaths.filter((path): path is string => typeof path === "string")
+    : [];
+  const maximumMissions = typeof mandate.maximumMissions === "number"
+    ? mandate.maximumMissions
+    : "unknown";
+  const maximumDurationMs = typeof mandate.maximumDurationMs === "number"
+    ? mandate.maximumDurationMs
+    : null;
+  const maximumCostUsd = typeof mandate.maximumCostUsd === "number"
+    ? mandate.maximumCostUsd
+    : null;
+
+  return (
+    <div className="mt-4 grid gap-3 rounded-md border border-border/60 p-3 text-xs md:grid-cols-3">
+      <div className="md:col-span-3">
+        <div className="font-medium text-foreground">Exact allowed paths</div>
+        <div className="mt-1 space-y-1 font-mono text-muted-foreground">
+          {allowedPaths.map((path) => <div key={path}>{path}</div>)}
+        </div>
+      </div>
+      <div>
+        <span className="font-medium text-foreground">Missions</span>
+        <div className="mt-1 text-muted-foreground">Maximum {maximumMissions}</div>
+      </div>
+      <div>
+        <span className="font-medium text-foreground">Duration</span>
+        <div className="mt-1 text-muted-foreground">
+          {maximumDurationMs === null ? "Unknown" : `${maximumDurationMs / 1_000} seconds`}
+        </div>
+      </div>
+      <div>
+        <span className="font-medium text-foreground">Cost</span>
+        <div className="mt-1 text-muted-foreground">
+          {maximumCostUsd === null ? "Unknown" : `$${maximumCostUsd.toFixed(6)}`}
+        </div>
+      </div>
+    </div>
+  );
+}
 
 export default function Approvals() {
   const approvals = useApprovalsQuery();
@@ -29,9 +84,15 @@ export default function Approvals() {
       right.updatedAt.localeCompare(left.updatedAt),
   );
 
-  const pending = records.filter(
-    (approval) => approval.status === "pending",
+  const pending = pendingApprovalRows(
+    records,
+    missions.data?.missions ?? [],
   );
+  const queueState = approvalQueueState({
+    approvalsLoading: approvals.isLoading,
+    approvalsError: approvals.isError,
+    pendingCount: pending.length,
+  });
 
   const actionError =
     approve.error instanceof Error
@@ -70,16 +131,21 @@ export default function Approvals() {
           </CardTitle>
         </CardHeader>
         <CardContent>
-          {pending.length === 0 ? (
+          {queueState === "loading" ? (
+            <div className="py-10 text-center text-sm text-muted-foreground">
+              Loading governance decisions...
+            </div>
+          ) : queueState === "error" ? (
+            <div className="rounded-md border border-destructive/40 bg-destructive/10 p-4 text-sm text-destructive">
+              Governance decisions could not be loaded. The queue status is unknown.
+            </div>
+          ) : queueState === "empty" ? (
             <div className="py-10 text-center text-sm text-muted-foreground">
               Governance queue is clear.
             </div>
           ) : (
             <div className="space-y-4">
-              {pending.map((approval) => {
-                const mission = missions.data?.missions.find(
-                  (candidate) => candidate.id === approval.missionId,
-                );
+              {pending.map(({ approval, mission }) => {
                 const sourcePlanningMissionId =
                   typeof mission?.input.sourceAutonomousMissionId === "string"
                     ? mission.input.sourceAutonomousMissionId
@@ -95,7 +161,9 @@ export default function Approvals() {
                     <div className="flex flex-wrap items-start justify-between gap-4">
                       <div>
                         <div className="font-medium">
-                          {approval.assessment.missionKind === "operator.workspace-change"
+                          {approval.assessment.missionKind === "operator.goal-build"
+                            ? "GoalSpec mandate"
+                            : approval.assessment.missionKind === "operator.workspace-change"
                             ? "Workspace execution approval"
                             : approval.assessment.missionKind}
                         </div>
@@ -119,6 +187,10 @@ export default function Approvals() {
                     <p className="mt-4 text-sm text-muted-foreground">
                       {approval.assessment.reason}
                     </p>
+
+                    {approval.assessment.missionKind === "operator.goal-build" ? (
+                      <GoalMandateDetails input={mission?.input.goalMandate} />
+                    ) : null}
 
                     <div className="mt-4 flex flex-wrap gap-2">
                       <Button

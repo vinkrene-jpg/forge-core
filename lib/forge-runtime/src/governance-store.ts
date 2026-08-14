@@ -32,8 +32,10 @@ const missionKinds = new Set<MissionKind>([
   "runtime.self-check",
   "runtime.stability-window",
   "operator.autonomous-cycle",
+  "operator.goal-build",
   "operator.workspace-change",
   "operator.workspace-plan",
+  "operator.mirror-intake",
 ]);
 
 const riskLevels = new Set<GovernanceRiskLevel>([

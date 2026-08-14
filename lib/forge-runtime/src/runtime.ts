@@ -158,14 +158,23 @@ import {
   type WorkspaceVerificationRunner,
 } from "./workspace-executor";
 import {
+  createGoalBuildFinalReport,
   createBuildGraph,
   evaluateBuildGraphComponent,
   evaluateBuildGraphIntegration,
   parseBuildGraphProposal,
   parseGoalSpec,
   type BuildGraph,
+  type BuildGraphComponentProposal,
   type BuildGraphIntegrationEvaluation,
 } from "./goal-build-graph";
+import {
+  assertGoalMandateBoundaries,
+  authorizeGoalMandate,
+  GoalMandateBoundaryError,
+  parseGoalMandateRequest,
+  type AuthorizedGoalMandate,
+} from "./goal-mandate";
 
 declare const __FORGE_RUNTIME_BUILD_SHA__: string | undefined;
 
@@ -435,6 +444,8 @@ export class ForgeRuntime {
       getRuntimeHealth: () => this.#kernel.healthSnapshot(),
       executeAutonomousCycle: (mission, signal) =>
         this.#executeAutonomousCycle(mission, signal),
+      executeGoalBuild: (mission, signal) =>
+        this.#executeGoalBuild(mission, signal),
       executeWorkspaceChange: (mission, signal) =>
         this.#executeWorkspaceChange(mission, signal),
       executeWorkspacePlan: (mission, signal) =>
@@ -1361,6 +1372,59 @@ export class ForgeRuntime {
     }
 
     const request = parseWorkspaceChangeRequest(mission.input);
+    const rawMandate = mission.input.goalMandate;
+    const goalMandate = typeof rawMandate === "object" && rawMandate !== null && !Array.isArray(rawMandate)
+      ? rawMandate as unknown as AuthorizedGoalMandate
+      : null;
+    let executionSignal = signal;
+    let mandateTimeout: ReturnType<typeof setTimeout> | null = null;
+    let mandateController: AbortController | null = null;
+
+    if (goalMandate) {
+      const goalMission = this.#missionEngine.get(goalMandate.goalMissionId);
+      const approval = this.#governanceEngine.getApproval(goalMandate.approvalId);
+      const graphMissions = this.#missionEngine.list().filter(
+        (candidate) => {
+          const metadata = candidate.input.goalBuildGraph;
+          return typeof metadata === "object" && metadata !== null && !Array.isArray(metadata) &&
+            (metadata as Readonly<Record<string, unknown>>).goalMissionId === goalMandate.goalMissionId;
+        },
+      );
+      if (
+        goalMission?.kind !== "operator.goal-build" ||
+        goalMission.status !== "succeeded" ||
+        approval?.status !== "approved" ||
+        approval.missionId !== goalMission.id
+      ) {
+        throw new Error("Goal mandate authority is not approved and persisted");
+      }
+      assertGoalMandateBoundaries({
+        mandate: goalMandate,
+        targets: request.changes.map((change) => change.path),
+        missionCount: graphMissions.length,
+        actualCostUsd: Math.max(
+          0,
+          this.#aiGateway.summary().totalEstimatedCostUsd - goalMandate.baselineCostUsd,
+        ),
+      });
+      const dependencyMissionId = (
+        mission.input.goalBuildGraph as Readonly<Record<string, unknown>> | undefined
+      )?.dependsOnMissionId;
+      if (typeof dependencyMissionId === "string") {
+        const dependency = this.#missionEngine.get(dependencyMissionId);
+        const evaluation = dependency?.output?.evaluation as Readonly<Record<string, unknown>> | undefined;
+        if (dependency?.status !== "succeeded" || evaluation?.decision !== "accepted") {
+          throw new Error(`Build graph dependency mission ${dependencyMissionId} is not accepted`);
+        }
+      }
+      const remainingMs = Date.parse(goalMandate.expiresAt) - Date.now();
+      if (remainingMs <= 0) {
+        throw new GoalMandateBoundaryError("duration", goalMandate.expiresAt, new Date().toISOString());
+      }
+      mandateController = new AbortController();
+      mandateTimeout = setTimeout(() => mandateController?.abort(), remainingMs);
+      executionSignal = AbortSignal.any([signal, mandateController.signal]);
+    }
     const sourceAutonomousMissionId =
       typeof mission.input.sourceAutonomousMissionId === "string"
         ? mission.input.sourceAutonomousMissionId
@@ -1439,7 +1503,7 @@ export class ForgeRuntime {
         project.rootPath,
         mission.id,
         request,
-        signal,
+        executionSignal,
       );
       const evidence = await this.#operatorCore.addMemory(projectId, {
         kind: "evidence",
@@ -1583,8 +1647,177 @@ export class ForgeRuntime {
         });
       }
 
+      if (goalMandate && mandateController?.signal.aborted && !signal.aborted) {
+        const failure = new GoalMandateBoundaryError(
+          "duration",
+          goalMandate.expiresAt,
+          new Date().toISOString(),
+        ) as GoalMandateBoundaryError & MissionExecutionFailure;
+        failure.missionResultStatus = "blocked";
+        failure.missionResultCause = "goal-mandate.duration";
+        failure.missionOutput = Object.freeze({
+          mandateBoundary: Object.freeze({
+            boundary: failure.boundary,
+            limit: failure.limit,
+            actual: failure.actual,
+          }),
+          rollback: error instanceof WorkspaceExecutionError ? error.result : null,
+        });
+        throw failure;
+      }
+      if (error instanceof GoalMandateBoundaryError) {
+        const failure = error as GoalMandateBoundaryError & MissionExecutionFailure;
+        failure.missionResultStatus = "blocked";
+        failure.missionResultCause = `goal-mandate.${error.boundary}`;
+        failure.missionOutput = Object.freeze({
+          mandateBoundary: Object.freeze({
+            boundary: error.boundary,
+            limit: error.limit,
+            actual: error.actual,
+          }),
+        });
+      }
       throw error;
+    } finally {
+      if (mandateTimeout) clearTimeout(mandateTimeout);
     }
+  }
+
+  async #executeGoalBuild(
+    mission: MissionRecord,
+    signal: AbortSignal,
+  ): Promise<Readonly<Record<string, unknown>>> {
+    if (signal.aborted) {
+      throw new MissionAbortError();
+    }
+    const goalSpec = parseGoalSpec(mission.input.goalSpec);
+    const proposal = parseBuildGraphProposal(
+      mission.input.proposal,
+      this.#capabilityRegistry.listCapabilities(),
+    );
+    const mandateRequest = parseGoalMandateRequest(mission.input.goalMandate);
+    const graphId = typeof mission.input.graphId === "string"
+      ? mission.input.graphId
+      : null;
+    const approval = this.#governanceEngine.findByMissionId(mission.id);
+
+    if (!graphId || !approval || approval.status !== "approved" || !approval.decidedAt) {
+      throw new Error("Goal build requires one persisted approved GoalSpec mandate");
+    }
+
+    const mandate = authorizeGoalMandate({
+      request: mandateRequest,
+      goalMissionId: mission.id,
+      approvalId: approval.id,
+      authorizedAt: approval.decidedAt,
+      baselineCostUsd: this.#aiGateway.summary().totalEstimatedCostUsd,
+    });
+    const allTargets = proposal.components.flatMap((component) => component.targets);
+    assertGoalMandateBoundaries({
+      mandate,
+      targets: allTargets,
+      missionCount: proposal.components.length,
+      actualCostUsd: 0,
+    });
+
+    const ordered: BuildGraphComponentProposal[] = [];
+    const remaining = [...proposal.components];
+    const orderedIds = new Set<string>();
+    while (remaining.length > 0) {
+      const index = remaining.findIndex((component) =>
+        component.dependsOn.every((dependencyId) => orderedIds.has(dependencyId))
+      );
+      if (index < 0) {
+        throw new Error("Build graph contains a dependency cycle");
+      }
+      const [component] = remaining.splice(index, 1);
+      ordered.push(component);
+      orderedIds.add(component.id);
+    }
+    const prepared = [];
+    for (const component of ordered) {
+      if (signal.aborted) throw new MissionAbortError();
+      const request: CreateMissionRequest = {
+        kind: "operator.workspace-change",
+        title: component.title,
+        idempotencyKey: `goal-build:${mission.id}:${component.id}`,
+        input: {
+          projectId: proposal.repositoryId,
+          changes: component.workspaceChange.changes,
+          verification: component.workspaceChange.verification,
+          commit: component.workspaceChange.commit,
+        },
+      };
+      const capabilityAnalysis = await this.#capabilityAnalyzer.analyzeMission(request);
+      if (capabilityAnalysis.decision !== "execute_directly") {
+        throw new Error(
+          `Goal component ${component.id} requires capability improvement`,
+        );
+      }
+      const governance = this.#governanceEngine.assess(request);
+      if (
+        governance.decision !== "require_approval" ||
+        governance.riskLevel !== "high" ||
+        component.workspaceChange.commit?.push === true
+      ) {
+        throw new Error(
+          `Goal component ${component.id} is outside mandate-eligible workspace governance`,
+        );
+      }
+      prepared.push({ component, request, capabilityAnalysis, governance });
+    }
+
+    const missionIds = new Map<string, string>();
+    for (const item of prepared) {
+      if (signal.aborted) throw new MissionAbortError();
+      const dependsOnComponentId = item.component.dependsOn[0] ?? null;
+      const dependsOnMissionId = dependsOnComponentId
+        ? missionIds.get(dependsOnComponentId) ?? null
+        : null;
+      if (dependsOnComponentId && !dependsOnMissionId) {
+        throw new Error(`Goal component dependency is not materialized: ${dependsOnComponentId}`);
+      }
+      const child = await this.#missionEngine.enqueue({
+        ...item.request,
+        input: {
+          ...item.request.input,
+          goalMandate: mandate,
+          goalBuildGraph: {
+            graphId,
+            goalMissionId: mission.id,
+            componentId: item.component.id,
+            dependsOnComponentId,
+            dependsOnMissionId,
+            goalSpec,
+            acceptanceCriteria: item.component.acceptanceCriteria,
+            governanceAssessment: item.governance,
+            capabilityAnalysisId: item.capabilityAnalysis.id,
+          },
+        },
+      }, "queued");
+      missionIds.set(item.component.id, child.id);
+    }
+
+    const graph = createBuildGraph(
+      goalSpec,
+      proposal,
+      missionIds,
+      (missionId) => this.#missionEngine.get(missionId) !== null,
+      graphId,
+    );
+    return Object.freeze({
+      graph,
+      mandate,
+      approvalId: approval.id,
+      childApprovalCount: 0,
+      childGovernanceAssessments: Object.freeze(
+        prepared.map((item) => Object.freeze({
+          componentId: item.component.id,
+          assessment: item.governance,
+          capabilityAnalysisId: item.capabilityAnalysis.id,
+        })),
+      ),
+    });
   }
 
   async #createWorkspaceExecutionEvidence(
@@ -3100,72 +3333,53 @@ export class ForgeRuntime {
   async createGoalBuildGraph(
     goalSpecInput: unknown,
     proposalInput: unknown,
-  ): Promise<BuildGraph> {
+    mandateInput: unknown,
+  ): Promise<RuntimeMissionCreationResult> {
     const goalSpec = parseGoalSpec(goalSpecInput);
     const proposal = parseBuildGraphProposal(
       proposalInput,
       this.#capabilityRegistry.listCapabilities(),
     );
+    const goalMandate = parseGoalMandateRequest(mandateInput);
+    assertGoalMandateBoundaries({
+      mandate: goalMandate,
+      targets: proposal.components.flatMap((component) => component.targets),
+      missionCount: proposal.components.length,
+      actualCostUsd: 0,
+    });
     const graphId = randomUUID();
-    const missionIds = new Map<string, string>();
-    const pending = [...proposal.components];
-
-    while (pending.length > 0) {
-      const index = pending.findIndex((component) =>
-        component.dependsOn.every((dependencyId) => missionIds.has(dependencyId))
-      );
-      if (index < 0) {
-        throw new Error("Build graph contains a dependency cycle");
-      }
-
-      const [component] = pending.splice(index, 1);
-      const dependsOnComponentId = component.dependsOn[0] ?? null;
-      const dependsOnMissionId = dependsOnComponentId
-        ? missionIds.get(dependsOnComponentId) ?? null
-        : null;
-      const created = await this.createMission({
-        kind: "operator.workspace-change",
-        title: component.title,
-        input: {
-          projectId: proposal.repositoryId,
-          changes: component.workspaceChange.changes,
-          verification: component.workspaceChange.verification,
-          commit: component.workspaceChange.commit,
-          goalBuildGraph: {
-            graphId,
-            componentId: component.id,
-            dependsOnComponentId,
-            dependsOnMissionId,
-            goalSpec,
-            acceptanceCriteria: component.acceptanceCriteria,
-          },
-        },
-      });
-
-      if (created.mission.status !== "awaiting_approval" || !created.approval) {
-        throw new Error(`Build graph component ${component.id} did not receive its workspace approval gate`);
-      }
-      missionIds.set(component.id, created.mission.id);
-    }
-
-    return createBuildGraph(
-      goalSpec,
-      proposal,
-      missionIds,
-      (missionId) => this.#missionEngine.get(missionId) !== null,
-      graphId,
-    );
+    return this.createMission({
+      kind: "operator.goal-build",
+      title: `Authorize GoalSpec build: ${goalSpec.objective.slice(0, 120)}`,
+      input: { graphId, goalSpec, proposal, goalMandate },
+    });
   }
 
   async evaluateGoalBuildGraph(
     graph: BuildGraph,
-  ): Promise<BuildGraphIntegrationEvaluation & { readonly evidenceMemoryId: string | null }> {
+  ): Promise<BuildGraphIntegrationEvaluation & {
+    readonly evidenceMemoryId: string | null;
+    readonly report: ReturnType<typeof createGoalBuildFinalReport>;
+  }> {
     const evaluation = evaluateBuildGraphIntegration(
       graph,
       (missionId) => this.#missionEngine.get(missionId),
     );
+    const goalMission = this.#missionEngine.list().find((mission) => {
+      const outputGraph = mission.output?.graph as Readonly<Record<string, unknown>> | undefined;
+      return mission.kind === "operator.goal-build" && outputGraph?.id === graph.id;
+    });
+    const mandate = goalMission?.output?.mandate as AuthorizedGoalMandate | undefined;
+    const actualEstimatedCostUsd = mandate
+      ? Math.max(0, this.#aiGateway.summary().totalEstimatedCostUsd - mandate.baselineCostUsd)
+      : 0;
+    const report = createGoalBuildFinalReport(
+      graph,
+      (missionId) => this.#missionEngine.get(missionId),
+      actualEstimatedCostUsd,
+    );
     if (!evaluation.learningEligible) {
-      return Object.freeze({ ...evaluation, evidenceMemoryId: null });
+      return Object.freeze({ ...evaluation, evidenceMemoryId: null, report });
     }
 
     const source = `goal-build-graph:${graph.id}`;
@@ -3176,10 +3390,10 @@ export class ForgeRuntime {
       kind: "evidence",
       source,
       tags: ["goal-build-graph", "integration-accepted", "learning-eligible"],
-      content: JSON.stringify({ graph, integrationEvaluation: evaluation }, null, 2),
+      content: JSON.stringify({ graph, integrationEvaluation: evaluation, report }, null, 2),
     });
 
-    return Object.freeze({ ...evaluation, evidenceMemoryId: evidence.id });
+    return Object.freeze({ ...evaluation, evidenceMemoryId: evidence.id, report });
   }
 
   listApprovals(

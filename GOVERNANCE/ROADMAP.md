@@ -98,6 +98,15 @@ Status: completed on 2026-07-15 with governed live mission evidence.
 - Mission output persisted `missionResult` classification (`rejected`, cause `evaluation`) instead of null output fallback behavior.
 - Evidence: reconstruction/MISSION_OUTPUT_PIPELINE_VERIFICATION.json.
 
+## GoalSpec mandate vertical slice
+
+Status: implemented with deterministic verification; live API execution proof remains the next bounded milestone.
+
+- One high-risk `operator.goal-build` approval authorizes at most two prevalidated sequential workspace components within exact path, mission-count, duration and cost limits.
+- Child missions retain capability analysis, governance assessment, fixed verification, evaluation and rollback without per-child approvals.
+- Core and guardian paths remain immutable, push remains forbidden and predecessor acceptance is checked at execution time.
+- The existing API exposes governed creation and a final report derived from mission evidence; Desktop pending approvals show mandate limits and never display loading or query failure as an empty queue.
+
 ## FG-005.120 Provider-backed execution stabilization
 
 Status: completed on 2026-07-15 with accepted governed mission evidence.

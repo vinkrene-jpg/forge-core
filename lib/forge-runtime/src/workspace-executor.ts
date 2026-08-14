@@ -100,6 +100,20 @@ const protectedSegments = new Set([
 
 const protectedNames = new Set([".env", "id_rsa", "id_ed25519"]);
 
+const immutableForgePaths = new Set([
+  "artifacts/api-server/src/lib/corelock.ts",
+  "lib/forge-runtime/src/goal-build-graph.ts",
+  "lib/forge-runtime/src/goal-mandate.ts",
+  "lib/forge-runtime/src/governance.ts",
+  "lib/forge-runtime/src/governance-engine.ts",
+  "lib/forge-runtime/src/governance-store.ts",
+  "lib/forge-runtime/src/kernel.ts",
+  "lib/forge-runtime/src/mission-ai-review.ts",
+  "lib/forge-runtime/src/mission-review.ts",
+  "lib/forge-runtime/src/runtime-state.ts",
+  "lib/forge-runtime/src/workspace-executor.ts",
+]);
+
 function message(error: unknown): string {
   return error instanceof Error
     ? error.message
@@ -131,6 +145,8 @@ function normalizedRelativePath(value: string): string {
     name.endsWith(".pem") ||
     name.endsWith(".key") ||
     normalized === "GOVERNANCE/CONSTITUTION.md"
+    || normalized.startsWith("GOVERNANCE/")
+    || immutableForgePaths.has(normalized)
   ) {
     throw new Error(`Protected workspace path: ${normalized}`);
   }

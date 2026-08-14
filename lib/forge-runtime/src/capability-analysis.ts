@@ -148,6 +148,27 @@ export function requirementsForMission(
     ]);
   }
 
+  if (kind === "operator.goal-build") {
+    return Object.freeze([
+      ...shared,
+      {
+        capabilityId: "tool.workspace.write",
+        minimumStatus: "operational",
+        reason: "Goal components apply preconditioned changes inside one approved workspace.",
+      },
+      {
+        capabilityId: "tool.workspace.verify",
+        minimumStatus: "operational",
+        reason: "Every goal component must pass fixed typecheck, test and build verification.",
+      },
+      {
+        capabilityId: "tool.workspace.rollback",
+        minimumStatus: "operational",
+        reason: "Incomplete component work must roll back when a mandate or verification boundary fails.",
+      },
+    ]);
+  }
+
   if (kind === "operator.workspace-plan") {
     return Object.freeze([
       ...shared,
@@ -204,6 +225,7 @@ export class CapabilityAnalyzer {
           request.kind === "runtime.self-check"
             ? 2
             : request.kind === "operator.autonomous-cycle" ||
+              request.kind === "operator.goal-build" ||
                 request.kind === "operator.workspace-change" ||
                 request.kind === "operator.workspace-plan"
               ? 4

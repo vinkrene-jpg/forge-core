@@ -1,8 +1,8 @@
 # Forge Next Mission
 
-## Resume point after Goal-to-Software Build Graph vertical slice
+## Resume point after GoalSpec-level authorization
 
-Status: the first bounded GoalSpec-to-BuildGraph runtime slice is implemented on top of existing workspace missions and governance approvals.
+Status: one bounded GoalSpec mandate now replaces per-child approvals while preserving child capability analysis, governance assessment, verification, evaluation and rollback.
 
 ## Verified baseline
 
@@ -21,7 +21,7 @@ Status: the first bounded GoalSpec-to-BuildGraph runtime slice is implemented on
 
 ## Next action
 
-Expose the validated GoalSpec/BuildGraph creation and derived integration result through the existing operator API and Desktop without adding persistence or status truth. Preserve the current two-component, one-dependency, one-repository limit. Do not add parallel execution, deployment, push automation or reusable pattern libraries in that follow-up.
+Perform one governed live API proof on a clean named non-main branch: create a two-file sequential GoalSpec with one approval, verify zero child approvals, accept both components in order and capture the derived final report plus persisted evidence. Preserve the current two-component, one-dependency, one-repository limit. Do not add parallel execution, deployment, push automation or reusable pattern libraries.
 
 ## Failure rules
 
@@ -34,5 +34,7 @@ Expose the validated GoalSpec/BuildGraph creation and derived integration result
 - No destructive operations, protected-path changes or history rewrite.
 - Extend `config/forge-validation.json` for future module checks; do not create a parallel validation runner or evidence truth.
 - BuildGraph nodes must continue to derive status from their linked Mission Engine records.
-- A dependent workspace approval may never be granted before its predecessor has an accepted evaluation.
+- A mandate-backed dependent workspace mission may never execute before its predecessor has an accepted evaluation.
+- A GoalSpec mandate may never expand after approval or include hard-protected core/guardian paths.
+- A paid call may never proceed when the approved maximum cost does not cover it.
 - Graph learning evidence remains forbidden until integration evaluation accepts every node.

@@ -162,6 +162,7 @@ export interface MissionRecord {
     | "runtime.self-check"
     | "runtime.stability-window"
     | "operator.autonomous-cycle"
+    | "operator.goal-build"
     | "operator.workspace-plan"
     | "operator.workspace-change"
     | "operator.mirror-intake";

@@ -9,7 +9,8 @@
     "serve": "vite preview --config vite.config.ts --host 0.0.0.0",
     "test:mission-console-submit": "node --import tsx --test --test-force-exit src/pages/mission-console-route.test.tsx",
     "test:mirror": "node --import tsx --test --test-force-exit src/pages/mirror.test.tsx",
-    "test:frontend": "pnpm run test:mission-console-submit && pnpm run test:mirror",
+    "test:approvals": "node --import tsx --test src/pages/approval-view.test.ts",
+    "test:frontend": "pnpm run test:mission-console-submit && pnpm run test:mirror && pnpm run test:approvals",
     "typecheck": "tsc -p tsconfig.json --noEmit"
   },
   "devDependencies": {
