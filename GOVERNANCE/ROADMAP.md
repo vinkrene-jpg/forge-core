@@ -125,3 +125,14 @@ Status: completed on 2026-07-15 as a truth check against the live 5000 runtime.
 - The live runtime still produced `score=33` with `providerId=local-model` and `fetch failed` on recent autonomous execution.
 - The source fix exists, but the live runtime process has not yet loaded it.
 - Evidence: reconstruction/RUNTIME_TRUTH_VERIFICATION.json.
+
+## Goal-to-Software Build Graph vertical slice - 2026-08-14
+
+Status: implemented with focused deterministic and runtime coverage.
+
+- GoalSpec records desired behavior, constraints and evidence-backed acceptance criteria.
+- A validated graph is limited to two components, one dependency and repository `forge-core`.
+- Every node references an existing workspace mission; mission state remains authoritative.
+- Dependency approval is blocked until the predecessor has succeeded with accepted evaluation.
+- Integration learning evidence is ineligible until all component missions are accepted.
+- Parallel execution, deployment, automatic push and pattern libraries remain out of scope.

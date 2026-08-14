@@ -276,3 +276,13 @@ Status: implemented with focused runtime and API integration evidence.
 - Final restart-enabled validation completed 21 steps: 20 `PASS`, one expected Git `WARNING`, zero errors and exit code 0. Framework regression tests passed, including Windows command-shim execution and report path confinement.
 - The isolated built API started and stopped twice on port 5010. The authoritative port-5000 runtime remained one listener on PID `17556`; root, health, Mirror, Session and Resume returned HTTP 200, and health reported `status=ok`, `database=ok`, `storage=ok`.
 - Evidence: `reconstruction/FORGE_VALIDATION_VERIFICATION.json`.
+
+## Goal-to-Software Build Graph first vertical slice - 2026-08-14
+
+- `GoalSpec` deterministically requires an objective, desired behavior, constraints and concrete acceptance criteria with named evidence.
+- Provider/model graph proposals are untrusted input and receive no authority until Forge validates one repository, at most two unique components, at most one dependency, acyclicity, exact safe targets, operational capabilities and fixed `typecheck`, `test` and `build` verification.
+- Goal acceptance criteria must be covered by component criteria before workspace missions are created.
+- Each final graph node references a unique existing `operator.workspace-change` mission ID; the graph has no separate task or status administration.
+- Both workspace approval gates remain existing Governance Engine records. Approval of a dependent node fails closed until its predecessor mission is `succeeded` with `evaluation.decision=accepted`.
+- Integration evaluation is derived from mission records. It writes one idempotent project evidence record, and becomes learning-eligible, only after the complete graph is accepted.
+- Focused validator and runtime tests pass 6/6; the complete Forge Runtime suite passes 78/78. Final root `pnpm run typecheck` and `pnpm run build` both pass.

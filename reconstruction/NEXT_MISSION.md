@@ -1,8 +1,8 @@
 # Forge Next Mission
 
-## Resume point after FORGE_VALIDATE_01
+## Resume point after Goal-to-Software Build Graph vertical slice
 
-Status: Mirror projection, Session projection, deterministic Resume, controlled mission intake and the central validation framework complete and live verified.
+Status: the first bounded GoalSpec-to-BuildGraph runtime slice is implemented on top of existing workspace missions and governance approvals.
 
 ## Verified baseline
 
@@ -21,7 +21,7 @@ Status: Mirror projection, Session projection, deterministic Resume, controlled 
 
 ## Next action
 
-Use `pnpm forge:validate` as the standard evidence gate for the next bounded mission. Use deterministic Resume when the operator asks to continue, then require an explicit missionId when the response is ambiguous. Intake creates work only; any future start/approve capability must remain a separately governed mission with explicit authority.
+Expose the validated GoalSpec/BuildGraph creation and derived integration result through the existing operator API and Desktop without adding persistence or status truth. Preserve the current two-component, one-dependency, one-repository limit. Do not add parallel execution, deployment, push automation or reusable pattern libraries in that follow-up.
 
 ## Failure rules
 
@@ -33,3 +33,6 @@ Use `pnpm forge:validate` as the standard evidence gate for the next bounded mis
 - Provider failure remains isolated and must not trigger automatic retry.
 - No destructive operations, protected-path changes or history rewrite.
 - Extend `config/forge-validation.json` for future module checks; do not create a parallel validation runner or evidence truth.
+- BuildGraph nodes must continue to derive status from their linked Mission Engine records.
+- A dependent workspace approval may never be granted before its predecessor has an accepted evaluation.
+- Graph learning evidence remains forbidden until integration evaluation accepts every node.

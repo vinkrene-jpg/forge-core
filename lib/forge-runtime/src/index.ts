@@ -161,6 +161,19 @@ export {
   type WorkspacePlanningTarget,
 } from "./workspace-change-planner";
 export {
+  createBuildGraph,
+  evaluateBuildGraphIntegration,
+  parseBuildGraphProposal,
+  parseGoalSpec,
+  type BuildGraph,
+  type BuildGraphComponentProposal,
+  type BuildGraphIntegrationEvaluation,
+  type BuildGraphNode,
+  type BuildGraphProposal,
+  type GoalAcceptanceCriterion,
+  type GoalSpec,
+} from "./goal-build-graph";
+export {
   CapabilityAnalyzer,
   requirementsForMission,
 } from "./capability-analysis";

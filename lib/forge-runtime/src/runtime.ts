@@ -157,6 +157,14 @@ import {
   WorkspaceExecutor,
   type WorkspaceVerificationRunner,
 } from "./workspace-executor";
+import {
+  createBuildGraph,
+  evaluateBuildGraphIntegration,
+  parseBuildGraphProposal,
+  parseGoalSpec,
+  type BuildGraph,
+  type BuildGraphIntegrationEvaluation,
+} from "./goal-build-graph";
 
 declare const __FORGE_RUNTIME_BUILD_SHA__: string | undefined;
 
@@ -3071,6 +3079,91 @@ export class ForgeRuntime {
     });
   }
 
+  async createGoalBuildGraph(
+    goalSpecInput: unknown,
+    proposalInput: unknown,
+  ): Promise<BuildGraph> {
+    const goalSpec = parseGoalSpec(goalSpecInput);
+    const proposal = parseBuildGraphProposal(
+      proposalInput,
+      this.#capabilityRegistry.listCapabilities(),
+    );
+    const graphId = randomUUID();
+    const missionIds = new Map<string, string>();
+    const pending = [...proposal.components];
+
+    while (pending.length > 0) {
+      const index = pending.findIndex((component) =>
+        component.dependsOn.every((dependencyId) => missionIds.has(dependencyId))
+      );
+      if (index < 0) {
+        throw new Error("Build graph contains a dependency cycle");
+      }
+
+      const [component] = pending.splice(index, 1);
+      const dependsOnComponentId = component.dependsOn[0] ?? null;
+      const dependsOnMissionId = dependsOnComponentId
+        ? missionIds.get(dependsOnComponentId) ?? null
+        : null;
+      const created = await this.createMission({
+        kind: "operator.workspace-change",
+        title: component.title,
+        input: {
+          projectId: proposal.repositoryId,
+          changes: component.workspaceChange.changes,
+          verification: component.workspaceChange.verification,
+          commit: component.workspaceChange.commit,
+          goalBuildGraph: {
+            graphId,
+            componentId: component.id,
+            dependsOnComponentId,
+            dependsOnMissionId,
+            goalSpec,
+            acceptanceCriteria: component.acceptanceCriteria,
+          },
+        },
+      });
+
+      if (created.mission.status !== "awaiting_approval" || !created.approval) {
+        throw new Error(`Build graph component ${component.id} did not receive its workspace approval gate`);
+      }
+      missionIds.set(component.id, created.mission.id);
+    }
+
+    return createBuildGraph(
+      goalSpec,
+      proposal,
+      missionIds,
+      (missionId) => this.#missionEngine.get(missionId) !== null,
+      graphId,
+    );
+  }
+
+  async evaluateGoalBuildGraph(
+    graph: BuildGraph,
+  ): Promise<BuildGraphIntegrationEvaluation & { readonly evidenceMemoryId: string | null }> {
+    const evaluation = evaluateBuildGraphIntegration(
+      graph,
+      (missionId) => this.#missionEngine.get(missionId),
+    );
+    if (!evaluation.learningEligible) {
+      return Object.freeze({ ...evaluation, evidenceMemoryId: null });
+    }
+
+    const source = `goal-build-graph:${graph.id}`;
+    const existing = this.#operatorCore
+      .listMemories(graph.repositoryId, "evidence")
+      .find((memory) => memory.source === source);
+    const evidence = existing ?? await this.#operatorCore.addMemory(graph.repositoryId, {
+      kind: "evidence",
+      source,
+      tags: ["goal-build-graph", "integration-accepted", "learning-eligible"],
+      content: JSON.stringify({ graph, integrationEvaluation: evaluation }, null, 2),
+    });
+
+    return Object.freeze({ ...evaluation, evidenceMemoryId: evidence.id });
+  }
+
   listApprovals(
     status?: ApprovalStatus,
   ): readonly ApprovalRecord[] {
@@ -3092,6 +3185,29 @@ export class ForgeRuntime {
     actor: string,
     note?: string,
   ): Promise<ApprovalDecisionResult> {
+    const pendingApproval = this.#governanceEngine.getApproval(approvalId);
+    const pendingMission = pendingApproval
+      ? this.#missionEngine.get(pendingApproval.missionId)
+      : null;
+    const rawGraph = pendingMission?.input.goalBuildGraph;
+    const graphMetadata = typeof rawGraph === "object" && rawGraph !== null && !Array.isArray(rawGraph)
+      ? rawGraph as Readonly<Record<string, unknown>>
+      : null;
+    const dependencyMissionId = graphMetadata?.dependsOnMissionId;
+
+    if (typeof dependencyMissionId === "string") {
+      const dependency = this.#missionEngine.get(dependencyMissionId);
+      const rawEvaluation = dependency?.output?.evaluation;
+      const evaluation = typeof rawEvaluation === "object" && rawEvaluation !== null && !Array.isArray(rawEvaluation)
+        ? rawEvaluation as Readonly<Record<string, unknown>>
+        : null;
+      if (dependency?.status !== "succeeded" || evaluation?.decision !== "accepted") {
+        throw new Error(
+          `Build graph dependency mission ${dependencyMissionId} is not accepted`,
+        );
+      }
+    }
+
     const approval =
       await this.#governanceEngine.approve(
         approvalId,
