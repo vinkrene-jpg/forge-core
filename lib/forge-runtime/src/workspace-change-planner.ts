@@ -16,6 +16,7 @@ export interface WorkspaceChangePlan {
   readonly projectId: string;
   readonly objective: string;
   readonly summary: string;
+  readonly assumptions: readonly string[];
   readonly targets: readonly WorkspacePlanningTarget[];
   readonly request: WorkspaceChangeRequest;
   readonly compositionId: string;
@@ -46,6 +47,19 @@ function assertSecretFree(value: string): void {
   if (patterns.some((pattern) => pattern.test(value))) {
     throw new Error("Workspace provider plan contains secret-like material");
   }
+}
+
+function parseAssumptions(value: unknown): readonly string[] {
+  if (!Array.isArray(value) || value.length > 20) {
+    throw new Error("Workspace provider plan assumptions must be an array with at most 20 items");
+  }
+
+  return Object.freeze(value.map((assumption, index) => {
+    if (typeof assumption !== "string" || assumption.length > 500) {
+      throw new Error(`Workspace provider plan assumptions[${index}] must be a string of at most 500 characters`);
+    }
+    return assumption.trim();
+  }));
 }
 
 function deterministicSummary(
@@ -196,6 +210,7 @@ export function parseWorkspaceProviderPlan(input: {
   const allowedKeys = new Set([
     "schemaVersion",
     "summary",
+    "assumptions",
     "changes",
     "verification",
     "commit",
@@ -205,6 +220,8 @@ export function parseWorkspaceProviderPlan(input: {
   if (unexpected.length > 0) {
     throw new Error(`Unexpected workspace plan fields: ${unexpected.join(", ")}`);
   }
+
+  const assumptions = parseAssumptions(candidate.assumptions);
 
   const request = parseWorkspaceChangeRequest({
     changes: candidate.changes,
@@ -260,6 +277,7 @@ export function parseWorkspaceProviderPlan(input: {
       "summary",
       2_000,
     ),
+    assumptions,
     targets: Object.freeze(input.targets.map((target) => Object.freeze({ ...target }))),
     request,
     compositionId: input.compositionId,

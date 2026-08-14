@@ -1,8 +1,8 @@
 # Forge Next Mission
 
-## Resume point after multi-target GoalSpec intake
+## Resume point after structured generic-build assumptions
 
-Status: intake preserves complete one- or two-target sandbox manifests, and one bounded GoalSpec mandate replaces per-child approvals while preserving child capability analysis, governance assessment, verification, evaluation and rollback.
+Status: intake preserves complete one- or two-target sandbox manifests; workspace plans carry structured assumptions into evaluation; one bounded GoalSpec mandate replaces per-child approvals while preserving all execution gates.
 
 ## Verified baseline
 
@@ -21,7 +21,7 @@ Status: intake preserves complete one- or two-target sandbox manifests, and one 
 
 ## Next action
 
-Repeat mission `ed87826a-a0dd-4e06-920f-68ae950623bb` as one governed live API proof on a clean named non-main branch: verify intake persists both `sandbox/mandaat-a.txt` and `sandbox/mandaat-b.txt`, create one matching mandate, verify zero child approvals, accept both components in order and capture the derived final report plus persisted evidence. Preserve the current two-component, one-dependency, one-repository limit. Do not add parallel execution, deployment, push automation or reusable pattern libraries.
+Repeat the measured generic-build/BuildGraph path as one governed live API proof on a clean named non-main branch: verify both sandbox targets persist, the provider plan contains `assumptions`, component A evaluates accepted and releases B, and the final report contains both accepted components. Preserve the current two-component, one-dependency, one-repository limit. Do not add parallel execution, deployment, push automation or reusable pattern libraries.
 
 ## Failure rules
 

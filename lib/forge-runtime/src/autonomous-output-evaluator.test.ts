@@ -138,3 +138,66 @@ test("build evaluation still requires assumptions, verification, and execution e
     false,
   );
 });
+
+test("generic build checks the validated workspace plan assumptions field", () => {
+  const now = new Date().toISOString();
+  const evidence: AutonomousExecutionEvidence = {
+    objectiveProfile: "generic-build",
+    receipts: [{
+      id: "receipt-structured-assumptions",
+      action: "write-file",
+      targetPath: "sandbox/example.ts",
+      startedAt: now,
+      completedAt: now,
+      durationMs: 1,
+      ok: true,
+      error: null,
+    }],
+    fileEffects: [{
+      path: "sandbox/example.ts",
+      existedBefore: false,
+      existsAfter: true,
+      beforeSha256: null,
+      afterSha256: "a".repeat(64),
+    }],
+    verificationRuns: [],
+    artifacts: [{
+      id: "artifact-structured-assumptions",
+      kind: "file-hash-proof",
+      path: "sandbox/example.ts",
+      content: "example",
+      sha256: "a".repeat(64),
+    }],
+  };
+  const output = (
+    "Assumptions in free text must not provide authority. Verification completed with persisted receipts, file effects, and artifact evidence. "
+  ).repeat(2);
+  const evaluator = new AutonomousOutputEvaluator();
+  const options = {
+    objectiveExecutionMode: "build-or-mutate" as const,
+    objectiveProfile: "generic-build" as const,
+    executionEvidence: evidence,
+  };
+
+  const withField = evaluator.evaluate(
+    "mission-structured-assumptions",
+    execution("mission-structured-assumptions", output),
+    { ...options, workspacePlanAssumptions: [] },
+  );
+  assert.equal(withField.decision, "accepted");
+  assert.equal(
+    withField.checks.find((check) => check.id === "assumptions-explicit")?.passed,
+    true,
+  );
+
+  const withoutField = evaluator.evaluate(
+    "mission-structured-assumptions",
+    execution("mission-structured-assumptions", output),
+    options,
+  );
+  assert.equal(withoutField.decision, "rejected");
+  assert.equal(
+    withoutField.checks.find((check) => check.id === "assumptions-explicit")?.passed,
+    false,
+  );
+});

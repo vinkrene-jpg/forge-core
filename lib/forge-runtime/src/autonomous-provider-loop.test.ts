@@ -588,6 +588,9 @@ test("autonomous provider loop", { concurrency: false }, async (t) => {
               providerResponseId: "generic-build-plan",
               outputText: JSON.stringify({
                 schemaVersion: 1,
+                assumptions: [
+                  "The approved target is a new sandbox file and no other repository content may change.",
+                ],
                 summary:
                   "Assumptions: the approved target is a new sandbox file and no other repository content may change. Verification guidance: run the required typecheck and inspect the committed file, recorded hashes, action receipts, file effects, verification runs, and artifact evidence before accepting the result.",
                 changes: [{
@@ -647,10 +650,18 @@ test("autonomous provider loop", { concurrency: false }, async (t) => {
           await runtime.approveApproval(created.approval.id, "integration-test");
 
           await waitFor(
-            () => runtime.getMission(created.mission.id)?.status === "succeeded",
+            () => {
+              const status = runtime.getMission(created.mission.id)?.status;
+              return status === "succeeded" || status === "failed" || status === "cancelled";
+            },
           );
 
           const planningMission = runtime.getMission(created.mission.id);
+          assert.equal(
+            planningMission?.status,
+            "succeeded",
+            planningMission?.lastError ?? "generic build planning did not succeed",
+          );
           const executionMissionId = String(
             planningMission?.output?.workspaceExecutionMissionId ?? "",
           );
@@ -705,10 +716,18 @@ test("autonomous provider loop", { concurrency: false }, async (t) => {
 
           await runtime.approveApproval(executionApprovalId, "integration-test");
           await waitFor(
-            () => runtime.getMission(executionMissionId)?.status === "succeeded",
+            () => {
+              const status = runtime.getMission(executionMissionId)?.status;
+              return status === "succeeded" || status === "failed" || status === "cancelled";
+            },
           );
 
           const executionMission = runtime.getMission(executionMissionId);
+          assert.equal(
+            executionMission?.status,
+            "succeeded",
+            executionMission?.lastError ?? "generic build execution did not succeed",
+          );
           const evaluation = executionMission?.output?.evaluation as
             | { readonly score?: unknown; readonly decision?: unknown }
             | undefined;

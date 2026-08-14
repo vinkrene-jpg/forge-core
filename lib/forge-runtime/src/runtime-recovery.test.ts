@@ -187,6 +187,7 @@ async function createLegacyFixture(input: {
         projectId: "forge-core",
         objective: "Create one proof file and verify.",
         summary: "Assumptions and verification guidance for workspace change.",
+        assumptions: ["Only the approved workspace target may change."],
         targets: [{ path: input.relativePath, expectedSha256: null, exists: false }],
         request,
         compositionId,

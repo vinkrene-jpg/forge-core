@@ -154,3 +154,12 @@ Status: implemented with deterministic runtime, API and Desktop verification.
 - Single-target missions keep `proofTargetPath`; multi-target missions persist `proofTargetPaths` and the full target manifest.
 - Repository-relative mutation paths outside `sandbox/` fail closed.
 - Goal mandates must exactly equal the complete graph target set; provider plan exact-match validation is unchanged.
+
+## Structured generic-build assumptions - 2026-08-14
+
+Status: implemented with contract, parser, evaluator and end-to-end provider-loop verification.
+
+- Workspace-plan JSON Schema and system instruction require `assumptions`; an empty array is permitted.
+- Validated assumptions persist in `WorkspaceChangePlan` and flow into execution evaluation.
+- `assumptions-explicit` no longer depends on free-text recognition for generic builds and still fails when structured plan context is absent.
+- No target, verification, evidence, approval or no-push gate was weakened.

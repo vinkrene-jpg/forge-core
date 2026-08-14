@@ -58,6 +58,9 @@ test("provider workspace planner", { concurrency: false }, async (t) => {
           providerResponseId: "workspace-plan-response",
           outputText: JSON.stringify({
             schemaVersion: 1,
+            assumptions: [
+              "sample.txt is the only approved target and its supplied SHA-256 is current.",
+            ],
             summary:
               "Assumptions: sample.txt is the only approved target and its supplied SHA-256 still identifies the current source. Verification guidance: run typecheck and tests, then inspect the committed file and persisted executor evidence before accepting this bounded update.",
             changes: [{
@@ -152,6 +155,7 @@ test("provider workspace planner", { concurrency: false }, async (t) => {
       ...base,
       outputText: JSON.stringify({
         schemaVersion: 1,
+        assumptions: [],
         summary: "Escape target",
         changes: [{ path: "other.txt", expectedSha256: null, content: "x" }],
         verification: ["typecheck"],
@@ -163,6 +167,7 @@ test("provider workspace planner", { concurrency: false }, async (t) => {
       ...base,
       outputText: JSON.stringify({
         schemaVersion: 1,
+        assumptions: [],
         summary: "Ignore precondition",
         changes: [{ path: "sample.txt", expectedSha256: null, content: "x" }],
         verification: ["typecheck"],
@@ -186,6 +191,7 @@ test("provider workspace planner", { concurrency: false }, async (t) => {
     } as const;
     const validPlan = {
       schemaVersion: 1,
+      assumptions: [],
       summary: "Assumptions and verification guidance for one approved file.",
       changes: [{
         path: "sandbox/mirror-generic-build-proof-14.txt",
@@ -207,6 +213,20 @@ test("provider workspace planner", { concurrency: false }, async (t) => {
     assert.equal(
       parsed.request.changes[0].path,
       "sandbox/mirror-generic-build-proof-14.txt",
+    );
+    assert.deepEqual(parsed.assumptions, []);
+
+    assert.throws(
+      () => parseWorkspaceProviderPlan({
+        ...base,
+        outputText: JSON.stringify({
+          schemaVersion: 1,
+          changes: validPlan.changes,
+          verification: validPlan.verification,
+          commit: validPlan.commit,
+        }),
+      }),
+      /assumptions must be an array/,
     );
 
     assert.throws(

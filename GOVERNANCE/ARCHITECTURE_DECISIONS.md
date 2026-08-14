@@ -123,3 +123,7 @@ A Goal-to-Software Build Graph is a bounded, deterministic orchestration view ov
 ## AD-026 - Mission intake preserves the complete approved target manifest
 
 Mutation intake extracts every unique explicitly named repository-relative target in stable order. Operator intake remains restricted to `sandbox/`; traversal, root-level files and other repository areas fail closed. A single target retains `proofTargetPath`; multiple targets use `proofTargetPaths` and never retain a misleading singular proof field. The same complete `targets` array crosses preview, Desktop submission and direct runtime inference. Goal mandate creation requires its `allowedPaths` to equal the complete BuildGraph target set, while provider plans continue to match the approved target manifest exactly. No extraction result can broaden provider, workspace or push authority.
+
+## AD-027 - Generic-build assumptions are structured plan authority
+
+Every provider workspace plan must contain an `assumptions` array in its strict JSON schema; an empty array is valid, omission is not. The workspace-plan system instruction states the same requirement. Forge parses, bounds, persists and links this field with the validated provider output hash and source plan. Generic-build evaluation checks presence of that validated field rather than searching provider free text. Missing plan context keeps `assumptions-explicit` failed; free text cannot satisfy it. Other evaluator gates and exact target, precondition, verification, commit, no-push and evidence checks remain unchanged.

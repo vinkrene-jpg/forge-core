@@ -21,6 +21,13 @@ Verified through: 2026-07-12 19:16 +02:00
 - Goal mandate `allowedPaths` must exactly equal the complete BuildGraph target set. Provider plan validation still requires an exact approved target manifest and no push authority was added.
 - Evidence: runtime 86/86, API 53/53 and Desktop 23/23 tests passed; root typecheck and build passed.
 
+## Structured generic-build assumptions - deterministic verification
+
+- Root cause of score-90 generic-build rejection was a contract mismatch: evaluator required assumptions in free provider text while the strict workspace-plan schema and system instruction did not require a structured assumptions value.
+- Workspace plans now require a bounded `assumptions` array; empty is valid, missing is rejected by the parser.
+- Generic-build execution evaluates the assumptions field from the exact persisted, provider-hash-linked source plan. Free-text wording cannot satisfy the gate.
+- Focused contract/parser/evaluator coverage passed 9/9, the complete autonomous provider-loop file passed 10/10 and the full runtime suite passed 87/87, including plan, separate approval, execution, accepted evaluation and restart recovery.
+
 ## Repository
 
 - Local path at recovery time: `C:\Forge\forge-core` (informational only; code must use repository-relative paths).

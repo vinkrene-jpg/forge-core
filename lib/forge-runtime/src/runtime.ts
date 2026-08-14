@@ -1442,6 +1442,7 @@ export class ForgeRuntime {
       mission.input.objectiveProfile === "generic-build" ||
       mission.input.sourceAutonomousMissionId !== undefined;
     let genericBuildProviderExecution: AiExecutionRecord | null = null;
+    let genericBuildPlan: WorkspaceChangePlan | null = null;
 
     if (genericBuildLinked && !sourceAutonomousMissionId) {
       throw new Error(
@@ -1467,6 +1468,7 @@ export class ForgeRuntime {
       }
 
       const plan = rawPlan as unknown as WorkspaceChangePlan;
+      genericBuildPlan = plan;
       const sourcePlanId =
         typeof mission.input.sourcePlanId === "string"
           ? mission.input.sourcePlanId
@@ -1512,7 +1514,7 @@ export class ForgeRuntime {
         tags: ["workspace-execution", execution.status, execution.branch],
         content: JSON.stringify(execution, null, 2),
       });
-      if (sourceAutonomousMissionId && genericBuildProviderExecution) {
+      if (sourceAutonomousMissionId && genericBuildProviderExecution && genericBuildPlan) {
         const executionEvidence =
           await this.#createWorkspaceExecutionEvidence(
             project.rootPath,
@@ -1525,6 +1527,7 @@ export class ForgeRuntime {
             executionEvidence,
             objectiveExecutionMode: "build-or-mutate",
             objectiveProfile: "generic-build",
+            workspacePlanAssumptions: genericBuildPlan.assumptions,
           },
         );
         const evaluationMemory = await this.#operatorCore.addMemory(projectId, {
@@ -2301,6 +2304,7 @@ export class ForgeRuntime {
           executionEvidence,
           objectiveExecutionMode: "build-or-mutate",
           objectiveProfile: "generic-build",
+          workspacePlanAssumptions: sourcePlan.assumptions,
         },
       );
       if (evaluation.decision !== "accepted") {
@@ -2670,8 +2674,9 @@ export class ForgeRuntime {
         "",
         "WORKSPACE_PLAN_OUTPUT_CONTRACT_V1",
         "Return exactly one raw JSON object. Do not use Markdown fences or prose outside JSON.",
-        "The only allowed top-level fields are schemaVersion, changes, verification and commit.",
+        "The only allowed top-level fields are schemaVersion, assumptions, changes, verification and commit.",
         "schemaVersion must equal 1.",
+        "assumptions must always be present as an array of strings; use an empty array when there are no assumptions.",
         "changes must contain only approved target paths and must copy each expectedSha256 exactly from the manifest.",
         "verification must include the identifier typecheck and may additionally include only test and build.",
         "Use test for the Forge runtime test. Never place commands or explanatory text in verification.",

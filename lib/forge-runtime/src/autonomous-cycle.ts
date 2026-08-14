@@ -393,6 +393,7 @@ export class AutonomousOutputEvaluator {
       readonly executionEvidence?: AutonomousExecutionEvidence | null;
       readonly objectiveExecutionMode?: AutonomousObjectiveExecutionMode;
       readonly objectiveProfile?: AutonomousObjectiveProfile;
+      readonly workspacePlanAssumptions?: readonly string[];
     } = {},
   ): AutonomousEvaluation {
     const output = execution.outputText ?? "";
@@ -434,8 +435,12 @@ export class AutonomousOutputEvaluator {
       checks.push(
         {
           id: "assumptions-explicit",
-          passed: /assumptions?|aannames?/i.test(output),
-          detail: "Build output must state assumptions explicitly.",
+          passed: options.objectiveProfile === "generic-build"
+            ? Array.isArray(options.workspacePlanAssumptions)
+            : /assumptions?|aannames?/i.test(output),
+          detail: options.objectiveProfile === "generic-build"
+            ? "Validated workspace plan must contain the assumptions field."
+            : "Build output must state assumptions explicitly.",
         },
         {
           id: "verification-explicit",
