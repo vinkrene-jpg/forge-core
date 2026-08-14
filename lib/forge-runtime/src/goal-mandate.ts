@@ -184,3 +184,26 @@ export function assertGoalMandateBoundaries(input: {
     throw new GoalMandateBoundaryError("cost", input.mandate.maximumCostUsd, cost);
   }
 }
+
+export function assertGoalMandateTargetManifest(
+  mandate: GoalMandateRequest,
+  targets: readonly string[],
+): void {
+  const allowedPaths = mandate.allowedPaths.map(normalizeGoalMandatePath);
+  const targetPaths = targets.map(normalizeGoalMandatePath);
+  const allowed = new Set(allowedPaths);
+  const requested = new Set(targetPaths);
+  const exact =
+    allowed.size === allowedPaths.length &&
+    requested.size === targetPaths.length &&
+    allowed.size === requested.size &&
+    [...allowed].every((targetPath) => requested.has(targetPath));
+
+  if (!exact) {
+    throw new GoalMandateBoundaryError(
+      "path",
+      allowedPaths.join(","),
+      targetPaths.join(","),
+    );
+  }
+}

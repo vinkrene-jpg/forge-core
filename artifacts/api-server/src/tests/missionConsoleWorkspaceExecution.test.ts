@@ -229,28 +229,19 @@ test(
       };
       assert.equal(postfixReadOnlyPreview.request.input?.targets, undefined);
 
-      const rootTargetPreviewResponse = await fetch(
+      const outsideSandboxPreviewResponse = await fetch(
         `${baseUrl}/api/operator/mission-intake/preview`,
         {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
-            command: "Maak output.json aan.",
+            command: "Wijzig lib/forge-runtime/src/runtime.ts.",
           }),
         },
       );
-      assert.equal(rootTargetPreviewResponse.status, 200);
-      const rootTargetPreview = await rootTargetPreviewResponse.json() as {
-        readonly request: {
-          readonly input?: Readonly<Record<string, unknown>>;
-        };
-      };
-      assert.deepEqual(rootTargetPreview.request.input?.targets, [{
-        path: "output.json",
-        allowCreate: true,
-      }]);
+      assert.equal(outsideSandboxPreviewResponse.status, 400);
 
-      const inlineAmbiguousPreviewResponse = await fetch(
+      const multiTargetPreviewResponse = await fetch(
         `${baseUrl}/api/operator/mission-intake/preview`,
         {
           method: "POST",
@@ -260,7 +251,25 @@ test(
           }),
         },
       );
-      assert.equal(inlineAmbiguousPreviewResponse.status, 400);
+      assert.equal(
+        multiTargetPreviewResponse.status,
+        200,
+        await multiTargetPreviewResponse.clone().text(),
+      );
+      const multiTargetPreview = await multiTargetPreviewResponse.json() as {
+        readonly request: {
+          readonly input?: Readonly<Record<string, unknown>>;
+        };
+      };
+      assert.deepEqual(multiTargetPreview.request.input?.targets, [
+        { path: "sandbox/first-proof.txt", allowCreate: true },
+        { path: "sandbox/second-proof.txt", allowCreate: true },
+      ]);
+      assert.equal(multiTargetPreview.request.input?.proofTargetPath, undefined);
+      assert.deepEqual(multiTargetPreview.request.input?.proofTargetPaths, [
+        "sandbox/first-proof.txt",
+        "sandbox/second-proof.txt",
+      ]);
 
       const labeledPreviewResponse = await fetch(
         `${baseUrl}/api/operator/mission-intake/preview`,
@@ -285,6 +294,11 @@ test(
         path: "sandbox/mirror-generic-build-proof-4.txt",
         allowCreate: true,
       }]);
+      assert.equal(
+        labeledPreview.request.input?.proofTargetPath,
+        "sandbox/mirror-generic-build-proof-4.txt",
+      );
+      assert.equal(labeledPreview.request.input?.proofTargetPaths, undefined);
 
       const ambiguousPreviewResponse = await fetch(
         `${baseUrl}/api/operator/mission-intake/preview`,
@@ -300,7 +314,16 @@ test(
           }),
         },
       );
-      assert.equal(ambiguousPreviewResponse.status, 400);
+      assert.equal(ambiguousPreviewResponse.status, 200);
+      const multiLinePreview = await ambiguousPreviewResponse.json() as {
+        readonly request: {
+          readonly input?: Readonly<Record<string, unknown>>;
+        };
+      };
+      assert.deepEqual(multiLinePreview.request.input?.targets, [
+        { path: "sandbox/first-proof.txt", allowCreate: true },
+        { path: "sandbox/second-proof.txt", allowCreate: true },
+      ]);
 
       const missingManifestResponse = await fetch(
         `${baseUrl}/api/operator/mission-intake/preview`,

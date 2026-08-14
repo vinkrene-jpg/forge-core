@@ -179,6 +179,7 @@ export {
 } from "./goal-build-graph";
 export {
   assertGoalMandateBoundaries,
+  assertGoalMandateTargetManifest,
   authorizeGoalMandate,
   GoalMandateBoundaryError,
   isHardProtectedGoalPath,

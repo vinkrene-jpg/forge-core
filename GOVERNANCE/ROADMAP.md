@@ -145,3 +145,12 @@ Status: implemented with focused deterministic and runtime coverage.
 - Dependency approval is blocked until the predecessor has succeeded with accepted evaluation.
 - Integration learning evidence is ineligible until all component missions are accepted.
 - Parallel execution, deployment, automatic push and pattern libraries remain out of scope.
+
+## Multi-target mission intake - 2026-08-14
+
+Status: implemented with deterministic runtime, API and Desktop verification.
+
+- Intake preserves every explicitly named `sandbox/` target instead of selecting or requiring one.
+- Single-target missions keep `proofTargetPath`; multi-target missions persist `proofTargetPaths` and the full target manifest.
+- Repository-relative mutation paths outside `sandbox/` fail closed.
+- Goal mandates must exactly equal the complete graph target set; provider plan exact-match validation is unchanged.

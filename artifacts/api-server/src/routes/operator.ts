@@ -200,15 +200,18 @@ function buildMissionIntakePreview(
     targets.length > 0
       ? "generic-build"
       : objectiveClassification?.profile;
-  const proofTargetPath = targets[0]?.path;
+  const proofTargetPath = targets.length === 1 ? targets[0].path : undefined;
+  const proofTargetPaths = targets.length > 1
+    ? Object.freeze(targets.map((target) => target.path))
+    : undefined;
 
   if (
     objectiveClassification?.mode === "build-or-mutate" &&
     hasRepositoryPathReference(command) &&
-    targets.length !== 1
+    targets.length === 0
   ) {
     throw new Error(
-      "Mutation mission with a repository path requires exactly one target manifest",
+      "Mutation mission with repository paths requires a non-empty target manifest",
     );
   }
 
@@ -236,6 +239,7 @@ function buildMissionIntakePreview(
             intakeObjectiveExecutionMode: objectiveExecutionMode,
             intakeObjectiveProfile: objectiveProfile,
             ...(proofTargetPath ? { proofTargetPath } : {}),
+            ...(proofTargetPaths ? { proofTargetPaths } : {}),
             ...(targets.length > 0 ? { targets } : {}),
             cycleIndex: 1,
             maxCycles: extractMaxCycles(command),

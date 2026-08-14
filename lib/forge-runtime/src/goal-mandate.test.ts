@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import {
   assertGoalMandateBoundaries,
+  assertGoalMandateTargetManifest,
   authorizeGoalMandate,
   GoalMandateBoundaryError,
   parseGoalMandateRequest,
@@ -70,4 +71,29 @@ test("hard core and guardian protection cannot be added to a mandate", () => {
       (error) => error instanceof GoalMandateBoundaryError && error.boundary === "hard-protection",
     );
   }
+});
+
+test("goal mandate target manifest must match all goal targets exactly", () => {
+  const mandate = parseGoalMandateRequest({
+    allowedPaths: ["sandbox/a.txt", "sandbox/b.txt"],
+    maximumMissions: 2,
+    maximumDurationMs: 60_000,
+    maximumCostUsd: 0,
+  });
+
+  assert.doesNotThrow(() =>
+    assertGoalMandateTargetManifest(mandate, ["sandbox/b.txt", "sandbox/a.txt"])
+  );
+  assert.throws(
+    () => assertGoalMandateTargetManifest(mandate, ["sandbox/a.txt"]),
+    /Goal mandate boundary path exceeded/,
+  );
+  assert.throws(
+    () => assertGoalMandateTargetManifest(mandate, [
+      "sandbox/a.txt",
+      "sandbox/b.txt",
+      "sandbox/c.txt",
+    ]),
+    /Goal mandate boundary path exceeded/,
+  );
 });

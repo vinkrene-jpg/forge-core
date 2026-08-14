@@ -170,6 +170,7 @@ import {
 } from "./goal-build-graph";
 import {
   assertGoalMandateBoundaries,
+  assertGoalMandateTargetManifest,
   authorizeGoalMandate,
   GoalMandateBoundaryError,
   parseGoalMandateRequest,
@@ -3124,8 +3125,8 @@ export class ForgeRuntime {
       ) {
         const inferredTargets = extractAutonomousWorkspaceTargets(objective);
 
-        if (inferredTargets.length === 1) {
-          const targetPath = inferredTargets[0].path;
+        if (inferredTargets.length > 0) {
+          const targetPaths = inferredTargets.map((target) => target.path);
           request = Object.freeze({
             ...request,
             input: Object.freeze({
@@ -3139,7 +3140,9 @@ export class ForgeRuntime {
               objectiveProfile: "generic-build",
               intakeObjectiveExecutionMode: "build-or-mutate",
               intakeObjectiveProfile: "generic-build",
-              proofTargetPath: targetPath,
+              ...(targetPaths.length === 1
+                ? { proofTargetPath: targetPaths[0] }
+                : { proofTargetPaths: Object.freeze(targetPaths) }),
             }),
           });
         }
@@ -3341,9 +3344,11 @@ export class ForgeRuntime {
       this.#capabilityRegistry.listCapabilities(),
     );
     const goalMandate = parseGoalMandateRequest(mandateInput);
+    const proposalTargets = proposal.components.flatMap((component) => component.targets);
+    assertGoalMandateTargetManifest(goalMandate, proposalTargets);
     assertGoalMandateBoundaries({
       mandate: goalMandate,
-      targets: proposal.components.flatMap((component) => component.targets),
+      targets: proposalTargets,
       missionCount: proposal.components.length,
       actualCostUsd: 0,
     });

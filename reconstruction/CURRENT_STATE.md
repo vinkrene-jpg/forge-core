@@ -13,6 +13,14 @@ Verified through: 2026-07-12 19:16 +02:00
 - Forge Desktop distinguishes approval loading/error/empty states, preserves orphan pending approvals and shows GoalSpec path, mission, duration and cost limits.
 - Deterministic evidence: complete runtime suite 82/82 passed; GoalSpec authorization focus 4/4 passed; approval visibility 2/2 passed; API and Desktop typechecks passed.
 
+## Multi-target mission intake - deterministic verification
+
+- Mission intake now extracts all unique explicitly named `sandbox/` paths in stable order across API preview, Desktop submission and direct runtime inference.
+- One target preserves `proofTargetPath`; multiple targets persist `proofTargetPaths` and omit the singular field.
+- Mutation paths outside `sandbox/`, traversal and incomplete target manifests fail closed.
+- Goal mandate `allowedPaths` must exactly equal the complete BuildGraph target set. Provider plan validation still requires an exact approved target manifest and no push authority was added.
+- Evidence: runtime 86/86, API 53/53 and Desktop 23/23 tests passed; root typecheck and build passed.
+
 ## Repository
 
 - Local path at recovery time: `C:\Forge\forge-core` (informational only; code must use repository-relative paths).

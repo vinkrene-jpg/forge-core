@@ -100,6 +100,10 @@ export function extractAutonomousWorkspaceTargets(
       throw new Error("Workspace target path may not contain traversal segments");
     }
 
+    if (segments[0]?.toLowerCase() !== "sandbox" || segments.length < 2) {
+      throw new Error("Mission intake workspace targets must remain inside sandbox/");
+    }
+
     candidates.set(targetPath.toLowerCase(), targetPath);
   };
 
@@ -125,17 +129,11 @@ export function extractAutonomousWorkspaceTargets(
     }
   }
 
-  if (candidates.size > 1) {
-    throw new Error(
-      "Mission intake requires exactly one unambiguous workspace target path",
-    );
-  }
-
-  const [targetPath] = candidates.values();
-
-  return targetPath
-    ? Object.freeze([Object.freeze({ path: targetPath, allowCreate: true as const })])
-    : Object.freeze([]);
+  return Object.freeze(
+    [...candidates.values()].map((targetPath) =>
+      Object.freeze({ path: targetPath, allowCreate: true as const })
+    ),
+  );
 }
 
 export interface AutonomousEvaluationCheck {

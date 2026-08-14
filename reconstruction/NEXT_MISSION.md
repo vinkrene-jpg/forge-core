@@ -1,8 +1,8 @@
 # Forge Next Mission
 
-## Resume point after GoalSpec-level authorization
+## Resume point after multi-target GoalSpec intake
 
-Status: one bounded GoalSpec mandate now replaces per-child approvals while preserving child capability analysis, governance assessment, verification, evaluation and rollback.
+Status: intake preserves complete one- or two-target sandbox manifests, and one bounded GoalSpec mandate replaces per-child approvals while preserving child capability analysis, governance assessment, verification, evaluation and rollback.
 
 ## Verified baseline
 
@@ -21,7 +21,7 @@ Status: one bounded GoalSpec mandate now replaces per-child approvals while pres
 
 ## Next action
 
-Perform one governed live API proof on a clean named non-main branch: create a two-file sequential GoalSpec with one approval, verify zero child approvals, accept both components in order and capture the derived final report plus persisted evidence. Preserve the current two-component, one-dependency, one-repository limit. Do not add parallel execution, deployment, push automation or reusable pattern libraries.
+Repeat mission `ed87826a-a0dd-4e06-920f-68ae950623bb` as one governed live API proof on a clean named non-main branch: verify intake persists both `sandbox/mandaat-a.txt` and `sandbox/mandaat-b.txt`, create one matching mandate, verify zero child approvals, accept both components in order and capture the derived final report plus persisted evidence. Preserve the current two-component, one-dependency, one-repository limit. Do not add parallel execution, deployment, push automation or reusable pattern libraries.
 
 ## Failure rules
 

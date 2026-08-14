@@ -9,7 +9,7 @@ export interface MissionConsoleRequestDiagnostic {
   readonly body: Readonly<Record<string, unknown>>;
 }
 
-function extractLabeledTarget(rawObjective: string): string | null {
+function extractLabeledTargets(rawObjective: string): readonly string[] {
   const pathLines = rawObjective
     .split(/\r?\n/)
     .map((line) => line.match(/^Pad:\s*(\S+)\s*$/i)?.[1] ?? null)
@@ -17,42 +17,35 @@ function extractLabeledTarget(rawObjective: string): string | null {
   const uniquePaths = [...new Set(pathLines)];
 
   if (uniquePaths.length === 0) {
-    return null;
+    return Object.freeze([]);
   }
 
-  if (uniquePaths.length !== 1) {
-    throw new Error(
-      "Mission Console requires exactly one unambiguous Pad target",
-    );
+  for (const targetPath of uniquePaths) {
+    const segments = targetPath.replaceAll("\\", "/").split("/");
+    if (
+      segments[0]?.toLowerCase() !== "sandbox" ||
+      segments.length < 2 ||
+      segments.some(
+        (segment) =>
+          segment.length === 0 ||
+          segment === "." ||
+          segment === "..",
+      )
+    ) {
+      throw new Error("Mission Console targets must remain inside sandbox/");
+    }
   }
 
-  const targetPath = uniquePaths[0];
-  const segments = targetPath.split("/");
-
-  if (
-    segments.length < 2 ||
-    segments.some(
-      (segment) =>
-        segment.length === 0 ||
-        segment === "." ||
-        segment === "..",
-    )
-  ) {
-    throw new Error(
-      "Mission Console target must preserve all repository directory components",
-    );
-  }
-
-  return targetPath;
+  return Object.freeze(uniquePaths.map((targetPath) => targetPath.replaceAll("\\", "/")));
 }
 
 export function buildMissionConsoleCreateRequest(
   rawObjective: string,
   previewRequest: CreateMissionRequest,
 ): CreateMissionRequest {
-  const targetPath = extractLabeledTarget(rawObjective);
+  const targetPaths = extractLabeledTargets(rawObjective);
 
-  if (targetPath === null) {
+  if (targetPaths.length === 0) {
     return Object.freeze({
       ...previewRequest,
       input: Object.freeze({
@@ -62,35 +55,40 @@ export function buildMissionConsoleCreateRequest(
     });
   }
 
-  const request = Object.freeze({
-    ...previewRequest,
-    input: Object.freeze({
+  const requestInput: Readonly<Record<string, unknown>> = Object.freeze({
       ...previewRequest.input,
       rawObjective,
-      targets: Object.freeze([
-        Object.freeze({
-          path: targetPath,
-          allowCreate: true,
-        }),
-      ]),
+      targets: Object.freeze(targetPaths.map((targetPath) =>
+        Object.freeze({ path: targetPath, allowCreate: true })
+      )),
       objectiveExecutionMode: "build-or-mutate",
       objectiveProfile: "generic-build",
       intakeObjectiveExecutionMode: "build-or-mutate",
       intakeObjectiveProfile: "generic-build",
-      proofTargetPath: targetPath,
-    }),
+      ...(targetPaths.length === 1
+        ? { proofTargetPath: targetPaths[0] }
+        : { proofTargetPath: undefined, proofTargetPaths: targetPaths }),
   });
-  const canonicalTarget = (
-    request.input.targets as readonly {
+  const request: CreateMissionRequest = Object.freeze({
+    ...previewRequest,
+    input: requestInput,
+  });
+  const canonicalTargets = (
+    requestInput.targets as readonly {
       readonly path: string;
       readonly allowCreate: boolean;
     }[]
-  )[0];
+  );
 
   if (
-    canonicalTarget.path !== targetPath ||
-    canonicalTarget.allowCreate !== true ||
-    request.input.proofTargetPath !== targetPath
+    canonicalTargets.length !== targetPaths.length ||
+    canonicalTargets.some((target, index) =>
+      target.path !== targetPaths[index] || target.allowCreate !== true
+    ) ||
+    (targetPaths.length === 1
+      ? requestInput.proofTargetPath !== targetPaths[0] || requestInput.proofTargetPaths !== undefined
+      : requestInput.proofTargetPath !== undefined ||
+        JSON.stringify(requestInput.proofTargetPaths) !== JSON.stringify(targetPaths))
   ) {
     throw new Error(
       "Mission Console refused a request that discarded target directory components",
