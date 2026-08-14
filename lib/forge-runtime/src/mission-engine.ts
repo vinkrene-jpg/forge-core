@@ -16,6 +16,10 @@ import type {
   MissionStatus,
   MissionSummary,
 } from "./mission";
+import {
+  deriveMissionReview,
+  type MissionReview,
+} from "./mission-review";
 
 export class MissionAbortError extends Error {
   constructor() {
@@ -39,6 +43,13 @@ export interface MissionEngineOptions {
     mission: MissionRecord,
     signal: AbortSignal,
   ) => Promise<Readonly<Record<string, unknown>>>;
+  // Closes the mission chain: reviews a successfully executed mission and
+  // returns the Guardian review + Governor decision to persist. When omitted,
+  // the engine applies the deterministic rule-based review.
+  readonly reviewMission?: (
+    mission: MissionRecord,
+    output: Readonly<Record<string, unknown>>,
+  ) => Promise<MissionReview>;
   readonly stateStore?: MissionStateStore;
 }
 
@@ -222,6 +233,8 @@ export class MissionEngine {
     MissionEngineOptions["executeWorkspaceChange"];
   readonly #executeWorkspacePlan:
     MissionEngineOptions["executeWorkspacePlan"];
+  readonly #reviewMission:
+    MissionEngineOptions["reviewMission"];
   readonly #stateStore: MissionStateStore;
   #state: PersistedMissionState = Object.freeze({
     version: MISSION_STORE_VERSION,
@@ -239,6 +252,8 @@ export class MissionEngine {
       options.executeWorkspaceChange;
     this.#executeWorkspacePlan =
       options.executeWorkspacePlan;
+    this.#reviewMission =
+      options.reviewMission;
     this.#stateStore =
       options.stateStore ?? new FileMissionStateStore();
   }
@@ -613,11 +628,26 @@ export class MissionEngine {
       );
     }
 
+    // Close the mission chain: a successfully executed mission is reviewed by
+    // Guardian and released by Governor before its result is published. The
+    // review is produced by the configured reviewer (AI-backed when enabled)
+    // or, by default, deterministically from the persisted output. Either way
+    // the verdicts are stored alongside the output so the Mirror projection can
+    // emit guardian_reviewed and governor_released/blocked from authoritative
+    // data only.
+    const reviewedAt = new Date().toISOString();
+    const { guardianReview, governorDecision } =
+      this.#reviewMission && current
+        ? await this.#reviewMission(current, output)
+        : deriveMissionReview(missionId, output, reviewedAt);
+
     return this.#updateRunningMission(
       missionId,
       "succeeded",
       Object.freeze({
         ...output,
+        guardianReview,
+        governorDecision,
         missionResult: missionResult(
           "completed",
           "execution",

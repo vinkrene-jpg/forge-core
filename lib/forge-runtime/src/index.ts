@@ -257,6 +257,31 @@ export {
 } from "./mission-loop";
 
 export {
+  buildGuardianReviewContext,
+  combineGuardianReview,
+  deriveMissionGuardianReview,
+  deriveMissionGovernorDecision,
+  deriveMissionReview,
+  GUARDIAN_AI_INSTRUCTIONS,
+  parseGuardianAiVerdict,
+  type MissionGuardianAiVerdict,
+  type MissionGuardianFinding,
+  type MissionGuardianOutcome,
+  type MissionGuardianReview,
+  type MissionGovernorDecision,
+  type MissionGovernorVerdict,
+  type MissionReview,
+  type MissionReviewBasis,
+  type MissionReviewSeverity,
+} from "./mission-review";
+
+export {
+  reviewMissionWithGuardianAi,
+  type GuardianAiExecutionResult,
+  type GuardianAiReviewDeps,
+} from "./mission-ai-review";
+
+export {
   createInitialMissionState,
   FileMissionStateStore,
   resolveMissionStatePath,

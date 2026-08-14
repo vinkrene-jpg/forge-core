@@ -108,6 +108,7 @@ import {
   MissionEngine,
   type MissionEngineOptions,
 } from "./mission-engine";
+import { reviewMissionWithGuardianAi } from "./mission-ai-review";
 import { MissionLoop } from "./mission-loop";
 import {
   FileMissionStateStore,
@@ -420,6 +421,21 @@ export class ForgeRuntime {
         this.#executeWorkspaceChange(mission, signal),
       executeWorkspacePlan: (mission, signal) =>
         this.#executeWorkspacePlan(mission, signal),
+      reviewMission: (mission, output) =>
+        reviewMissionWithGuardianAi(
+          {
+            aiEnabled:
+              process.env.FORGE_MISSION_AI_REVIEW_ENABLED?.trim() === "true",
+            gatewayConfigured: () => this.#aiGateway.status().configured,
+            composePrompt: (request) =>
+              this.#operatorCore.composePrompt(request),
+            executeComposition: (compositionId, missionId) =>
+              this.#aiGateway.executeComposition(compositionId, missionId),
+          },
+          mission,
+          output,
+          new Date().toISOString(),
+        ),
       stateStore:
         options.missionStateStore ??
         new FileMissionStateStore(),

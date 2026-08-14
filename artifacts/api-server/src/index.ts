@@ -3,6 +3,10 @@ import { logger } from "./lib/logger";
 import { ensureStorage } from "./lib/storage";
 import { seedCoreRegistry } from "./lib/seed";
 import { initSchedulerFromEnv } from "./lib/evolutionScheduler";
+import {
+  initIncomingIntakeFromEnv,
+  type IncomingIntakeService,
+} from "./lib/incomingIntake";
 import { forgeRuntime } from "@workspace/forge-runtime";
 
 const rawPort = process.env.PORT;
@@ -20,6 +24,7 @@ if (!Number.isInteger(port) || port < 1 || port > 65535) {
 }
 
 let server: ReturnType<typeof app.listen> | undefined;
+let incomingIntake: IncomingIntakeService | null = null;
 let shuttingDown = false;
 
 async function shutdown(signal: string): Promise<void> {
@@ -30,6 +35,7 @@ async function shutdown(signal: string): Promise<void> {
   shuttingDown = true;
   logger.info({ signal }, "Shutting down server");
 
+  await incomingIntake?.stop();
   await forgeRuntime.stop();
 
   if (!server) {
@@ -52,6 +58,15 @@ async function start(): Promise<void> {
   initSchedulerFromEnv();
   logger.info(forgeRuntime.binding(), "Forge runtime binding");
   await forgeRuntime.start();
+
+  incomingIntake = initIncomingIntakeFromEnv(
+    (request) => forgeRuntime.createMission(request),
+    (level, message, meta) => logger[level](meta ?? {}, message),
+  );
+  if (incomingIntake) {
+    incomingIntake.start();
+    logger.info({ dir: incomingIntake.directory }, "Incoming folder intake enabled");
+  }
 
   server = app.listen(port, () => {
     logger.info({ port }, "Server listening");

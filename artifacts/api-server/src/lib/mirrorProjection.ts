@@ -454,6 +454,40 @@ export class MirrorProjectionService {
       }));
     }
 
+    // Guardian review and Governor decision are produced by the mission flow
+    // (MissionEngine.complete) and persisted on the mission output. The
+    // projection surfaces them as authoritative timeline events; it never
+    // synthesizes a review that the flow did not record.
+    const guardianReview = record(output?.guardianReview);
+    if (guardianReview) {
+      events.push(createEvent(mission.id, {
+        eventType: "guardian_reviewed",
+        occurredAt: text(guardianReview.reviewedAt) ?? mission.completedAt ?? mission.updatedAt,
+        sourceType: "mission",
+        sourceId: text(guardianReview.id) ?? mission.id,
+        actorType: "governance",
+        summary: text(guardianReview.summary) ??
+          `Guardian review ${text(guardianReview.outcome) ?? "recorded"}`,
+        payloadReference: "mission.output.guardianReview",
+        status: text(guardianReview.outcome) ?? "recorded",
+      }));
+    }
+
+    const governorDecision = record(output?.governorDecision);
+    if (governorDecision) {
+      const decision = text(governorDecision.decision);
+      events.push(createEvent(mission.id, {
+        eventType: decision === "released" ? "governor_released" : "governor_blocked",
+        occurredAt: text(governorDecision.decidedAt) ?? mission.completedAt ?? mission.updatedAt,
+        sourceType: "mission",
+        sourceId: text(governorDecision.id) ?? mission.id,
+        actorType: "governance",
+        summary: text(governorDecision.rationale) ?? `Governor ${decision ?? "decision"}`,
+        payloadReference: "mission.output.governorDecision",
+        status: decision ?? "recorded",
+      }));
+    }
+
     for (const observation of snapshot.observationsByMissionId.get(mission.id) ?? []) {
       events.push(createEvent(mission.id, {
         eventType: "evidence_created",
