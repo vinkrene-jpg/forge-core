@@ -173,16 +173,25 @@ const runtimeRepositoryRoot = path.resolve(
   "..",
   "..",
 );
-const canonicalRepositoryRoot =
-  process.env.FORGE_CANONICAL_REPO_ROOT?.trim()
-    ? path.resolve(process.env.FORGE_CANONICAL_REPO_ROOT.trim())
-    : null;
+const canonicalRepositoryRoot = path.resolve(
+  process.env.FORGE_CANONICAL_REPO_ROOT?.trim() || runtimeRepositoryRoot,
+);
 const workspaceRoot = path.resolve(
   process.env.FORGE_WORKSPACE_ROOT?.trim() || process.cwd(),
 );
 
-if (canonicalRepositoryRoot) {
+{
   const realCanonicalRepositoryRoot = realpathSync(canonicalRepositoryRoot);
+  const realRuntimeRepositoryRoot = realpathSync(runtimeRepositoryRoot);
+  const repositoryRootsMatch = process.platform === "win32"
+    ? realRuntimeRepositoryRoot.toLowerCase() === realCanonicalRepositoryRoot.toLowerCase()
+    : realRuntimeRepositoryRoot === realCanonicalRepositoryRoot;
+
+  if (!repositoryRootsMatch) {
+    throw new Error(
+      `Forge runtime repository root mismatch: running repository ${realRuntimeRepositoryRoot}; canonical repository ${realCanonicalRepositoryRoot}`,
+    );
+  }
 
   for (const [label, candidate] of [
     ["runtime module", runtimeModulePath],

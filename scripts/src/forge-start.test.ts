@@ -5,10 +5,42 @@ import os from "node:os";
 import path from "node:path";
 import test from "node:test";
 import {
+  assertCanonicalRepositoryRoot,
+  canonicalRepositoryRoot,
   configuredProviders,
   formatEnvironmentDiagnostic,
   loadRootEnvironment,
 } from "./forge-start.js";
+
+test("matching canonical repository root starts normally", () => {
+  const root = mkdtempSync(path.join(os.tmpdir(), "forge-canonical-equal-"));
+  try {
+    const canonical = canonicalRepositoryRoot(root, {});
+    assert.doesNotThrow(() => assertCanonicalRepositoryRoot(root, canonical));
+    assert.equal(canonical, path.resolve(root));
+  } finally {
+    rmSync(root, { recursive: true, force: true });
+  }
+});
+
+test("different canonical repository root is rejected with both paths", () => {
+  const running = mkdtempSync(path.join(os.tmpdir(), "forge-running-root-"));
+  const canonical = mkdtempSync(path.join(os.tmpdir(), "forge-canonical-root-"));
+  try {
+    assert.throws(
+      () => assertCanonicalRepositoryRoot(running, canonical),
+      (error: unknown) => {
+        assert.ok(error instanceof Error);
+        assert.match(error.message, new RegExp(running.replaceAll("\\", "\\\\"), "i"));
+        assert.match(error.message, new RegExp(canonical.replaceAll("\\", "\\\\"), "i"));
+        return true;
+      },
+    );
+  } finally {
+    rmSync(running, { recursive: true, force: true });
+    rmSync(canonical, { recursive: true, force: true });
+  }
+});
 
 test("root .env values reach the child environment and inherited values win", () => {
   const root = mkdtempSync(path.join(os.tmpdir(), "forge-start-env-"));

@@ -224,8 +224,10 @@ test("production restart migrates legacy stale workspace mission without mutatio
   assert.notEqual(rejectedExitCode, 0);
   assert.match(
     rejectedOutput,
-    /Forge runtime module is outside canonical repository root/,
+    /Forge runtime repository root mismatch/,
   );
+  assert.match(rejectedOutput, new RegExp(repositoryRoot.replaceAll("\\", "\\\\"), "i"));
+  assert.match(rejectedOutput, new RegExp(workspaceRoot.replaceAll("\\", "\\\\"), "i"));
 
   let output = "";
   const apiEnvironment = {

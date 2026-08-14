@@ -1,5 +1,5 @@
-import { spawn } from "node:child_process";
-import { readFileSync } from "node:fs";
+import { spawn, spawnSync } from "node:child_process";
+import { readFileSync, realpathSync } from "node:fs";
 import path from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
 import { parseEnv } from "node:util";
@@ -16,6 +16,14 @@ const entrypoint = path.join(
 );
 
 const sensitiveEnvironmentName = /(TOKEN|KEY|SECRET)/i;
+
+interface PortListener {
+  readonly pid: number;
+  readonly program: string;
+  readonly executablePath: string;
+  readonly commandLine: string;
+  readonly runtimeRepositoryRoot: string;
+}
 
 export function loadRootEnvironment(
   root: string,
@@ -60,6 +68,80 @@ export function configuredProviders(
   return providers;
 }
 
+export function canonicalRepositoryRoot(
+  root: string,
+  environment: NodeJS.ProcessEnv,
+): string {
+  const configured = environment.FORGE_CANONICAL_REPO_ROOT?.trim();
+  return realpathSync(
+    configured ? path.resolve(root, configured) : path.resolve(root),
+  );
+}
+
+export function assertCanonicalRepositoryRoot(
+  runningRoot: string,
+  canonicalRoot: string,
+): void {
+  const running = realpathSync(runningRoot);
+  const canonical = realpathSync(canonicalRoot);
+  const equal = process.platform === "win32"
+    ? running.toLowerCase() === canonical.toLowerCase()
+    : running === canonical;
+
+  if (!equal) {
+    throw new Error(
+      `Forge repository root mismatch: running repository ${running}; canonical repository ${canonical}`,
+    );
+  }
+}
+
+function listenersOnPort(port: string): readonly PortListener[] {
+  if (process.platform !== "win32") return [];
+
+  const script = [
+    `$listeners = @(Get-NetTCPConnection -LocalPort ${port} -State Listen -ErrorAction SilentlyContinue)`,
+    "$runtimeRoot = ''",
+    `try { $runtime = Invoke-RestMethod -Uri 'http://127.0.0.1:${port}/api/runtime' -TimeoutSec 2 -ErrorAction Stop; $runtimeRoot = [string]$runtime.binding.runtimeRepositoryRoot } catch {}`,
+    "$result = @($listeners | ForEach-Object {",
+    "  $process = Get-CimInstance Win32_Process -Filter \"ProcessId = $($_.OwningProcess)\" -ErrorAction SilentlyContinue",
+    "  [pscustomobject]@{ pid = [int]$_.OwningProcess; program = [string]$process.Name; executablePath = [string]$process.ExecutablePath; commandLine = [string]$process.CommandLine; runtimeRepositoryRoot = $runtimeRoot }",
+    "})",
+    "ConvertTo-Json -Compress -InputObject $result",
+  ].join("; ");
+  const result = spawnSync(
+    "powershell.exe",
+    ["-NoProfile", "-NonInteractive", "-Command", script],
+    { encoding: "utf8", windowsHide: true },
+  );
+
+  if (result.status !== 0) {
+    throw new Error(
+      `Could not inspect port ${port}: ${result.stderr.trim() || "PowerShell failed"}`,
+    );
+  }
+
+  const parsed = JSON.parse(result.stdout.trim() || "[]") as unknown;
+  return Array.isArray(parsed) ? parsed as PortListener[] : [parsed as PortListener];
+}
+
+function listenerDirectory(listener: PortListener): string {
+  const absoluteScript = listener.commandLine.match(
+    /["']?([A-Za-z]:\\[^"']+?\.(?:mjs|cjs|js))["']?(?:\s|$)/i,
+  )?.[1];
+  return listener.runtimeRepositoryRoot ||
+    path.dirname(absoluteScript || listener.executablePath || "unknown");
+}
+
+export function assertPortAvailable(port: string): void {
+  const listeners = listenersOnPort(port);
+  if (listeners.length === 0) return;
+
+  const details = listeners.map((listener) =>
+    `PID ${listener.pid}, program ${listener.program || "unknown"}, map ${listenerDirectory(listener)}, command ${listener.commandLine || "unknown"}`
+  ).join("; ");
+  throw new Error(`Port ${port} is already in use by ${details}`);
+}
+
 function openBrowser(url: string): void {
   try {
     if (process.platform === "win32") {
@@ -84,12 +166,17 @@ function openBrowser(url: string): void {
 
 export function main(): void {
   const environment = loadRootEnvironment(repositoryRoot);
+  const canonicalRoot = canonicalRepositoryRoot(repositoryRoot, environment);
+  assertCanonicalRepositoryRoot(repositoryRoot, canonicalRoot);
   const resolvedPort = environment.PORT?.trim() || "5000";
   const apiUrl = `http://127.0.0.1:${resolvedPort}`;
   const providers = configuredProviders(environment);
 
+  assertPortAvailable(resolvedPort);
+
   console.log(`[forge:start] API URL: ${apiUrl}`);
   console.log(`[forge:start] UI URL: ${apiUrl}`);
+  console.log(`[forge:start] Canonical repository: ${canonicalRoot}`);
   console.log(
     `[forge:start] Providers configured: ${providers.length > 0 ? providers.join(", ") : "none"}`,
   );
@@ -101,6 +188,8 @@ export function main(): void {
     env: {
       ...environment,
       PORT: resolvedPort,
+      FORGE_CANONICAL_REPO_ROOT: canonicalRoot,
+      FORGE_WORKSPACE_ROOT: environment.FORGE_WORKSPACE_ROOT?.trim() || canonicalRoot,
       NODE_ENV: environment.NODE_ENV?.trim() || "production",
       FORGE_AUTONOMY_ENABLED:
         environment.FORGE_AUTONOMY_ENABLED?.trim() || "true",
