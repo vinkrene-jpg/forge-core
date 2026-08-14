@@ -5,6 +5,7 @@
   "type": "module",
   "scripts": {
     "forge:start": "tsx ./src/forge-start.ts",
+    "forge:start:test": "tsx --test ./src/forge-start.test.ts",
     "hello": "tsx ./src/hello.ts",
     "forge:self-review": "tsx ./src/forge-self-review.ts",
     "forge:self-review:test": "tsx --test ./src/forge-self-review.test.ts",
