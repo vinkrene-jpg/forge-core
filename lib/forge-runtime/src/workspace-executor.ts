@@ -321,7 +321,7 @@ export class NodeWorkspaceVerificationRunner implements WorkspaceVerificationRun
   ): Promise<WorkspaceCommandResult> {
     const environment = { ...process.env };
     delete environment.STORAGE_DIR;
-    environment.FORGE_WORKSPACE_ROOT = rootPath;
+    delete environment.FORGE_WORKSPACE_ROOT;
     const args =
       step === "test"
         ? fullRepository
