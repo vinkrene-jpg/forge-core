@@ -1,0 +1,5 @@
+Forge self-mutation live proof
+source=7af6ea066199880ecec2271f404fca6b0176399d
+scope=artifacts/
+verification=typecheck,test,build
+push=false
