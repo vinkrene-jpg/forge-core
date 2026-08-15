@@ -200,6 +200,12 @@ export {
 } from "./capability-registry";
 
 export {
+  deriveCapabilityOutcomeGaps,
+  rankCapabilityGapCandidates,
+  type CapabilityGapCandidate,
+} from "./capability-gap-feedback";
+
+export {
   createInitialCapabilityState,
   FileCapabilityStateStore,
   resolveCapabilityStatePath,

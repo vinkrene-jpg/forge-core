@@ -43,6 +43,11 @@ import {
   type CapabilityRegistryOptions,
 } from "./capability-registry";
 import {
+  deriveCapabilityOutcomeGaps,
+  rankCapabilityGapCandidates,
+  type CapabilityGapCandidate,
+} from "./capability-gap-feedback";
+import {
   FileCapabilityStateStore,
   type CapabilityStateStore,
 } from "./capability-store";
@@ -2971,6 +2976,31 @@ export class ForgeRuntime {
     }
   }
 
+  async #recordCapabilityOutcomeGaps(mission: MissionRecord): Promise<void> {
+    const analyses = deriveCapabilityOutcomeGaps(
+      mission,
+      this.#capabilityRegistry.listCapabilities(),
+    );
+    await this.#capabilityRegistry.recordAnalyses(analyses);
+  }
+
+  async #reconcileCapabilityOutcomeGaps(): Promise<void> {
+    const terminal = this.#missionEngine
+      .list()
+      .filter((mission) =>
+        mission.status === "succeeded" ||
+        mission.status === "failed" ||
+        mission.status === "cancelled"
+      )
+      .sort((left, right) => left.createdAt.localeCompare(right.createdAt));
+
+    const capabilities = this.#capabilityRegistry.listCapabilities();
+    const analyses = terminal.flatMap((mission) =>
+      deriveCapabilityOutcomeGaps(mission, capabilities)
+    );
+    await this.#capabilityRegistry.recordAnalyses(analyses);
+  }
+
   async #reconcileGovernanceState(): Promise<void> {
     const awaiting = this.#missionEngine
       .list()
@@ -3080,6 +3110,7 @@ export class ForgeRuntime {
       await this.#missionEngine.initialize();
       await this.#autonomyEngine.initialize();
       await this.#recoverRunningWorkspaceExecutions();
+      await this.#reconcileCapabilityOutcomeGaps();
       await this.#reconcileLearningEvidence();
       await this.#reconcileGovernanceState();
 
@@ -3107,6 +3138,7 @@ export class ForgeRuntime {
           return;
         }
 
+        void this.#recordCapabilityOutcomeGaps(mission);
         void this.#memoryBridge.captureMissionKnowledge(mission);
       });
 
@@ -3560,6 +3592,45 @@ export class ForgeRuntime {
   listCapabilityAnalyses():
     readonly CapabilityAnalysisRecord[] {
     return this.#capabilityRegistry.listAnalyses();
+  }
+
+  listCapabilityGapCandidates(): readonly CapabilityGapCandidate[] {
+    return rankCapabilityGapCandidates(
+      this.#capabilityRegistry.listAnalyses(),
+      this.#missionEngine.list(),
+      this.#capabilityRegistry.listCapabilities(),
+    );
+  }
+
+  async releaseCapabilityGapCandidate(
+    candidateId: string,
+    actor: string,
+  ): Promise<MissionRecord> {
+    const normalizedCandidateId = candidateId.trim();
+    const normalizedActor = actor.trim();
+    if (!normalizedCandidateId) throw new Error("candidateId is required");
+    if (!normalizedActor) throw new Error("actor is required");
+    const candidate = this.listCapabilityGapCandidates().find(
+      (item) => item.id === normalizedCandidateId,
+    );
+    if (!candidate) throw new Error(`Capability gap candidate not found: ${normalizedCandidateId}`);
+    const goalSpec = parseGoalSpec(candidate.proposedGoalSpec);
+
+    return this.#missionEngine.enqueue({
+      kind: "operator.goal-build",
+      title: `Released GoalSpec: ${goalSpec.objective.slice(0, 120)}`,
+      idempotencyKey: `capability-gap-goal:${candidate.id}`,
+      input: {
+        goalSpec,
+        capabilityGapCandidateId: candidate.id,
+        capabilityId: candidate.capabilityId,
+        gapCause: candidate.cause,
+        sourceMissionIds: candidate.missionIds,
+        releasedBy: normalizedActor,
+        releasedAt: new Date().toISOString(),
+        candidateGoalSpecOnly: true,
+      },
+    }, "not_started");
   }
 
   getCapabilityAnalysis(

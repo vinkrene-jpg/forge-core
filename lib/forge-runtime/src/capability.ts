@@ -57,6 +57,12 @@ export interface CapabilityAnalysisRecord {
   readonly objective: string;
   readonly sourceType: "mission" | "manual";
   readonly sourceMissionKind: MissionKind | null;
+  readonly sourceMissionId?: string;
+  readonly outcomeType?:
+    | "mission_failure"
+    | "evaluation_rejection"
+    | "mandate_boundary";
+  readonly outcomeCause?: string;
   readonly requirements: readonly CapabilityRequirement[];
   readonly gaps: readonly CapabilityGap[];
   readonly decision: CapabilityAnalysisDecision;

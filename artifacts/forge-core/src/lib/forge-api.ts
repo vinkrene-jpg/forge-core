@@ -233,6 +233,27 @@ export interface CapabilityAnalysisRecord {
   readonly createdAt: string;
 }
 
+export interface CapabilityGapCandidate {
+  readonly id: string;
+  readonly capabilityId: string;
+  readonly capabilityName: string;
+  readonly cause: string;
+  readonly occurrences: number;
+  readonly missionIds: readonly string[];
+  readonly latestAt: string;
+  readonly proposedGoalSpec: {
+    readonly objective: string;
+    readonly desiredBehavior: readonly string[];
+    readonly constraints: readonly string[];
+    readonly acceptanceCriteria: readonly {
+      readonly id: string;
+      readonly statement: string;
+      readonly evidence: string;
+    }[];
+  };
+  readonly releasedGoalSpecMissionId: string | null;
+}
+
 export interface EvolutionPlanStep {
   readonly order: number;
   readonly capabilityId: string;
@@ -435,6 +456,19 @@ export const forgeApi = {
     readonly analyses: readonly CapabilityAnalysisRecord[];
   }> {
     return requestJson("/api/capability-analysis");
+  },
+
+  capabilityGaps(): Promise<{
+    readonly candidates: readonly CapabilityGapCandidate[];
+  }> {
+    return requestJson("/api/capability-gaps");
+  },
+
+  releaseCapabilityGap(candidateId: string): Promise<unknown> {
+    return requestJson(`/api/capability-gaps/${candidateId}/release`, {
+      method: "POST",
+      body: JSON.stringify({ actor: "forge-console-operator" }),
+    });
   },
 
   evolutionPlans(): Promise<{

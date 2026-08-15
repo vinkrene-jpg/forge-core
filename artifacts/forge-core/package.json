@@ -11,7 +11,8 @@
     "test:mission-console-targets": "node --import tsx --test src/pages/mission-console-submit-targets.test.ts",
     "test:mirror": "node --import tsx --test --test-force-exit src/pages/mirror.test.tsx",
     "test:approvals": "node --import tsx --test src/pages/approval-view.test.ts",
-    "test:frontend": "pnpm run test:mission-console-submit && pnpm run test:mission-console-targets && pnpm run test:mirror && pnpm run test:approvals",
+    "test:capability-gaps": "node --import tsx --test --test-force-exit src/pages/capabilities-live.test.tsx",
+    "test:frontend": "pnpm run test:mission-console-submit && pnpm run test:mission-console-targets && pnpm run test:mirror && pnpm run test:approvals && pnpm run test:capability-gaps",
     "typecheck": "tsc -p tsconfig.json --noEmit"
   },
   "devDependencies": {

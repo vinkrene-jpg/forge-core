@@ -665,29 +665,46 @@ export class CapabilityRegistry {
   async recordAnalysis(
     analysis: CapabilityAnalysisRecord,
   ): Promise<CapabilityAnalysisRecord> {
+    return (await this.recordAnalyses([analysis]))[0];
+  }
+
+  async recordAnalyses(
+    analyses: readonly CapabilityAnalysisRecord[],
+  ): Promise<readonly CapabilityAnalysisRecord[]> {
     this.#ensureInitialized();
 
     return this.#mutate(async () => {
-      const stored = cloneAnalysis(analysis);
+      const byId = new Map(
+        this.#state.analyses.map((analysis) => [analysis.id, analysis]),
+      );
+      const added: CapabilityAnalysisRecord[] = [];
+      const result = analyses.map((analysis) => {
+        const existing = byId.get(analysis.id);
+        if (existing) return cloneAnalysis(existing);
+        const stored = cloneAnalysis(analysis);
+        byId.set(stored.id, stored);
+        added.push(stored);
+        return cloneAnalysis(stored);
+      });
+
+      if (added.length === 0) {
+        return Object.freeze(result);
+      }
 
       await this.#saveState({
         ...this.#state,
-        analyses: [
-          ...this.#state.analyses,
-          stored,
-        ],
+        analyses: [...this.#state.analyses, ...added],
       });
 
-      this.#events.publish(
-        "capability.analysis.completed",
-        {
+      for (const stored of added) {
+        this.#events.publish("capability.analysis.completed", {
           analysisId: stored.id,
           decision: stored.decision,
           gapCount: stored.gaps.length,
-        },
-      );
+        });
+      }
 
-      return cloneAnalysis(stored);
+      return Object.freeze(result);
     });
   }
 

@@ -1,9 +1,12 @@
-import { Boxes } from "lucide-react";
+import { AlertTriangle, Boxes, Target } from "lucide-react";
 import {
+  useCapabilityGapsQuery,
   useCapabilitiesQuery,
+  useReleaseCapabilityGap,
   useRuntimeQuery,
 } from "@/hooks/use-forge-live";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import {
   Card,
   CardContent,
@@ -13,12 +16,15 @@ import {
 
 export default function Capabilities() {
   const capabilities = useCapabilitiesQuery();
+  const gaps = useCapabilityGapsQuery();
+  const releaseGap = useReleaseCapabilityGap();
   const runtime = useRuntimeQuery();
 
   const records = [...(capabilities.data?.capabilities ?? [])].sort(
     (left, right) =>
       left.name.localeCompare(right.name),
   );
+  const candidates = gaps.data?.candidates ?? [];
 
   return (
     <div className="space-y-6">
@@ -53,6 +59,71 @@ export default function Capabilities() {
           </Card>
         ))}
       </div>
+
+      <section className="border-y border-border/70 py-5">
+        <div className="mb-4 flex items-center justify-between gap-4">
+          <div>
+            <h2 className="flex items-center gap-2 text-lg font-semibold">
+              <AlertTriangle className="h-5 w-5 text-amber-500" />
+              Wat mist Forge
+            </h2>
+            <p className="mt-1 text-sm text-muted-foreground">
+              Gerangschikt op terugkerende oorzaken in echte missie-evidence.
+            </p>
+          </div>
+          <Badge variant="outline">{candidates.length} kandidaten</Badge>
+        </div>
+
+        {gaps.isError ? (
+          <div className="border-l-2 border-destructive px-4 py-3 text-sm text-destructive">
+            {gaps.error instanceof Error ? gaps.error.message : "Gapregister niet beschikbaar"}
+          </div>
+        ) : candidates.length === 0 ? (
+          <div className="border-l-2 border-border px-4 py-3 text-sm text-muted-foreground">
+            Geen outcome-gaps geregistreerd.
+          </div>
+        ) : (
+          <div className="divide-y divide-border/70 border-y border-border/70">
+            {candidates.map((candidate, index) => (
+              <div key={candidate.id} className="grid gap-4 py-4 lg:grid-cols-[3rem_1fr_auto] lg:items-center">
+                <div className="font-mono text-2xl font-semibold text-muted-foreground">
+                  {String(index + 1).padStart(2, "0")}
+                </div>
+                <div className="min-w-0">
+                  <div className="flex flex-wrap items-center gap-2">
+                    <span className="font-semibold">{candidate.capabilityName}</span>
+                    <Badge variant="secondary">{candidate.occurrences} keer</Badge>
+                    {candidate.releasedGoalSpecMissionId && (
+                      <Badge>GoalSpec vrijgegeven</Badge>
+                    )}
+                  </div>
+                  <div className="mt-1 font-mono text-xs text-amber-600 dark:text-amber-400">
+                    {candidate.cause}
+                  </div>
+                  <div className="mt-2 flex items-start gap-2 text-sm text-muted-foreground">
+                    <Target className="mt-0.5 h-4 w-4 shrink-0" />
+                    <span>{candidate.proposedGoalSpec.objective}</span>
+                  </div>
+                  <div className="mt-2 font-mono text-[11px] text-muted-foreground">
+                    {candidate.missionIds.slice(-5).map((id) => id.slice(0, 8)).join(" · ")}
+                    {candidate.missionIds.length > 5 && ` · +${candidate.missionIds.length - 5}`}
+                  </div>
+                </div>
+                <Button
+                  type="button"
+                  size="sm"
+                  variant={candidate.releasedGoalSpecMissionId ? "outline" : "default"}
+                  disabled={Boolean(candidate.releasedGoalSpecMissionId) || releaseGap.isPending}
+                  onClick={() => releaseGap.mutate(candidate.id)}
+                >
+                  <Target className="h-4 w-4" />
+                  {candidate.releasedGoalSpecMissionId ? "Vrijgegeven" : "GoalSpec vrijgeven"}
+                </Button>
+              </div>
+            ))}
+          </div>
+        )}
+      </section>
 
       <Card>
         <CardHeader>

@@ -81,6 +81,27 @@ router.get(
   },
 );
 
+router.get("/capability-gaps", (_req, res): void => {
+  res.json({
+    candidates: forgeRuntime.listCapabilityGapCandidates(),
+  });
+});
+
+router.post(
+  "/capability-gaps/:candidateId/release",
+  async (req, res): Promise<void> => {
+    try {
+      const mission = await forgeRuntime.releaseCapabilityGapCandidate(
+        req.params.candidateId,
+        String(req.body?.actor ?? ""),
+      );
+      res.status(201).json({ mission });
+    } catch (error) {
+      res.status(400).json({ error: message(error) });
+    }
+  },
+);
+
 router.post(
   "/capability-analysis",
   async (req, res): Promise<void> => {

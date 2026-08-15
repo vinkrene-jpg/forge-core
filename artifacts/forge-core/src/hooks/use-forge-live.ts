@@ -13,6 +13,7 @@ export const forgeKeys = {
   missions: ["forge", "missions"] as const,
   approvals: ["forge", "approvals"] as const,
   capabilities: ["forge", "capabilities"] as const,
+  capabilityGaps: ["forge", "capability-gaps"] as const,
   analyses: ["forge", "analyses"] as const,
   evolution: ["forge", "evolution"] as const,
   learning: ["forge", "learning"] as const,
@@ -47,6 +48,14 @@ export function useCapabilitiesQuery() {
   return useQuery({
     queryKey: forgeKeys.capabilities,
     queryFn: forgeApi.capabilities,
+    refetchInterval: 5_000,
+  });
+}
+
+export function useCapabilityGapsQuery() {
+  return useQuery({
+    queryKey: forgeKeys.capabilityGaps,
+    queryFn: forgeApi.capabilityGaps,
     refetchInterval: 5_000,
   });
 }
@@ -101,6 +110,9 @@ function useRefreshForge() {
         queryKey: forgeKeys.capabilities,
       }),
       queryClient.invalidateQueries({
+        queryKey: forgeKeys.capabilityGaps,
+      }),
+      queryClient.invalidateQueries({
         queryKey: forgeKeys.analyses,
       }),
       queryClient.invalidateQueries({
@@ -122,6 +134,16 @@ export function useCreateMission() {
   return useMutation({
     mutationFn: (request: CreateMissionRequest) =>
       forgeApi.createMission(request),
+    onSuccess: refresh,
+  });
+}
+
+export function useReleaseCapabilityGap() {
+  const refresh = useRefreshForge();
+
+  return useMutation({
+    mutationFn: (candidateId: string) =>
+      forgeApi.releaseCapabilityGap(candidateId),
     onSuccess: refresh,
   });
 }
