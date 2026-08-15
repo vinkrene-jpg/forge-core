@@ -1200,7 +1200,7 @@
 			"command": "cmd",
 			"args": [
 				"/c",
-				"pnpm --filter @workspace/forge-runtime exec node --import tsx src/self-mutation-live.ts"
+				"pnpm --filter @workspace/forge-runtime exec node --import tsx src/self-mutation-executor-live.ts"
 			]
 		}
 	]
