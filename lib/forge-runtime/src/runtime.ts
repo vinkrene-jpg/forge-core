@@ -2653,7 +2653,7 @@ export class ForgeRuntime {
 
       const validatedTarget = parseWorkspaceChangeRequest({
         changes: [{ path: targetPath, expectedSha256: null, content: "path-validation" }],
-        verification: ["typecheck"],
+        verification: ["typecheck", "test", "build"],
         commit: null,
       });
       const canonicalPath = validatedTarget.changes[0].path;

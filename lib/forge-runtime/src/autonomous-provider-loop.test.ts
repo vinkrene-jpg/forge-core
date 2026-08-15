@@ -568,7 +568,7 @@ test("autonomous provider loop", { concurrency: false }, async (t) => {
         const liveObjective = [
           "Maak uitsluitend één nieuw testbestand aan:",
           "",
-          "Pad: sandbox/mirror-generic-build-proof-10.txt",
+          "Pad: lib/forge-runtime/src/generic-build-proof.txt",
           "",
           "Exacte inhoud: Forge generic-build live approval proof",
           "Datum: 2026-07-30",
@@ -576,7 +576,7 @@ test("autonomous provider loop", { concurrency: false }, async (t) => {
           "",
           "Wijzig geen enkel ander bestand.",
           "Gebruik dit exacte pad als expliciet target met allowCreate=true.",
-          "Voer typecheck uit als verificatie.",
+          "Voer typecheck, de complete testsuite en build uit als verificatie.",
           "Niet pushen.",
         ].join("\n");
         let providerCalls = 0;
@@ -589,16 +589,16 @@ test("autonomous provider loop", { concurrency: false }, async (t) => {
               outputText: JSON.stringify({
                 schemaVersion: 1,
                 assumptions: [
-                  "The approved target is a new sandbox file and no other repository content may change.",
+                  "The approved target is a new lib file and no other repository content may change.",
                 ],
                 summary:
-                  "Assumptions: the approved target is a new sandbox file and no other repository content may change. Verification guidance: run the required typecheck and inspect the committed file, recorded hashes, action receipts, file effects, verification runs, and artifact evidence before accepting the result.",
+                  "Assumptions: the approved target is a new lib file and no other repository content may change. Verification guidance: run the required typecheck, complete test suite and build, then inspect the committed file, recorded hashes, action receipts, file effects, verification runs, and artifact evidence before accepting the result.",
                 changes: [{
-                  path: "sandbox/mirror-generic-build-proof-10.txt",
+                  path: "lib/forge-runtime/src/generic-build-proof.txt",
                   expectedSha256: null,
                   content: "Forge generic-build live approval proof\n",
                 }],
-                verification: ["typecheck"],
+                verification: ["typecheck", "test", "build"],
                 commit: {
                   message: "test: generic build workspace execution",
                   push: false,
@@ -622,11 +622,11 @@ test("autonomous provider loop", { concurrency: false }, async (t) => {
           await runtime.start();
           const created = await runtime.createMission({
             kind: "operator.autonomous-cycle",
-            title: "Governed generic sandbox build",
+            title: "Governed generic lib build",
             input: {
               projectId: "forge-core",
               objective: liveObjective,
-              proofTargetPath: "mirror-generic-build-proof-10.txt",
+              proofTargetPath: "generic-build-proof.txt",
               cycleIndex: 1,
               maxCycles: 1,
               files: [],
@@ -635,7 +635,7 @@ test("autonomous provider loop", { concurrency: false }, async (t) => {
           assert.ok(created.approval);
           assert.equal(created.mission.input.rawObjective, liveObjective);
           assert.deepEqual(created.mission.input.targets, [{
-            path: "sandbox/mirror-generic-build-proof-10.txt",
+            path: "lib/forge-runtime/src/generic-build-proof.txt",
             allowCreate: true,
           }]);
           assert.equal(
@@ -645,7 +645,7 @@ test("autonomous provider loop", { concurrency: false }, async (t) => {
           assert.equal(created.mission.input.objectiveProfile, "generic-build");
           assert.equal(
             created.mission.input.proofTargetPath,
-            "sandbox/mirror-generic-build-proof-10.txt",
+            "lib/forge-runtime/src/generic-build-proof.txt",
           );
           await runtime.approveApproval(created.approval.id, "integration-test");
 
@@ -689,7 +689,7 @@ test("autonomous provider loop", { concurrency: false }, async (t) => {
             ),
           );
           await assert.rejects(readFile(
-            path.join(root, "sandbox", "mirror-generic-build-proof-10.txt"),
+            path.join(root, "lib", "forge-runtime", "src", "generic-build-proof.txt"),
             "utf8",
           ));
           assertNoExecutionEvidence(
@@ -742,7 +742,7 @@ test("autonomous provider loop", { concurrency: false }, async (t) => {
 
           assert.equal(
             await readFile(
-              path.join(root, "sandbox", "mirror-generic-build-proof-10.txt"),
+              path.join(root, "lib", "forge-runtime", "src", "generic-build-proof.txt"),
               "utf8",
             ),
             "Forge generic-build live approval proof\n",
