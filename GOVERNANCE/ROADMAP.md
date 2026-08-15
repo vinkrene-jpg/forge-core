@@ -166,11 +166,14 @@ Status: implemented with contract, parser, evaluator and end-to-end provider-loo
 
 ## Governed Forge self-mutation - 2026-08-15
 
-Status: implemented and live verified on the host-local WorkspaceExecutor.
+Status: implemented and live verified on real Forge TypeScript through the host-local WorkspaceExecutor.
 
 - Mission intake, GoalSpec mandates and WorkspaceExecutor accept only `sandbox/`, `lib/` and `artifacts/` mutation targets.
 - The existing eleven immutable Forge files are defined once and consumed by both mandate and executor enforcement; `GOVERNANCE/` and secret/protected paths remain denied.
 - Every `lib/` or `artifacts/` mutation requires repository-wide typecheck, tests and build before commit.
 - Live dogfood commit `3aa4e2a` created `artifacts/self-mutation-live-proof.txt` through WorkspaceExecutor after all three gates passed.
 - Controlled rollback execution `269eb0ee-3a54-422b-88fe-b8aac8fb241a` rejected a broken test receipt, created no commit and restored content, HEAD and clean worktree exactly.
+- Real source mission `4a4e4941-9caa-44de-9eb6-be21f08660d8` added a function and test under `lib/forge-runtime`, passed typecheck, 146/146 tests and build, received accepted evaluation score 100, and committed locally as `9f6a125df3207c9e55c866c627d7b0eb7abc353d` without push.
+- Breaking execution `c9059e83-967d-4113-bcc1-3497c451a960` failed the complete test gate and persisted exact automatic rollback with no commit, unchanged HEAD, restored source SHA and clean worktree.
 - Evidence: `reconstruction/SELF_MUTATION_VERIFICATION.json`.
+- Source evidence: `reconstruction/SELF_MUTATION_SOURCE_VERIFICATION.json`.

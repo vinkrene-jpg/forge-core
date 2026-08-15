@@ -323,3 +323,13 @@ Status: implemented with focused runtime and API integration evidence.
 - Live success: WorkspaceExecutor created and committed `artifacts/self-mutation-live-proof.txt` as `3aa4e2a` after the complete verification set passed.
 - Live failure: execution `269eb0ee-3a54-422b-88fe-b8aac8fb241a` received a controlled failing test receipt, returned `rolled_back`, made no commit and restored target content, HEAD and clean worktree.
 - Evidence: `reconstruction/SELF_MUTATION_VERIFICATION.json`.
+
+## Governed Forge source mutation - live verified 2026-08-15
+
+- Canonical runtime binding loaded `artifacts/api-server/dist/index.mjs` from source SHA `15c2bd84e08e5eff21c3caab013723c9ba9af818` with explicit local-model routing.
+- Planning mission `85672763-3481-4bdc-817d-4e19b996f50e` produced an exact two-target `lib/forge-runtime` manifest with structured assumptions, null creation preconditions, fixed `typecheck`, `test` and `build` gates, and `push=false`.
+- Approved workspace mission `4a4e4941-9caa-44de-9eb6-be21f08660d8` created `source-mutation-proof.ts` and its own test, passed the complete 146/146 suite, typecheck and build, received accepted evaluation score 100, and committed as `9f6a125df3207c9e55c866c627d7b0eb7abc353d`.
+- Negative planning mission `ae0e6cca-8ba4-4b94-a6ad-5092cb3072de` targeted only the existing source file with exact SHA-256 precondition `1cd5aac37bdfeedbea65d98b5588cc3ef2bfb033867de95fcf05e93d89b59cb2` and introduced a real runtime-breaking top-level return.
+- Workspace execution `c9059e83-967d-4113-bcc1-3497c451a960` failed the complete test gate, persisted `status=rolled_back`, `rollbackPerformed=true` and `commitSha=null`, restored the original SHA, preserved HEAD `9f6a125df3207c9e55c866c627d7b0eb7abc353d`, and left an empty porcelain status.
+- Allowed roots remain exactly `sandbox/`, `lib/` and `artifacts/`; immutable paths, graph limits and push authority were unchanged.
+- Evidence: `reconstruction/SELF_MUTATION_SOURCE_VERIFICATION.json`.

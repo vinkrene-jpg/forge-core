@@ -1,8 +1,8 @@
 # Forge Next Mission
 
-## Resume point after governed Forge self-mutation
+## Resume point after governed Forge source mutation
 
-Status: Forge may now mutate bounded targets under `sandbox/`, `lib/` and `artifacts/`; non-sandbox changes require the complete repository suite and roll back before commit on any failure. Existing immutable and governance paths remain protected.
+Status: Forge has live-mutated real `lib/forge-runtime` TypeScript, added its own passing test, committed only after full verification, and automatically restored an exact snapshot after a genuinely breaking follow-up mutation. Existing immutable and governance paths remain protected.
 
 ## Verified baseline
 
@@ -18,10 +18,12 @@ Status: Forge may now mutate bounded targets under `sandbox/`, `lib/` and `artif
 10. Live validation mission `5c3701ef-2226-47ff-8a52-eb94a594f2a7` survives restart with one `input_received` event and zero attempts.
 11. `pnpm forge:validate` runs the config-driven Git, typecheck, build, test, runtime and HTTP street without AI, source mutation, deployment or Git writes.
 12. The restart-enabled street completed 21 steps with 20 PASS, one expected dirty-tree Git WARNING, zero errors and exit code 0; isolated restart proof left live PID `17556` and its single listener untouched.
+13. Live source mutation mission `4a4e4941-9caa-44de-9eb6-be21f08660d8` created two `lib/forge-runtime` files, passed typecheck, 146/146 tests and build, received accepted evaluation score 100, and committed locally as `9f6a125df3207c9e55c866c627d7b0eb7abc353d` without push.
+14. Breaking execution `c9059e83-967d-4113-bcc1-3497c451a960` failed the complete test gate, persisted `rolled_back`, created no commit, restored the original SHA and left HEAD unchanged with a clean worktree.
 
 ## Next action
 
-Route one bounded GoalSpec through the live API on a clean named non-main branch with one `lib/` or `artifacts/` target. Verify the approved manifest, structured assumptions, full typecheck/test/build receipts, accepted evaluation and final report through the authoritative mission APIs. Do not widen the three allowed roots, immutable paths, graph limits or push authority.
+Use the verified source-mutation baseline for the next bounded GoalSpec component. Keep the target under the existing three roots, require exact SHA preconditions and full verification, and inspect the final GoalSpec report through authoritative mission APIs. Do not widen allowed roots, immutable paths, graph limits or push authority.
 
 ## Failure rules
 

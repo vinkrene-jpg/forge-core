@@ -1,0 +1,70 @@
+{
+  "verification": "governed-forge-source-mutation",
+  "verifiedAt": "2026-08-15T09:04:29.821Z",
+  "runtimeBinding": {
+    "runtimeBuildSha": "15c2bd84e08e5eff21c3caab013723c9ba9af818",
+    "runtimeModulePath": "artifacts/api-server/dist/index.mjs",
+    "repositoryRoot": ".",
+    "provider": "local-model",
+    "model": "qwen2.5-coder:7b"
+  },
+  "successfulMutation": {
+    "planningMissionId": "85672763-3481-4bdc-817d-4e19b996f50e",
+    "planId": "622fd651-353b-47b5-a9ea-831b50922297",
+    "workspaceMissionId": "4a4e4941-9caa-44de-9eb6-be21f08660d8",
+    "workspaceApprovalId": "2702adc2-a5c7-4890-b110-5c67d35525c0",
+    "workspaceExecutionId": "49ca9950-d819-49fa-949f-d0760aca58ad",
+    "targets": [
+      {
+        "path": "lib/forge-runtime/src/source-mutation-proof.ts",
+        "beforeSha256": null,
+        "afterSha256": "1cd5aac37bdfeedbea65d98b5588cc3ef2bfb033867de95fcf05e93d89b59cb2"
+      },
+      {
+        "path": "lib/forge-runtime/src/source-mutation-proof.test.ts",
+        "beforeSha256": null,
+        "afterSha256": "d3af809a57bfb9d20469f86c71b6407ca820d900d675be8de7a4e4613631c621"
+      }
+    ],
+    "verification": {
+      "typecheck": "passed",
+      "tests": "146/146",
+      "build": "passed"
+    },
+    "evaluation": {
+      "id": "fc0d29e4-c76f-4208-b3ab-31c937d8235e",
+      "score": 100,
+      "decision": "accepted"
+    },
+    "status": "committed",
+    "commitSha": "9f6a125df3207c9e55c866c627d7b0eb7abc353d",
+    "push": false
+  },
+  "rollbackMutation": {
+    "planningMissionId": "ae0e6cca-8ba4-4b94-a6ad-5092cb3072de",
+    "workspaceMissionId": "f20ffffd-bae7-4564-9dfe-221fb9591feb",
+    "workspaceApprovalId": "b810103e-9c49-4e83-883c-95fba60d6583",
+    "workspaceExecutionId": "c9059e83-967d-4113-bcc1-3497c451a960",
+    "target": "lib/forge-runtime/src/source-mutation-proof.ts",
+    "beforeSha256": "1cd5aac37bdfeedbea65d98b5588cc3ef2bfb033867de95fcf05e93d89b59cb2",
+    "attemptedSha256": "7626284d65bfac451817091fda6495aae2ca29bb2d2083fb763052d0fc27c94f",
+    "failedGate": "test",
+    "status": "rolled_back",
+    "rollbackPerformed": true,
+    "commitSha": null,
+    "headBefore": "9f6a125df3207c9e55c866c627d7b0eb7abc353d",
+    "headAfter": "9f6a125df3207c9e55c866c627d7b0eb7abc353d",
+    "restoredSha256": "1cd5aac37bdfeedbea65d98b5588cc3ef2bfb033867de95fcf05e93d89b59cb2",
+    "worktreeAfter": "clean"
+  },
+  "authorityBoundaries": {
+    "allowedRootsUnchanged": [
+      "sandbox/",
+      "lib/",
+      "artifacts/"
+    ],
+    "immutablePathsUnchanged": true,
+    "graphLimitsUnchanged": true,
+    "pushAuthorityGranted": false
+  }
+}
