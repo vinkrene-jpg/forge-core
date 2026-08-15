@@ -80,6 +80,8 @@ test("shows ranked outcome gaps and releases a candidate GoalSpec", async () => 
       assert.deepEqual(body.mandate, {
         allowedDirectories: ["lib/", "artifacts/"],
         maximumGoals: 3,
+        maximumCapabilityImprovements: 2,
+        maximumImprovementDepth: 2,
         maximumDurationMs: 3_600_000,
         maximumCostUsd: 5,
       });

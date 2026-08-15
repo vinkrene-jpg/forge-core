@@ -261,6 +261,8 @@ export interface CapabilityGoalRunReport {
   readonly mandate: {
     readonly allowedDirectories: readonly string[];
     readonly maximumGoals: number;
+    readonly maximumCapabilityImprovements: number;
+    readonly maximumImprovementDepth: number;
     readonly maximumDurationMs: number;
     readonly maximumCostUsd: number;
   };
@@ -273,6 +275,14 @@ export interface CapabilityGoalRunReport {
     readonly gapResolved: boolean;
     readonly built: readonly unknown[];
     readonly rejected: readonly unknown[];
+    readonly repairChain: readonly {
+      readonly missionId: string;
+      readonly capabilityId: string;
+      readonly depth: number;
+      readonly status: string;
+      readonly commitShas: readonly string[];
+      readonly failureReason: string | null;
+    }[];
     readonly boundaryFailures: readonly unknown[];
     readonly reason?: string;
   }[];
@@ -503,6 +513,8 @@ export const forgeApi = {
   startCapabilityGoalRun(mandate: {
     readonly allowedDirectories: readonly string[];
     readonly maximumGoals: number;
+    readonly maximumCapabilityImprovements: number;
+    readonly maximumImprovementDepth: number;
     readonly maximumDurationMs: number;
     readonly maximumCostUsd: number;
   }): Promise<MissionRecord & { readonly approval: ApprovalRecord | null }> {

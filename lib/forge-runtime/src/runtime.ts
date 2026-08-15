@@ -164,6 +164,7 @@ import {
   type WorkspaceVerificationRunner,
 } from "./workspace-executor";
 import {
+  analyzeBuildGraphProposalCapabilities,
   createGoalBuildFinalReport,
   createBuildGraph,
   evaluateBuildGraphComponent,
@@ -353,6 +354,18 @@ interface MissionExecutionFailure extends Error {
   missionResultStatus?: "failed" | "blocked" | "rejected";
   missionResultCause?: string;
   missionOutput?: Readonly<Record<string, unknown>>;
+}
+
+interface PlannedCapabilityGoal {
+  readonly candidate: CapabilityGapCandidate;
+  readonly proposal: BuildGraphProposal;
+  readonly improvementDepth: number;
+  readonly repairsCapabilityId: string | null;
+}
+
+interface CapabilityGoalPlanningState {
+  improvementCount: number;
+  readonly scheduledCapabilities: Set<string>;
 }
 
 class WorkspaceRecoveryTimeoutError extends Error {
@@ -1778,15 +1791,132 @@ export class ForgeRuntime {
     if (execution.status !== "succeeded" || !execution.outputText) {
       throw new Error(`Goal run provider planning failed: ${execution.error ?? execution.status}`);
     }
-    const proposal = parseBuildGraphProposal(
+    const proposal = analyzeBuildGraphProposalCapabilities(
       parseSingleProviderJsonObject(execution.outputText),
       this.#capabilityRegistry.listCapabilities(),
-    );
+    ).proposal;
     if (proposal.components.length !== 1) {
       throw new Error("Autonomous goal run proposals must contain exactly one component");
     }
     proposal.components[0].targets.forEach((target) => assertGoalRunTargetAllowed(mandate, target));
     return proposal;
+  }
+
+  #capabilityRepairCandidate(
+    capabilityId: string,
+    runMissionId: string,
+    depth: number,
+  ): CapabilityGapCandidate {
+    const capability = this.#capabilityRegistry.getCapability(capabilityId);
+    const capabilityName = capability?.name ?? capabilityId;
+    return Object.freeze({
+      id: `repair-${sha256Text(`${runMissionId}\0${capabilityId}\0${depth}`).slice(0, 20)}`,
+      capabilityId,
+      capabilityName,
+      cause: "required-capability-unavailable",
+      occurrences: 1,
+      missionIds: Object.freeze([]),
+      latestAt: new Date().toISOString(),
+      proposedGoalSpec: Object.freeze({
+        objective: `Build and prove required capability ${capabilityName}`,
+        desiredBehavior: Object.freeze([
+          `Forge can execute ${capabilityId} with accepted workspace and verification evidence.`,
+        ]),
+        constraints: Object.freeze([
+          "Use only the current run mandate directories, duration and cost limits.",
+          "Do not widen immutable paths, governance boundaries or push authority.",
+        ]),
+        acceptanceCriteria: Object.freeze([Object.freeze({
+          id: "capability-repair-proven",
+          statement: `Capability ${capabilityId} is backed by an accepted workspace execution.`,
+          evidence: "Persisted typecheck, complete test, build and deterministic evaluation receipts.",
+        })]),
+      }),
+      releasedGoalSpecMissionId: null,
+    });
+  }
+
+  async #planCapabilityGoalSequence(
+    candidate: CapabilityGapCandidate,
+    proposalInput: BuildGraphProposal,
+    mandate: GoalRunMandateRequest,
+    runMissionId: string,
+    signal: AbortSignal,
+    improvementDepth: number,
+    repairsCapabilityId: string | null,
+    lineage: ReadonlySet<string>,
+    state: CapabilityGoalPlanningState,
+    assertWithinMandate: () => void,
+  ): Promise<readonly PlannedCapabilityGoal[]> {
+    const analysis = analyzeBuildGraphProposalCapabilities(
+      proposalInput,
+      this.#capabilityRegistry.listCapabilities(),
+    );
+    analysis.proposal.components
+      .flatMap((component) => component.targets)
+      .forEach((target) => assertGoalRunTargetAllowed(mandate, target));
+    const missingCapabilityIds = [...new Set(
+      analysis.gaps.map((gap) => gap.capabilityId),
+    )];
+    const planned: PlannedCapabilityGoal[] = [];
+
+    for (const capabilityId of missingCapabilityIds) {
+      if (lineage.has(capabilityId)) {
+        throw new Error(`Capability repair cycle detected for ${capabilityId}`);
+      }
+      if (state.scheduledCapabilities.has(capabilityId)) {
+        continue;
+      }
+      if (improvementDepth >= mandate.maximumImprovementDepth) {
+        throw new GoalMandateBoundaryError(
+          "improvement-depth",
+          mandate.maximumImprovementDepth,
+          improvementDepth + 1,
+        );
+      }
+      if (state.improvementCount >= mandate.maximumCapabilityImprovements) {
+        throw new GoalMandateBoundaryError(
+          "capability-improvements",
+          mandate.maximumCapabilityImprovements,
+          state.improvementCount + 1,
+        );
+      }
+      state.improvementCount += 1;
+      state.scheduledCapabilities.add(capabilityId);
+      const repairDepth = improvementDepth + 1;
+      const repairCandidate = this.#capabilityRepairCandidate(
+        capabilityId,
+        runMissionId,
+        repairDepth,
+      );
+      const repairProposal = await this.#goalRunPlanner(
+        repairCandidate,
+        mandate,
+        runMissionId,
+        signal,
+      );
+      assertWithinMandate();
+      planned.push(...await this.#planCapabilityGoalSequence(
+        repairCandidate,
+        repairProposal,
+        mandate,
+        runMissionId,
+        signal,
+        repairDepth,
+        capabilityId,
+        new Set([...lineage, capabilityId]),
+        state,
+        assertWithinMandate,
+      ));
+    }
+
+    planned.push(Object.freeze({
+      candidate,
+      proposal: analysis.proposal,
+      improvementDepth,
+      repairsCapabilityId,
+    }));
+    return Object.freeze(planned);
   }
 
   async #executeGoalRun(
@@ -1803,6 +1933,22 @@ export class ForgeRuntime {
     const baselineCostUsd = this.#aiGateway.summary().totalEstimatedCostUsd;
     const candidates = this.listCapabilityGapCandidates().slice(0, mandate.maximumGoals);
     const goals: Array<Readonly<Record<string, unknown>>> = [];
+    const planningState: CapabilityGoalPlanningState = {
+      improvementCount: 0,
+      scheduledCapabilities: new Set<string>(),
+    };
+    const assertWithinMandate = (): void => {
+      if (Date.now() >= Date.parse(expiresAt)) {
+        throw new GoalMandateBoundaryError("duration", expiresAt, new Date().toISOString());
+      }
+      const actualCostUsd = Math.max(
+        0,
+        this.#aiGateway.summary().totalEstimatedCostUsd - baselineCostUsd,
+      );
+      if (actualCostUsd > mandate.maximumCostUsd) {
+        throw new GoalMandateBoundaryError("cost", mandate.maximumCostUsd, actualCostUsd);
+      }
+    };
 
     for (const candidate of candidates) {
       if (signal.aborted) throw new MissionAbortError();
@@ -1861,44 +2007,73 @@ export class ForgeRuntime {
         throw boundary;
       }
       try {
-        const proposal = await this.#goalRunPlanner(candidate, mandate, mission.id, signal);
-        if (Date.now() >= Date.parse(expiresAt)) {
-          throw new GoalMandateBoundaryError("duration", expiresAt, new Date().toISOString());
-        }
-        const postPlanningCostUsd = Math.max(
+        const initialProposal = await this.#goalRunPlanner(candidate, mandate, mission.id, signal);
+        assertWithinMandate();
+        const sequence = await this.#planCapabilityGoalSequence(
+          candidate,
+          initialProposal,
+          mandate,
+          mission.id,
+          signal,
           0,
-          this.#aiGateway.summary().totalEstimatedCostUsd - baselineCostUsd,
+          null,
+          new Set<string>(),
+          planningState,
+          assertWithinMandate,
         );
-        if (postPlanningCostUsd > mandate.maximumCostUsd) {
-          throw new GoalMandateBoundaryError("cost", mandate.maximumCostUsd, postPlanningCostUsd);
-        }
-        const targets = proposal.components.flatMap((component) => component.targets);
-        targets.forEach((target) => assertGoalRunTargetAllowed(mandate, target));
-        const child = await this.#missionEngine.enqueue({
-          kind: "operator.goal-build",
-          title: `Autonomous GoalSpec: ${candidate.proposedGoalSpec.objective.slice(0, 120)}`,
-          idempotencyKey: `goal-run:${mission.id}:${candidate.id}`,
-          input: {
-            graphId: randomUUID(),
-            goalSpec: candidate.proposedGoalSpec,
-            proposal,
-            goalMandate: {
-              allowedPaths: targets,
-              maximumMissions: mandate.maximumGoals,
-              maximumDurationMs: mandate.maximumDurationMs,
-              maximumCostUsd: mandate.maximumCostUsd,
+        let predecessorGoalMissionId: string | null = null;
+        const materialized: Array<{
+          readonly missionId: string;
+          readonly repairsCapabilityId: string | null;
+          readonly improvementDepth: number;
+        }> = [];
+        for (const planned of sequence) {
+          const targets = planned.proposal.components.flatMap((component) => component.targets);
+          const child = await this.#missionEngine.enqueue({
+            kind: "operator.goal-build",
+            title: planned.repairsCapabilityId
+              ? `Repair capability: ${planned.repairsCapabilityId}`
+              : `Autonomous GoalSpec: ${candidate.proposedGoalSpec.objective.slice(0, 120)}`,
+            idempotencyKey: `goal-run:${mission.id}:${candidate.id}:depth-${planned.improvementDepth}:${planned.repairsCapabilityId ?? "original"}`,
+            input: {
+              graphId: randomUUID(),
+              goalSpec: planned.candidate.proposedGoalSpec,
+              proposal: planned.proposal,
+              goalMandate: {
+                allowedPaths: targets,
+                maximumMissions:
+                  mandate.maximumGoals + mandate.maximumCapabilityImprovements,
+                maximumDurationMs: mandate.maximumDurationMs,
+                maximumCostUsd: mandate.maximumCostUsd,
+              },
+              goalRunMissionId: mission.id,
+              capabilityGapCandidateId: candidate.id,
+              capabilityId: candidate.capabilityId,
+              gapCause: candidate.cause,
+              capabilityRepairDepth: planned.improvementDepth,
+              repairsCapabilityId: planned.repairsCapabilityId,
+              capabilityRepairPredecessorMissionId: predecessorGoalMissionId,
+              capabilityRepairOriginalCandidateId: candidate.id,
             },
-            goalRunMissionId: mission.id,
-            capabilityGapCandidateId: candidate.id,
-            capabilityId: candidate.capabilityId,
-            gapCause: candidate.cause,
-          },
-        }, "queued");
+          }, predecessorGoalMissionId === null ? "queued" : "not_started");
+          materialized.push(Object.freeze({
+            missionId: child.id,
+            repairsCapabilityId: planned.repairsCapabilityId,
+            improvementDepth: planned.improvementDepth,
+          }));
+          predecessorGoalMissionId = child.id;
+        }
+        const original = materialized.at(-1)!;
         goals.push(Object.freeze({
           candidateId: candidate.id,
           capabilityId: candidate.capabilityId,
           cause: candidate.cause,
-          goalMissionId: child.id,
+          goalMissionId: original.missionId,
+          repairGoalMissionIds: Object.freeze(
+            materialized
+              .filter((item) => item.repairsCapabilityId !== null)
+              .map((item) => item.missionId),
+          ),
           planningStatus: "planned",
         }));
       } catch (error) {
@@ -3384,6 +3559,7 @@ export class ForgeRuntime {
         void this.#recordCapabilityOutcomeGaps(mission);
         void this.#memoryBridge.captureMissionKnowledge(mission);
         void this.#enforceCapabilityGoalRunStop(mission);
+        void this.#advanceCapabilityRepairChain(mission);
       });
 
       this.#missionLoop.start();
@@ -3421,6 +3597,90 @@ export class ForgeRuntime {
     });
 
     return stopped;
+  }
+
+  async #advanceCapabilityRepairChain(mission: MissionRecord): Promise<void> {
+    const graphMetadata = mission.input.goalBuildGraph;
+    const graphGoalMissionId = typeof graphMetadata === "object" && graphMetadata !== null && !Array.isArray(graphMetadata)
+      ? (graphMetadata as Readonly<Record<string, unknown>>).goalBuildMissionId
+      : null;
+    const goalMissionId = mission.kind === "operator.goal-build"
+      ? mission.id
+      : typeof graphGoalMissionId === "string"
+        ? graphGoalMissionId
+        : null;
+    if (!goalMissionId) return;
+
+    const goalMission = this.#missionEngine.get(goalMissionId);
+    const repairsCapabilityId = typeof goalMission?.input.repairsCapabilityId === "string"
+      ? goalMission.input.repairsCapabilityId
+      : null;
+    if (!goalMission || !repairsCapabilityId) return;
+
+    const graph = goalMission.output?.graph as BuildGraph | undefined;
+    const graphMissions = graph
+      ? graph.nodes.map((node) => this.#missionEngine.get(node.missionId))
+      : [];
+    const failedGraphMission = graphMissions.find((candidate) =>
+      candidate?.status === "failed" || candidate?.status === "cancelled"
+    );
+    const accepted = graphMissions.length > 0 && graphMissions.every((candidate) => {
+      const evaluation = candidate?.output?.evaluation as Readonly<Record<string, unknown>> | undefined;
+      return candidate?.status === "succeeded" && evaluation?.decision === "accepted";
+    });
+    const failed = goalMission.status === "failed" || goalMission.status === "cancelled" || Boolean(failedGraphMission);
+    if (!accepted && !failed) return;
+
+    const dependents = this.#missionEngine.list().filter((candidate) =>
+      candidate.status === "not_started" &&
+      candidate.input.capabilityRepairPredecessorMissionId === goalMission.id
+    );
+    if (accepted) {
+      const current = this.#capabilityRegistry.getCapability(repairsCapabilityId);
+      const source = `goal-run-repair:${goalMission.id}`;
+      if (current) {
+        await this.#capabilityRegistry.promoteCapability(
+          repairsCapabilityId,
+          "operational",
+          source,
+        );
+      } else {
+        await this.#capabilityRegistry.upsert({
+          id: repairsCapabilityId,
+          name: repairsCapabilityId,
+          description: `Capability proven by accepted repair mission ${goalMission.id}.`,
+          status: "operational",
+          version: "1.0.0",
+          confidence: 1,
+          source,
+        });
+      }
+      for (const dependent of dependents) {
+        await this.#missionEngine.activatePending(dependent.id);
+      }
+      return;
+    }
+
+    const failedMission = failedGraphMission ?? goalMission;
+    const reason = failedMission.lastError ??
+      `Capability repair mission ${goalMission.id} did not produce accepted evidence`;
+    for (const dependent of dependents) {
+      const failure = new Error(
+        `Required capability ${repairsCapabilityId} could not be repaired: ${reason}`,
+      ) as MissionExecutionFailure;
+      failure.missionResultStatus = "failed";
+      failure.missionResultCause = "goal-run.capability-repair-failed";
+      failure.missionOutput = Object.freeze({
+        capabilityRepairReport: Object.freeze({
+          capabilityId: repairsCapabilityId,
+          repairGoalMissionId: goalMission.id,
+          failedMissionId: failedMission.id,
+          improvementDepth: goalMission.input.capabilityRepairDepth,
+          reason,
+        }),
+      });
+      await this.#missionEngine.recordPendingFailure(dependent.id, failure);
+    }
   }
 
   async #enforceCapabilityGoalRunStop(mission: MissionRecord): Promise<void> {
@@ -3747,6 +4007,33 @@ export class ForgeRuntime {
       const report = graph
         ? createGoalBuildFinalReport(graph, (id) => this.#missionEngine.get(id), 0)
         : null;
+      const repairGoalMissionIds = Array.isArray(goal.repairGoalMissionIds)
+        ? goal.repairGoalMissionIds.filter((id): id is string => typeof id === "string")
+        : [];
+      const repairChain = repairGoalMissionIds.map((repairGoalMissionId) => {
+        const repairMission = this.#missionEngine.get(repairGoalMissionId);
+        const repairGraph = repairMission?.output?.graph as BuildGraph | undefined;
+        const repairReport = repairGraph
+          ? createGoalBuildFinalReport(repairGraph, (id) => this.#missionEngine.get(id), 0)
+          : null;
+        const commitShas = repairGraph
+          ? repairGraph.nodes.flatMap((node) => {
+              const commitSha = this.#missionEngine.get(node.missionId)?.output?.commitSha;
+              return typeof commitSha === "string" ? [commitSha] : [];
+            })
+          : [];
+        return Object.freeze({
+          missionId: repairGoalMissionId,
+          capabilityId: String(repairMission?.input.repairsCapabilityId ?? ""),
+          depth: Number(repairMission?.input.capabilityRepairDepth ?? 0),
+          status: repairReport?.decision ?? repairMission?.status ?? "unknown",
+          commitShas: Object.freeze(commitShas),
+          failureReason:
+            repairMission?.lastError ??
+            repairReport?.rejectedComponents[0]?.reason ??
+            null,
+        });
+      });
       const candidateId = String(goal.candidateId ?? "");
       return Object.freeze({
         ...goal,
@@ -3755,6 +4042,7 @@ export class ForgeRuntime {
         built: report?.builtComponents ?? [],
         rejected: report?.rejectedComponents ?? [],
         boundaryFailures: report?.boundaryFailures ?? [],
+        repairChain: Object.freeze(repairChain),
         gapResolved: candidateId.length > 0 && !currentCandidateIds.has(candidateId),
       });
     });

@@ -53,7 +53,7 @@ export default function Capabilities() {
               Autonome doelrun
             </h2>
             <p className="mt-1 text-sm text-muted-foreground">
-              Eén approval, maximaal drie doelen, alleen lib/ en artifacts/.
+              Eén approval, drie doelen, maximaal twee capability-reparaties en twee niveaus diep.
             </p>
           </div>
           <Button
@@ -62,6 +62,8 @@ export default function Capabilities() {
             onClick={() => startGoalRun.mutate({
               allowedDirectories: ["lib/", "artifacts/"],
               maximumGoals: 3,
+              maximumCapabilityImprovements: 2,
+              maximumImprovementDepth: 2,
               maximumDurationMs: 3_600_000,
               maximumCostUsd: 5,
             })}
@@ -85,11 +87,19 @@ export default function Capabilities() {
                 </div>
                 <div className="space-y-2 text-sm">
                   {(report?.goals ?? []).map((goal) => (
-                    <div key={goal.goalMissionId} className="flex flex-wrap items-center gap-2">
-                      <span className="font-medium">{goal.capabilityId}</span>
-                      <Badge variant="secondary">{goal.status}</Badge>
-                      <span className="text-muted-foreground">{goal.cause}</span>
-                      {goal.gapResolved && <Badge>gap weg</Badge>}
+                    <div key={goal.goalMissionId} className="space-y-1">
+                      <div className="flex flex-wrap items-center gap-2">
+                        <span className="font-medium">{goal.capabilityId}</span>
+                        <Badge variant="secondary">{goal.status}</Badge>
+                        <span className="text-muted-foreground">{goal.cause}</span>
+                        {goal.gapResolved && <Badge>gap weg</Badge>}
+                      </div>
+                      {goal.repairChain.map((repair) => (
+                        <div key={repair.missionId} className="font-mono text-xs text-muted-foreground">
+                          repair {repair.depth}: {repair.capabilityId} · {repair.status}
+                          {repair.failureReason ? ` · ${repair.failureReason}` : ""}
+                        </div>
+                      ))}
                     </div>
                   ))}
                   {!report && <span className="text-muted-foreground">Wacht op approval</span>}

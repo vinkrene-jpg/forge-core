@@ -199,3 +199,14 @@ Status: implemented and runtime verified.
 - The Mission Engine executes queued work sequentially. A mandate boundary cancels pending children, and three failures for one capability stop the run before a fourth plan.
 - Runtime integration proved two ranked gaps completed and disappeared under one approval with no child approvals. Focused boundary tests proved the failure limit and out-of-directory blocking.
 - Evidence: `reconstruction/CAPABILITY_GOAL_RUN_VERIFICATION.json`.
+
+## Recursive capability repair and automatic resume - 2026-08-15
+
+Status: implemented with deterministic runtime verification; real WorkspaceExecutor dogfood is the next clean-worktree step.
+
+- Goal-run planning detects unavailable or non-operational BuildGraph capabilities before graph authority is created.
+- Forge materializes deepest repair first and keeps dependent repair/original GoalSpecs inert until accepted workspace evidence activates them.
+- Capability promotion requires successful fixed typecheck, complete tests, build and accepted component evaluation. Failure leaves the registry unchanged and persists a complete chain report.
+- The run mandate now bounds repair count and depth; depth is at most two and original goals plus repairs remain capped at twenty.
+- Existing mutation roots, immutable paths, governance gates, rollback and no-push policy are unchanged. Standalone BuildGraph parsing still rejects unavailable capabilities.
+- Deterministic coverage proves repair then resume, failed repair reporting, depth blocking and repair-count blocking.

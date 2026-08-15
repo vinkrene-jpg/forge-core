@@ -3,6 +3,7 @@ import { mkdir, mkdtemp, rm, writeFile } from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
 import test from "node:test";
+import type { CapabilityGapCandidate } from "./capability-gap-feedback";
 import { ForgeRuntime } from "./runtime";
 
 async function waitFor(predicate: () => boolean, timeoutMs = 5_000): Promise<void> {
@@ -108,5 +109,109 @@ test("a target outside the run directories blocks the run", async () => {
     await waitFor(() => runtime.getMission(created.mission.id)?.status === "failed");
     const boundary = runtime.getMission(created.mission.id)?.output?.mandateBoundary as { boundary?: string } | undefined;
     assert.equal(boundary?.boundary, "path");
+  });
+});
+
+function repairProposal(
+  candidate: CapabilityGapCandidate,
+  requiredCapability: string,
+) {
+  return {
+    repositoryId: "forge-core" as const,
+    components: [{
+      id: `repair-${requiredCapability.replaceAll(".", "-")}`,
+      title: `Repair ${requiredCapability}`,
+      dependsOn: [],
+      targets: [`artifacts/${requiredCapability}.txt`],
+      acceptanceCriteria: candidate.proposedGoalSpec.acceptanceCriteria,
+      requiredCapabilities: [requiredCapability],
+      workspaceChange: {
+        changes: [{
+          path: `artifacts/${requiredCapability}.txt`,
+          expectedSha256: null,
+          content: `${requiredCapability}\n`,
+        }],
+        verification: ["typecheck", "test", "build"] as const,
+        commit: null,
+      },
+    }],
+  };
+}
+
+test("a repair chain cannot plan beyond depth two", async () => {
+  let plannerCalls = 0;
+  await withSeededRuntime(async (candidate) => {
+    plannerCalls += 1;
+    const required = candidate.capabilityId === "tool.repair.level-one"
+      ? "tool.repair.level-two"
+      : candidate.capabilityId === "tool.repair.level-two"
+        ? "tool.repair.level-three"
+        : "tool.repair.level-one";
+    return repairProposal(candidate, required);
+  }, async (runtime) => {
+    for (const id of ["tool.repair.level-one", "tool.repair.level-two", "tool.repair.level-three"]) {
+      await runtime.upsertCapability({
+        id,
+        name: id,
+        description: `Unavailable test capability ${id}`,
+        status: "unavailable",
+        version: "0.0.0",
+        confidence: 0,
+        source: "repair-depth-test",
+      });
+    }
+    const created = await runtime.createCapabilityGoalRun({
+      allowedDirectories: ["artifacts/"],
+      maximumGoals: 1,
+      maximumCapabilityImprovements: 3,
+      maximumImprovementDepth: 2,
+      maximumDurationMs: 60_000,
+      maximumCostUsd: 0,
+    });
+    assert.ok(created.approval);
+    await runtime.approveApproval(created.approval.id, "repair-depth-test");
+    await waitFor(() => runtime.getMission(created.mission.id)?.status === "failed");
+    const mission = runtime.getMission(created.mission.id);
+    assert.equal(plannerCalls, 3);
+    assert.equal((mission?.output?.mandateBoundary as { boundary?: string } | undefined)?.boundary, "improvement-depth");
+    assert.equal(runtime.listMissions().filter((item) => item.kind === "operator.goal-build").length, 0);
+  });
+});
+
+test("a repair chain respects the maximum improvements per run", async () => {
+  let plannerCalls = 0;
+  await withSeededRuntime(async (candidate) => {
+    plannerCalls += 1;
+    return repairProposal(
+      candidate,
+      candidate.capabilityId === "tool.repair.first" ? "tool.repair.second" : "tool.repair.first",
+    );
+  }, async (runtime) => {
+    for (const id of ["tool.repair.first", "tool.repair.second"]) {
+      await runtime.upsertCapability({
+        id,
+        name: id,
+        description: `Unavailable test capability ${id}`,
+        status: "unavailable",
+        version: "0.0.0",
+        confidence: 0,
+        source: "repair-count-test",
+      });
+    }
+    const created = await runtime.createCapabilityGoalRun({
+      allowedDirectories: ["artifacts/"],
+      maximumGoals: 1,
+      maximumCapabilityImprovements: 1,
+      maximumImprovementDepth: 2,
+      maximumDurationMs: 60_000,
+      maximumCostUsd: 0,
+    });
+    assert.ok(created.approval);
+    await runtime.approveApproval(created.approval.id, "repair-count-test");
+    await waitFor(() => runtime.getMission(created.mission.id)?.status === "failed");
+    const mission = runtime.getMission(created.mission.id);
+    assert.equal(plannerCalls, 2);
+    assert.equal((mission?.output?.mandateBoundary as { boundary?: string } | undefined)?.boundary, "capability-improvements");
+    assert.equal(runtime.listMissions().filter((item) => item.kind === "operator.goal-build").length, 0);
   });
 });

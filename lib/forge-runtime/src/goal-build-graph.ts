@@ -35,6 +35,18 @@ export interface BuildGraphProposal {
   readonly components: readonly BuildGraphComponentProposal[];
 }
 
+export interface BuildGraphCapabilityGap {
+  readonly componentId: string;
+  readonly capabilityId: string;
+  readonly actualStatus: CapabilityRecord["status"] | null;
+  readonly requiredStatus: "operational";
+}
+
+export interface BuildGraphCapabilityAnalysis {
+  readonly proposal: BuildGraphProposal;
+  readonly gaps: readonly BuildGraphCapabilityGap[];
+}
+
 export interface BuildGraphNode extends BuildGraphComponentProposal {
   readonly missionId: string;
 }
@@ -136,10 +148,10 @@ export function parseGoalSpec(value: unknown): GoalSpec {
   });
 }
 
-export function parseBuildGraphProposal(
+export function analyzeBuildGraphProposalCapabilities(
   value: unknown,
   capabilities: readonly CapabilityRecord[],
-): BuildGraphProposal {
+): BuildGraphCapabilityAnalysis {
   const candidate = record(value, "buildGraph");
   if (candidate.repositoryId !== "forge-core") {
     throw new Error("buildGraph.repositoryId must equal forge-core");
@@ -148,11 +160,10 @@ export function parseBuildGraphProposal(
     throw new Error("buildGraph.components must contain one or two components");
   }
 
-  const availableCapabilities = new Set(
-    capabilities
-      .filter((capability) => capability.status === "operational")
-      .map((capability) => capability.id),
+  const capabilityById = new Map(
+    capabilities.map((capability) => [capability.id, capability]),
   );
+  const gaps: BuildGraphCapabilityGap[] = [];
   const ids = new Set<string>();
   let dependencyCount = 0;
 
@@ -186,8 +197,14 @@ export function parseBuildGraphProposal(
       throw new Error(`Component ${id} targets must exactly match workspace changes`);
     }
     for (const capabilityId of requiredCapabilities) {
-      if (!availableCapabilities.has(capabilityId)) {
-        throw new Error(`Component ${id} requires unavailable capability: ${capabilityId}`);
+      const capability = capabilityById.get(capabilityId);
+      if (capability?.status !== "operational") {
+        gaps.push(Object.freeze({
+          componentId: id,
+          capabilityId,
+          actualStatus: capability?.status ?? null,
+          requiredStatus: "operational" as const,
+        }));
       }
     }
     for (const verification of ["typecheck", "test", "build"] as const) {
@@ -224,7 +241,24 @@ export function parseBuildGraphProposal(
     }
   }
 
-  return Object.freeze({ repositoryId: "forge-core", components: Object.freeze(components) });
+  return Object.freeze({
+    proposal: Object.freeze({ repositoryId: "forge-core", components: Object.freeze(components) }),
+    gaps: Object.freeze(gaps),
+  });
+}
+
+export function parseBuildGraphProposal(
+  value: unknown,
+  capabilities: readonly CapabilityRecord[],
+): BuildGraphProposal {
+  const analysis = analyzeBuildGraphProposalCapabilities(value, capabilities);
+  const gap = analysis.gaps[0];
+  if (gap) {
+    throw new Error(
+      `Component ${gap.componentId} requires unavailable capability: ${gap.capabilityId}`,
+    );
+  }
+  return analysis.proposal;
 }
 
 export function createBuildGraph(

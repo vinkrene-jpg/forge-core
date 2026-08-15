@@ -1,8 +1,8 @@
 # Forge Next Mission
 
-## Resume point after bounded autonomous capability-goal execution
+## Resume point before live recursive capability-repair dogfood
 
-Status: Forge now derives and ranks recurring capability gaps and can process a bounded goals list under one explicitly approved run mandate. Goal children require no repeated operator intervention while the immutable parent limits match. Existing mutation roots, immutable paths and push boundaries remain unchanged.
+Status: Source and deterministic tests now prove missing-capability repair, evidence-only promotion and automatic original-goal resume. The implementation must be committed to obtain a clean worktree, then the real WorkspaceExecutor dogfood script must create one repair commit and one resumed-original commit without push.
 
 ## Verified baseline
 
@@ -26,10 +26,12 @@ Status: Forge now derives and ranks recurring capability gaps and can process a 
 18. Runtime 98/98, API 53/53 and frontend 25/25 tests, root typecheck, build and live console verification passed.
 19. One approved `operator.goal-run` completed two ranked capability-gap GoalSpecs sequentially, accepted both graph executions, removed both gaps and created no child approvals.
 20. Run boundaries cover exact directories, maximum goals, duration and estimated cost; three failures for one capability stop before a fourth attempt and an out-of-directory target blocks immediately.
+21. Goal-run preflight detects unavailable BuildGraph capabilities, plans deepest repair first and activates dependent repair/original missions only after accepted workspace evidence.
+22. Repair depth is at most two; repair count is explicit; original goals plus repairs remain capped at twenty. Failed repair leaves capability status unchanged and records the full chain failure.
 
 ## Next action
 
-Use the Capability view to request one bounded run mandate for the current deterministic goals list. Inspect the resulting parent and child missions through authoritative APIs and verify accepted evidence before increasing any limit. Keep targets under the existing three roots and do not widen allowed roots, immutable paths, graph limits or push authority.
+Commit the validated implementation, confirm a clean `forge-sync-primary` worktree, then run `lib/forge-runtime/src/capability-repair-live.ts` once with `PNPM_WORKSPACE_CONCURRENCY=1`. Capture the missing capability, repair/original mission IDs, both local commit SHAs, accepted evaluations and final result in reconstruction evidence. Do not push from the WorkspaceExecutor; push only after final evidence and governance updates are committed.
 
 ## Failure rules
 
@@ -54,3 +56,6 @@ Use the Capability view to request one bounded run mandate for the current deter
 - A capability-goal run may execute only after its own persisted approval and only within its immutable directories, goal-count, duration and cost limits.
 - Goal-run children may not receive separate approval authority, bypass fixed verification or continue after a mandate boundary.
 - Three failed goals for one capability must stop the run before planning a fourth for that capability.
+- Capability repair may recurse at most two levels and may not exceed the run's explicit repair count or the existing combined twenty-mission limit.
+- A capability may become operational only after every repair workspace child has accepted evaluation evidence; planning, file writes or failed verification are insufficient.
+- Repair failure must leave the registry unchanged, fail the waiting original and identify the capability, repair mission, failed child and reason.

@@ -4,6 +4,8 @@ import path from "node:path";
 export type GoalMandateBoundary =
   | "path"
   | "mission-count"
+  | "capability-improvements"
+  | "improvement-depth"
   | "duration"
   | "cost"
   | "hard-protection";

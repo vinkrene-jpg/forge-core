@@ -525,6 +525,40 @@ export class MissionEngine {
     });
   }
 
+  async activatePending(missionId: string): Promise<MissionRecord> {
+    this.#ensureInitialized();
+
+    return this.#mutate(async () => {
+      const index = this.#state.missions.findIndex((mission) => mission.id === missionId);
+      if (index < 0) {
+        throw new Error(`Mission not found: ${missionId}`);
+      }
+      const current = this.#state.missions[index];
+      if (current.status !== "not_started") {
+        return cloneMission(current);
+      }
+      const mission = cloneMission({
+        ...current,
+        status: "queued",
+        updatedAt: new Date().toISOString(),
+        lastError: null,
+      });
+      const missions = [...this.#state.missions];
+      missions[index] = mission;
+      this.#state = Object.freeze({
+        version: MISSION_STORE_VERSION,
+        missions: Object.freeze(missions),
+      });
+      await this.#stateStore.save(this.#state);
+      this.#events.publish("mission.enqueued", {
+        missionId,
+        kind: mission.kind,
+        resumedAfterCapabilityRepair: true,
+      });
+      return cloneMission(mission);
+    });
+  }
+
   async cancelPending(missionId: string, reason: string): Promise<MissionRecord> {
     this.#ensureInitialized();
 

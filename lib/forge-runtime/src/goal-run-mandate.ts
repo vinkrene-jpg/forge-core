@@ -8,6 +8,8 @@ import {
 export interface GoalRunMandateRequest {
   readonly allowedDirectories: readonly string[];
   readonly maximumGoals: number;
+  readonly maximumCapabilityImprovements: number;
+  readonly maximumImprovementDepth: number;
   readonly maximumDurationMs: number;
   readonly maximumCostUsd: number;
 }
@@ -63,9 +65,28 @@ export function parseGoalRunMandateRequest(value: unknown): GoalRunMandateReques
   if (new Set(allowedDirectories).size !== allowedDirectories.length) {
     throw new Error("runMandate.allowedDirectories contains duplicate directories");
   }
+  const maximumGoals = boundedInteger(candidate.maximumGoals, "runMandate.maximumGoals", 1, 20);
+  const maximumCapabilityImprovements = boundedInteger(
+    candidate.maximumCapabilityImprovements ?? 0,
+    "runMandate.maximumCapabilityImprovements",
+    0,
+    19,
+  );
+  if (maximumGoals + maximumCapabilityImprovements > 20) {
+    throw new Error(
+      "runMandate maximumGoals plus maximumCapabilityImprovements may not exceed 20",
+    );
+  }
   return Object.freeze({
     allowedDirectories: Object.freeze(allowedDirectories),
-    maximumGoals: boundedInteger(candidate.maximumGoals, "runMandate.maximumGoals", 1, 20),
+    maximumGoals,
+    maximumCapabilityImprovements,
+    maximumImprovementDepth: boundedInteger(
+      candidate.maximumImprovementDepth ?? 2,
+      "runMandate.maximumImprovementDepth",
+      1,
+      2,
+    ),
     maximumDurationMs: boundedInteger(candidate.maximumDurationMs, "runMandate.maximumDurationMs", 1_000, 86_400_000),
     maximumCostUsd: money(candidate.maximumCostUsd),
   });

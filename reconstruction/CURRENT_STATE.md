@@ -2,6 +2,16 @@
 
 Verified through: 2026-07-12 19:16 +02:00
 
+## Recursive capability repair and automatic resume - deterministic verification
+
+- Before a goal-run BuildGraph receives authority, Forge detects every required capability that is absent or below `operational`.
+- The same approved run mandate bounds repair directories, total original/repair missions, maximum repairs, maximum depth two, duration and provider cost. Push remains false and protected paths remain denied.
+- Repair GoalSpecs and the original GoalSpec use the authoritative Mission Engine. Only the deepest repair is queued; accepted evidence activates its dependent mission without another approval.
+- Registry promotion occurs only after all repair workspace children succeeded with accepted deterministic evaluation. Failed verification leaves the capability unchanged and fails the waiting original with capability, repair mission, failed child and reason.
+- Runtime tests prove one unavailable capability is built first and the original resumes; the negative path proves no promotion or original execution after repair failure. Separate tests prove depth and repair-count boundaries before materialization.
+- The API test command now executes each bundled test file with `--test-concurrency=1`; runtime tests already use concurrency one.
+- Real WorkspaceExecutor dogfood script: `lib/forge-runtime/src/capability-repair-live.ts`. It must run only after this implementation is committed and the worktree is clean.
+
 ## Bounded autonomous capability-goal run - runtime verification
 
 - `operator.goal-run` is the single approval-bearing parent for one bounded pass over the deterministic capability-gap ranking.
