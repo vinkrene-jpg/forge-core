@@ -2,6 +2,16 @@
 
 Verified through: 2026-07-12 19:16 +02:00
 
+## Bounded autonomous capability-goal run - runtime verification
+
+- `operator.goal-run` is the single approval-bearing parent for one bounded pass over the deterministic capability-gap ranking.
+- The immutable run mandate limits directories, goal count, duration and estimated provider cost. It cannot widen the existing mutation roots, hard-protected paths or push authority.
+- The approved parent plans single-component GoalSpecs and queues their `operator.goal-build` missions through the existing Mission Engine. Children retain capability analysis, fixed verification, deterministic evaluation, evidence and rollback without separate approvals.
+- Runtime integration started one real `ForgeRuntime`, approved one run, completed two ranked goals sequentially through GoalBuildGraph and WorkspaceExecutor, received accepted evaluations, removed both gap candidates and created zero child approvals.
+- Focused negative coverage stops before a fourth planning attempt after three failures on one capability and blocks a target outside the approved directories.
+- Forge Control exposes run creation and reports derived from authoritative mission evidence.
+- Evidence: `reconstruction/CAPABILITY_GOAL_RUN_VERIFICATION.json`.
+
 ## Capability-linked mission outcome feedback - live verification
 
 - Terminal failed missions, rejected evaluations and mandate boundaries register idempotent capability-linked analyses in the existing Capability Registry; there is no gap store.

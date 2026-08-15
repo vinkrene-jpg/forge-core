@@ -98,7 +98,7 @@ function normalizeVerification(value: unknown): unknown {
       : step);
 }
 
-function parseSingleJsonObject(outputText: string): Readonly<Record<string, unknown>> {
+export function parseSingleProviderJsonObject(outputText: string): Readonly<Record<string, unknown>> {
   const candidates: Array<{
     readonly offset: number;
     readonly value: Readonly<Record<string, unknown>>;
@@ -201,7 +201,7 @@ export function parseWorkspaceProviderPlan(input: {
 }): WorkspaceChangePlan {
   assertSecretFree(input.outputText);
 
-  const candidate = parseSingleJsonObject(input.outputText);
+  const candidate = parseSingleProviderJsonObject(input.outputText);
 
   if (candidate.schemaVersion !== 1) {
     throw new Error("Unsupported workspace provider plan schemaVersion");

@@ -156,6 +156,7 @@ export {
 } from "./workspace-bridge";
 
 export {
+  parseSingleProviderJsonObject,
   parseWorkspaceProviderPlan,
   type WorkspaceChangePlan,
   type WorkspacePlanningTarget,
@@ -189,6 +190,12 @@ export {
   type GoalMandateBoundary,
   type GoalMandateRequest,
 } from "./goal-mandate";
+export {
+  assertGoalRunTargetAllowed,
+  GOAL_RUN_CAPABILITY_FAILURE_LIMIT,
+  parseGoalRunMandateRequest,
+  type GoalRunMandateRequest,
+} from "./goal-run-mandate";
 export {
   CapabilityAnalyzer,
   requirementsForMission,

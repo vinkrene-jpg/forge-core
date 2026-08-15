@@ -72,6 +72,19 @@ test("shows ranked outcome gaps and releases a candidate GoalSpec", async () => 
         releasedGoalSpecMissionId: null,
       }] });
     }
+    if (url === "/api/capability-goal-runs" && !init?.method) {
+      return Response.json({ runs: [] });
+    }
+    if (url === "/api/capability-goal-runs" && init?.method === "POST") {
+      const body = JSON.parse(String(init.body)) as { mandate: Record<string, unknown> };
+      assert.deepEqual(body.mandate, {
+        allowedDirectories: ["lib/", "artifacts/"],
+        maximumGoals: 3,
+        maximumDurationMs: 3_600_000,
+        maximumCostUsd: 5,
+      });
+      return Response.json({ id: "goal-run", status: "awaiting_approval", approval: { id: "approval" } }, { status: 202 });
+    }
     if (url === "/api/capability-gaps/gap-top/release" && init?.method === "POST") {
       return Response.json({ mission: { id: "released-goal", status: "not_started" } }, { status: 201 });
     }
@@ -91,6 +104,15 @@ test("shows ranked outcome gaps and releases a candidate GoalSpec", async () => 
     assert.match(container.textContent ?? "", /evaluation-rejected:verification-explicit/);
     assert.match(container.textContent ?? "", /590a73c5 · 455dd01a · ed87826a/);
     assert.match(container.textContent ?? "", /Strengthen output evaluation/);
+
+    const runButton = [...container.querySelectorAll("button")].find((item) =>
+      item.textContent?.includes("Run-mandaat aanvragen")
+    );
+    assert.ok(runButton);
+    await act(async () => runButton.dispatchEvent(new dom.window.MouseEvent("click", { bubbles: true })));
+    await waitFor(() => requests.some((request) =>
+      request.url === "/api/capability-goal-runs" && request.method === "POST"
+    ));
 
     const button = [...container.querySelectorAll("button")].find((item) =>
       item.textContent?.includes("GoalSpec vrijgeven")

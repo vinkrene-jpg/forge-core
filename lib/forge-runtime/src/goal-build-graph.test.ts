@@ -42,7 +42,7 @@ function component(id: string, dependsOn: readonly string[] = []) {
         expectedSha256: null,
         content: `${id}\n`,
       }],
-      verification: ["typecheck", "test", "build"],
+      verification: ["typecheck", "test", "build"] as const,
       commit: null,
     },
   };

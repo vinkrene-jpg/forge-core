@@ -1,8 +1,8 @@
 # Forge Next Mission
 
-## Resume point after capability-linked gap feedback
+## Resume point after bounded autonomous capability-goal execution
 
-Status: Forge now derives and ranks recurring capability gaps from authoritative terminal mission evidence. An operator can release a candidate as one inert GoalSpec mission, but Forge cannot approve or execute it automatically. Existing mutation roots, immutable paths and push boundaries remain unchanged.
+Status: Forge now derives and ranks recurring capability gaps and can process a bounded goals list under one explicitly approved run mandate. Goal children require no repeated operator intervention while the immutable parent limits match. Existing mutation roots, immutable paths and push boundaries remain unchanged.
 
 ## Verified baseline
 
@@ -24,10 +24,12 @@ Status: Forge now derives and ranks recurring capability gaps from authoritative
 16. Historical missions `590a73c5`, `455dd01a` and `ed87826a` are linked respectively to evaluation and workspace-plan validation gaps.
 17. Operator release created GoalSpec mission `d1fe7a03-07ba-4e4a-bf27-39e32e62e438`; it remained `not_started` with zero attempts and zero approvals, and repeated release was idempotent.
 18. Runtime 98/98, API 53/53 and frontend 25/25 tests, root typecheck, build and live console verification passed.
+19. One approved `operator.goal-run` completed two ranked capability-gap GoalSpecs sequentially, accepted both graph executions, removed both gaps and created no child approvals.
+20. Run boundaries cover exact directories, maximum goals, duration and estimated cost; three failures for one capability stop before a fourth attempt and an out-of-directory target blocks immediately.
 
 ## Next action
 
-Select the next bounded GoalSpec only through explicit operator governance. Preserve candidate projection determinism, inspect the released `operator.goal-build` mission through authoritative APIs, and do not infer execution authority from release. Keep targets under the existing three roots and do not widen allowed roots, immutable paths, graph limits or push authority.
+Use the Capability view to request one bounded run mandate for the current deterministic goals list. Inspect the resulting parent and child missions through authoritative APIs and verify accepted evidence before increasing any limit. Keep targets under the existing three roots and do not widen allowed roots, immutable paths, graph limits or push authority.
 
 ## Failure rules
 
@@ -49,3 +51,6 @@ Select the next bounded GoalSpec only through explicit operator governance. Pres
 - Capability gaps must remain analyses in the existing Capability Registry; do not add a parallel gap or candidate store.
 - Candidate ranking must remain a deterministic projection over capability analyses and missionstore records.
 - Releasing a candidate may create only an inert `operator.goal-build` mission; it may not approve, queue or execute that mission.
+- A capability-goal run may execute only after its own persisted approval and only within its immutable directories, goal-count, duration and cost limits.
+- Goal-run children may not receive separate approval authority, bypass fixed verification or continue after a mandate boundary.
+- Three failed goals for one capability must stop the run before planning a fourth for that capability.

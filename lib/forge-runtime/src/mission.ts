@@ -2,6 +2,7 @@ export type MissionKind =
   | "runtime.self-check"
   | "runtime.stability-window"
   | "operator.autonomous-cycle"
+  | "operator.goal-run"
   | "operator.goal-build"
   | "operator.workspace-change"
   | "operator.workspace-plan"

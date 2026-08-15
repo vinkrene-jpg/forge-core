@@ -148,7 +148,7 @@ export function requirementsForMission(
     ]);
   }
 
-  if (kind === "operator.goal-build") {
+  if (kind === "operator.goal-build" || kind === "operator.goal-run") {
     return Object.freeze([
       ...shared,
       {
@@ -226,6 +226,7 @@ export class CapabilityAnalyzer {
             ? 2
             : request.kind === "operator.autonomous-cycle" ||
               request.kind === "operator.goal-build" ||
+              request.kind === "operator.goal-run" ||
                 request.kind === "operator.workspace-change" ||
                 request.kind === "operator.workspace-plan"
               ? 4

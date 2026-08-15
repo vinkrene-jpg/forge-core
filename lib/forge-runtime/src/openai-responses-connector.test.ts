@@ -28,9 +28,32 @@ test("OpenAI Responses sends the workspace plan output contract", async () => {
       projectId: "forge-core",
       objective: "WORKSPACE_PLAN_OUTPUT_CONTRACT_V1 create the approved target",
       route: {
-        selectedProfileId: "openai-test",
-        reason: "test",
+        selectedProfile: {
+          id: "openai-test",
+          label: "OpenAI test profile",
+          executionMode: "routing-only",
+          providerBinding: null,
+          maxContextChars: 100_000,
+          privacyModes: ["standard"],
+          taskStrengths: {
+            coding: 1,
+            reasoning: 0,
+            analysis: 0,
+            summarization: 0,
+          },
+          costTier: 3,
+          supportsTools: false,
+        },
+        request: {
+          taskType: "coding",
+          privacy: "standard",
+          budget: "high",
+          contextChars: 1,
+          requiresTools: false,
+        },
         candidates: [],
+        rationale: "test",
+        routedAt: "2026-08-14T00:00:00.000Z",
       },
       memoryIds: [],
       sourceFiles: [],
@@ -40,9 +63,12 @@ test("OpenAI Responses sends the workspace plan output contract", async () => {
     const status: AiGatewayStatus = {
       providerId: "openai-responses",
       configured: true,
+      secretConfigured: true,
       model: "gpt-test",
       apiBase: "https://api.openai.test/v1",
+      maxInputChars: 100_000,
       maxOutputTokens: 2_000,
+      note: "test",
     };
 
     await new OpenAiResponsesConnector().execute(composition, status);

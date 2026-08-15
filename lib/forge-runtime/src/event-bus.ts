@@ -16,6 +16,7 @@ export type RuntimeEventType =
   | "mission.execution.checkpointed"
   | "mission.succeeded"
   | "mission.failed"
+  | "mission.cancelled"
   | "mission.requeued"
   | "mission.recovered"
   | "mission.loop.started"

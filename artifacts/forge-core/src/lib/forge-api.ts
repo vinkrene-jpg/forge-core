@@ -162,6 +162,7 @@ export interface MissionRecord {
     | "runtime.self-check"
     | "runtime.stability-window"
     | "operator.autonomous-cycle"
+    | "operator.goal-run"
     | "operator.goal-build"
     | "operator.workspace-plan"
     | "operator.workspace-change"
@@ -252,6 +253,32 @@ export interface CapabilityGapCandidate {
     }[];
   };
   readonly releasedGoalSpecMissionId: string | null;
+}
+
+export interface CapabilityGoalRunReport {
+  readonly missionId: string;
+  readonly status: MissionStatus;
+  readonly mandate: {
+    readonly allowedDirectories: readonly string[];
+    readonly maximumGoals: number;
+    readonly maximumDurationMs: number;
+    readonly maximumCostUsd: number;
+  };
+  readonly goals: readonly {
+    readonly candidateId: string;
+    readonly capabilityId: string;
+    readonly cause: string;
+    readonly goalMissionId: string;
+    readonly status: string;
+    readonly gapResolved: boolean;
+    readonly built: readonly unknown[];
+    readonly rejected: readonly unknown[];
+    readonly boundaryFailures: readonly unknown[];
+    readonly reason?: string;
+  }[];
+  readonly resolvedGapIds: readonly string[];
+  readonly actualEstimatedCostUsd: number;
+  readonly generatedAt: string;
 }
 
 export interface EvolutionPlanStep {
@@ -462,6 +489,27 @@ export const forgeApi = {
     readonly candidates: readonly CapabilityGapCandidate[];
   }> {
     return requestJson("/api/capability-gaps");
+  },
+
+  capabilityGoalRuns(): Promise<{
+    readonly runs: readonly {
+      readonly mission: MissionRecord;
+      readonly report: CapabilityGoalRunReport | null;
+    }[];
+  }> {
+    return requestJson("/api/capability-goal-runs");
+  },
+
+  startCapabilityGoalRun(mandate: {
+    readonly allowedDirectories: readonly string[];
+    readonly maximumGoals: number;
+    readonly maximumDurationMs: number;
+    readonly maximumCostUsd: number;
+  }): Promise<MissionRecord & { readonly approval: ApprovalRecord | null }> {
+    return requestJson("/api/capability-goal-runs", {
+      method: "POST",
+      body: JSON.stringify({ mandate }),
+    });
   },
 
   releaseCapabilityGap(candidateId: string): Promise<unknown> {

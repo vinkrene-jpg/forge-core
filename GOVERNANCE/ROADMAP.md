@@ -188,3 +188,14 @@ Status: implemented and live verified from historical authoritative mission evid
 - Operator release creates only an idempotent, `not_started` `operator.goal-build` mission. It grants no approval, execution or push authority.
 - Forge Desktop shows the missing capability, occurrence count, cause, proposed goal and released state.
 - Evidence: `reconstruction/CAPABILITY_GAP_FEEDBACK_VERIFICATION.json`.
+
+## Bounded autonomous capability-goal run - 2026-08-15
+
+Status: implemented and runtime verified.
+
+- One explicitly approved `operator.goal-run` mandate authorizes Forge to process its deterministic capability-gap ranking without per-goal operator intervention.
+- Immutable limits cover allowed directories, maximum goals, duration and estimated provider cost; existing hard-protected paths and no-push rules remain unchanged.
+- Every materialized GoalSpec still traverses capability analysis, governance assessment, fixed typecheck/test/build verification, deterministic evaluation and rollback.
+- The Mission Engine executes queued work sequentially. A mandate boundary cancels pending children, and three failures for one capability stop the run before a fourth plan.
+- Runtime integration proved two ranked gaps completed and disappeared under one approval with no child approvals. Focused boundary tests proved the failure limit and out-of-directory blocking.
+- Evidence: `reconstruction/CAPABILITY_GOAL_RUN_VERIFICATION.json`.

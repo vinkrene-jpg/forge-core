@@ -87,6 +87,38 @@ router.get("/capability-gaps", (_req, res): void => {
   });
 });
 
+router.get("/capability-goal-runs", (_req, res): void => {
+  const runs = forgeRuntime.listMissions()
+    .filter((mission) => mission.kind === "operator.goal-run")
+    .map((mission) => ({
+      mission,
+      report: mission.output ? forgeRuntime.getCapabilityGoalRunReport(mission.id) : null,
+    }));
+  res.json({ runs });
+});
+
+router.post("/capability-goal-runs", async (req, res): Promise<void> => {
+  try {
+    const result = await forgeRuntime.createCapabilityGoalRun(req.body?.mandate);
+    res.status(202).json({
+      ...result.mission,
+      governance: result.governance,
+      approval: result.approval,
+      capabilityAnalysis: result.capabilityAnalysis,
+    });
+  } catch (error) {
+    res.status(400).json({ error: message(error) });
+  }
+});
+
+router.get("/capability-goal-runs/:missionId/report", (req, res): void => {
+  try {
+    res.json(forgeRuntime.getCapabilityGoalRunReport(req.params.missionId));
+  } catch (error) {
+    res.status(404).json({ error: message(error) });
+  }
+});
+
 router.post(
   "/capability-gaps/:candidateId/release",
   async (req, res): Promise<void> => {

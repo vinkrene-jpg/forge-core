@@ -39,6 +39,10 @@ export interface MissionEngineOptions {
     mission: MissionRecord,
     signal: AbortSignal,
   ) => Promise<Readonly<Record<string, unknown>>>;
+  readonly executeGoalRun?: (
+    mission: MissionRecord,
+    signal: AbortSignal,
+  ) => Promise<Readonly<Record<string, unknown>>>;
   readonly executeWorkspaceChange?: (
     mission: MissionRecord,
     signal: AbortSignal,
@@ -168,6 +172,7 @@ function assertSupportedKind(kind: unknown): asserts kind is MissionKind {
     kind !== "runtime.self-check" &&
     kind !== "runtime.stability-window" &&
     kind !== "operator.autonomous-cycle" &&
+    kind !== "operator.goal-run" &&
     kind !== "operator.goal-build" &&
     kind !== "operator.workspace-change" &&
     kind !== "operator.workspace-plan" &&
@@ -236,6 +241,8 @@ export class MissionEngine {
     MissionEngineOptions["executeAutonomousCycle"];
   readonly #executeGoalBuild:
     MissionEngineOptions["executeGoalBuild"];
+  readonly #executeGoalRun:
+    MissionEngineOptions["executeGoalRun"];
   readonly #executeWorkspaceChange:
     MissionEngineOptions["executeWorkspaceChange"];
   readonly #executeWorkspacePlan:
@@ -256,6 +263,7 @@ export class MissionEngine {
     this.#executeAutonomousCycle =
       options.executeAutonomousCycle;
     this.#executeGoalBuild = options.executeGoalBuild;
+    this.#executeGoalRun = options.executeGoalRun;
     this.#executeWorkspaceChange =
       options.executeWorkspaceChange;
     this.#executeWorkspacePlan =
@@ -418,6 +426,8 @@ export class MissionEngine {
               ? "Runtime stability window"
               : request.kind === "operator.autonomous-cycle"
                 ? "Autonomous provider cycle"
+                : request.kind === "operator.goal-run"
+                  ? "Governed autonomous goal run"
                 : request.kind === "operator.goal-build"
                   ? "Governed GoalSpec build"
                 : request.kind === "operator.workspace-change"
@@ -512,6 +522,78 @@ export class MissionEngine {
       });
 
       return cloneMission(mission);
+    });
+  }
+
+  async cancelPending(missionId: string, reason: string): Promise<MissionRecord> {
+    this.#ensureInitialized();
+
+    return this.#mutate(async () => {
+      const index = this.#state.missions.findIndex((mission) => mission.id === missionId);
+      if (index < 0) {
+        throw new Error(`Mission not found: ${missionId}`);
+      }
+      const current = this.#state.missions[index];
+      if (
+        current.status !== "queued" &&
+        current.status !== "not_started" &&
+        current.status !== "awaiting_approval"
+      ) {
+        return cloneMission(current);
+      }
+      const now = new Date().toISOString();
+      const cancelled = cloneMission({
+        ...current,
+        status: "cancelled",
+        updatedAt: now,
+        completedAt: now,
+        lastError: reason,
+      });
+      const missions = [...this.#state.missions];
+      missions[index] = cancelled;
+      this.#state = Object.freeze({
+        version: MISSION_STORE_VERSION,
+        missions: Object.freeze(missions),
+      });
+      await this.#stateStore.save(this.#state);
+      this.#events.publish("mission.cancelled", {
+        missionId,
+        kind: current.kind,
+        reason,
+      });
+      return cloneMission(cancelled);
+    });
+  }
+
+  async recordPendingFailure(missionId: string, error: unknown): Promise<MissionRecord> {
+    this.#ensureInitialized();
+    const failure = failurePayload(error);
+
+    return this.#mutate(async () => {
+      const index = this.#state.missions.findIndex((mission) => mission.id === missionId);
+      if (index < 0) throw new Error(`Mission not found: ${missionId}`);
+      const current = this.#state.missions[index];
+      if (current.status !== "queued" && current.status !== "not_started") {
+        throw new Error(`Mission ${missionId} is not pending execution`);
+      }
+      const now = new Date().toISOString();
+      const failed = cloneMission({
+        ...current,
+        status: "failed",
+        updatedAt: now,
+        completedAt: now,
+        output: Object.freeze({
+          ...(failure.output ?? {}),
+          missionResult: missionResult(failure.status, failure.cause, failure.message),
+        }),
+        lastError: failure.message,
+      });
+      const missions = [...this.#state.missions];
+      missions[index] = failed;
+      this.#state = Object.freeze({ version: MISSION_STORE_VERSION, missions: Object.freeze(missions) });
+      await this.#stateStore.save(this.#state);
+      this.#events.publish("mission.failed", { missionId, kind: current.kind, beforeExecution: true });
+      return cloneMission(failed);
     });
   }
 
@@ -945,6 +1027,13 @@ export class MissionEngine {
         throw new Error("Goal build executor is not configured");
       }
       return this.#executeGoalBuild(mission, signal);
+    }
+
+    if (mission.kind === "operator.goal-run") {
+      if (!this.#executeGoalRun) {
+        throw new Error("Goal run executor is not configured");
+      }
+      return this.#executeGoalRun(mission, signal);
     }
 
     if (mission.kind === "operator.workspace-change") {

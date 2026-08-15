@@ -1,9 +1,11 @@
-import { AlertTriangle, Boxes, Target } from "lucide-react";
+import { AlertTriangle, Boxes, Play, ShieldCheck, Target } from "lucide-react";
 import {
+  useCapabilityGoalRunsQuery,
   useCapabilityGapsQuery,
   useCapabilitiesQuery,
   useReleaseCapabilityGap,
   useRuntimeQuery,
+  useStartCapabilityGoalRun,
 } from "@/hooks/use-forge-live";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -17,7 +19,9 @@ import {
 export default function Capabilities() {
   const capabilities = useCapabilitiesQuery();
   const gaps = useCapabilityGapsQuery();
+  const goalRuns = useCapabilityGoalRunsQuery();
   const releaseGap = useReleaseCapabilityGap();
+  const startGoalRun = useStartCapabilityGoalRun();
   const runtime = useRuntimeQuery();
 
   const records = [...(capabilities.data?.capabilities ?? [])].sort(
@@ -25,6 +29,7 @@ export default function Capabilities() {
       left.name.localeCompare(right.name),
   );
   const candidates = gaps.data?.candidates ?? [];
+  const runs = [...(goalRuns.data?.runs ?? [])].reverse();
 
   return (
     <div className="space-y-6">
@@ -39,6 +44,67 @@ export default function Capabilities() {
           Current, persistent evidence of what Forge can safely execute.
         </p>
       </div>
+
+      <section className="border-y border-border/70 py-5">
+        <div className="flex flex-wrap items-center justify-between gap-4">
+          <div>
+            <h2 className="flex items-center gap-2 text-lg font-semibold">
+              <ShieldCheck className="h-5 w-5 text-primary" />
+              Autonome doelrun
+            </h2>
+            <p className="mt-1 text-sm text-muted-foreground">
+              Eén approval, maximaal drie doelen, alleen lib/ en artifacts/.
+            </p>
+          </div>
+          <Button
+            type="button"
+            disabled={startGoalRun.isPending || candidates.length === 0}
+            onClick={() => startGoalRun.mutate({
+              allowedDirectories: ["lib/", "artifacts/"],
+              maximumGoals: 3,
+              maximumDurationMs: 3_600_000,
+              maximumCostUsd: 5,
+            })}
+          >
+            <Play className="h-4 w-4" />
+            Run-mandaat aanvragen
+          </Button>
+        </div>
+
+        {runs.length > 0 && (
+          <div className="mt-4 divide-y divide-border/70 border-y border-border/70">
+            {runs.slice(0, 5).map(({ mission, report }) => (
+              <div key={mission.id} className="grid gap-3 py-4 lg:grid-cols-[12rem_1fr_auto] lg:items-start">
+                <div>
+                  <Badge variant={mission.status === "failed" ? "destructive" : "outline"}>
+                    {mission.status}
+                  </Badge>
+                  <div className="mt-2 font-mono text-xs text-muted-foreground">
+                    {mission.id.slice(0, 8)}
+                  </div>
+                </div>
+                <div className="space-y-2 text-sm">
+                  {(report?.goals ?? []).map((goal) => (
+                    <div key={goal.goalMissionId} className="flex flex-wrap items-center gap-2">
+                      <span className="font-medium">{goal.capabilityId}</span>
+                      <Badge variant="secondary">{goal.status}</Badge>
+                      <span className="text-muted-foreground">{goal.cause}</span>
+                      {goal.gapResolved && <Badge>gap weg</Badge>}
+                    </div>
+                  ))}
+                  {!report && <span className="text-muted-foreground">Wacht op approval</span>}
+                </div>
+                <div className="text-right text-sm">
+                  <div>{report?.resolvedGapIds.length ?? 0} gaps weg</div>
+                  <div className="text-muted-foreground">
+                    ${(report?.actualEstimatedCostUsd ?? 0).toFixed(4)}
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+      </section>
 
       <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
         {[

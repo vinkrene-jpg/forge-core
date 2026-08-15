@@ -1,0 +1,60 @@
+{
+  "verificationId": "CAPABILITY_GOAL_RUN_01",
+  "verifiedAt": "2026-08-15T13:38:07.5089390+02:00",
+  "branch": "forge-sync-primary",
+  "sourceBaseCommit": "63a3f05a877f49e2d996f7d93016388054fa15e9",
+  "status": "verified",
+  "claim": "Forge processes its deterministic capability-goal list without repeated operator intervention under one bounded run mandate.",
+  "authority": {
+    "missionKind": "operator.goal-run",
+    "approvalsRequired": 1,
+    "childApprovalsCreated": 0,
+    "immutableLimits": [
+      "allowedDirectories",
+      "maximumGoals",
+      "maximumDurationMs",
+      "maximumCostUsd"
+    ],
+    "maximumGoalsHardLimit": 20,
+    "capabilityFailureLimit": 3,
+    "pushAuthorized": false
+  },
+  "liveRuntimeProof": {
+    "testFile": "lib/forge-runtime/src/capability-goal-run-runtime.test.ts",
+    "runtimeStarted": true,
+    "rankedGoalsSelected": 2,
+    "goalBuildMissionsAccepted": 2,
+    "resolvedCapabilityGaps": 2,
+    "remainingCapabilityGaps": 0,
+    "childApprovalsCreated": 0,
+    "workspaceExecutionsVerified": true
+  },
+  "boundaryProof": {
+    "testFile": "lib/forge-runtime/src/capability-goal-run-failure.test.ts",
+    "stopsBeforeFourthCapabilityFailure": true,
+    "blocksTargetOutsideMandateDirectories": true,
+    "pendingChildrenCancelledAtBoundary": true
+  },
+  "validation": {
+    "executionMode": "strictly sequential; one test file process at a time",
+    "runtimeTests": {
+      "passed": 103,
+      "total": 103
+    },
+    "apiTests": {
+      "passed": 53,
+      "total": 53
+    },
+    "frontendTests": {
+      "passed": 25,
+      "total": 25
+    },
+    "allTests": {
+      "passed": 181,
+      "total": 181
+    },
+    "rootTypecheck": "passed",
+    "rootBuild": "passed",
+    "gitDiffCheck": "passed"
+  }
+}

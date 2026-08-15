@@ -214,10 +214,20 @@ export function rankCapabilityGapCandidates(
 ): readonly CapabilityGapCandidate[] {
   const capabilityById = new Map(capabilities.map((item) => [item.id, item]));
   const releasedByCandidate = new Map<string, string>();
+  const resolvedCandidates = new Set<string>();
   for (const mission of missions) {
     const candidate = mission.input.capabilityGapCandidateId;
     if (mission.kind === "operator.goal-build" && typeof candidate === "string") {
       releasedByCandidate.set(candidate, mission.id);
+    }
+    const evaluation = record(mission.output?.evaluation);
+    if (
+      mission.kind === "operator.workspace-change" &&
+      mission.status === "succeeded" &&
+      evaluation?.decision === "accepted" &&
+      typeof candidate === "string"
+    ) {
+      resolvedCandidates.add(candidate);
     }
   }
   const grouped = new Map<string, CapabilityAnalysisRecord[]>();
@@ -264,7 +274,7 @@ export function rankCapabilityGapCandidates(
       proposedGoalSpec,
       releasedGoalSpecMissionId: releasedByCandidate.get(id) ?? null,
     });
-  });
+  }).filter((candidate) => !resolvedCandidates.has(candidate.id));
 
   return Object.freeze(candidates.sort((left, right) =>
     right.occurrences - left.occurrences ||
