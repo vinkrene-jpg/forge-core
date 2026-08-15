@@ -129,3 +129,7 @@ Mutations outside `sandbox/` require the complete repository `typecheck`, `test`
 ## AD-027 - Generic-build assumptions are structured plan authority
 
 Every provider workspace plan must contain an `assumptions` array in its strict JSON schema; an empty array is valid, omission is not. The workspace-plan system instruction states the same requirement. Forge parses, bounds, persists and links this field with the validated provider output hash and source plan. Generic-build evaluation checks presence of that validated field rather than searching provider free text. Missing plan context keeps `assumptions-explicit` failed; free text cannot satisfy it. Other evaluator gates and exact target, precondition, verification, commit, no-push and evidence checks remain unchanged.
+
+## AD-028 - Capability-gap goals derive from authoritative mission evidence
+
+Failed missions, rejected evaluations and mandate boundaries register idempotent outcome analyses in the existing Capability Registry, linked by mission ID and mapped to an existing capability. Ranked candidate goals are deterministic projections over those analyses and authoritative missionstore records, not persisted status truth. Operator release creates one idempotent `operator.goal-build` mission in `not_started` state with a candidate-only GoalSpec; release never approves, queues or executes it. No separate gap store, automatic retry, expanded mutation root, immutable-path exception or push authority is introduced.

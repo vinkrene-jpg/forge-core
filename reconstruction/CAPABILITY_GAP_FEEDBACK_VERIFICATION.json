@@ -1,0 +1,81 @@
+{
+  "chapter": "FG-006.020",
+  "title": "Capability-linked mission outcome feedback",
+  "verifiedAt": "2026-08-15T09:56:11.682Z",
+  "status": "verified",
+  "implementationCommit": "350aa9c5f766fd3206c80c527487b116e1f9ccf8",
+  "runtimeBinding": {
+    "runtimeBuildSha": "350aa9c5f766fd3206c80c527487b116e1f9ccf8",
+    "runtimeModulePath": "artifacts/api-server/dist/index.mjs",
+    "health": "ok"
+  },
+  "architecture": {
+    "gapPersistence": "existing capability registry analyses",
+    "candidateProjection": "existing capability analyses joined with missionstore records",
+    "additionalStore": false,
+    "automaticGoalExecution": false,
+    "mutationRootsChanged": false,
+    "immutablePathsChanged": false,
+    "pushAuthorityChanged": false
+  },
+  "historicalMissionProof": [
+    {
+      "missionPrefix": "590a73c5",
+      "capabilityId": "evaluation.output.assess",
+      "causes": [
+        "evaluation-rejected",
+        "evaluation-rejected:assumptions-explicit"
+      ]
+    },
+    {
+      "missionPrefix": "455dd01a",
+      "capabilityId": "evaluation.output.assess",
+      "causes": [
+        "evaluation-rejected",
+        "evaluation-rejected:assumptions-explicit"
+      ]
+    },
+    {
+      "missionPrefix": "ed87826a",
+      "capabilityId": "workspace.plan.validate",
+      "causes": [
+        "workspace-plan-validation-failed"
+      ]
+    }
+  ],
+  "rankingProof": {
+    "candidateCount": 14,
+    "topCandidateId": "gap-830c3ad8ec34dd5db0f9",
+    "topCapabilityId": "evaluation.output.assess",
+    "topCause": "evaluation-rejected",
+    "topOccurrenceCount": 1845,
+    "proposedGoal": "Strengthen Deterministic Provider Output Evaluation against evaluation-rejected"
+  },
+  "operatorReleaseProof": {
+    "candidateId": "gap-830c3ad8ec34dd5db0f9",
+    "missionId": "d1fe7a03-07ba-4e4a-bf27-39e32e62e438",
+    "missionKind": "operator.goal-build",
+    "missionStatus": "not_started",
+    "attempts": 0,
+    "approvalCount": 0,
+    "candidateGoalSpecOnly": true,
+    "idempotentRepeatedRelease": true
+  },
+  "consoleProof": {
+    "route": "/capabilities",
+    "heading": "Wat mist Forge",
+    "rankedOccurrenceCountVisible": true,
+    "causesVisible": true,
+    "proposedGoalsVisible": true,
+    "releasedStateVisible": true
+  },
+  "verification": {
+    "runtimeTests": "98/98 passed",
+    "apiTests": "53/53 passed",
+    "frontendTests": "25/25 passed",
+    "totalTests": "176/176 passed",
+    "typecheck": "passed",
+    "build": "passed",
+    "diffCheck": "passed"
+  }
+}

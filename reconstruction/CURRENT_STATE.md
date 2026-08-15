@@ -2,6 +2,17 @@
 
 Verified through: 2026-07-12 19:16 +02:00
 
+## Capability-linked mission outcome feedback - live verification
+
+- Terminal failed missions, rejected evaluations and mandate boundaries register idempotent capability-linked analyses in the existing Capability Registry; there is no gap store.
+- Candidate goals are deterministic, frequency-ranked projections over those analyses and authoritative missionstore records.
+- Operator release creates one idempotent `operator.goal-build` mission in `not_started` state with zero attempts and no approval. Forge does not execute the candidate automatically.
+- Live runtime commit `350aa9c5f766fd3206c80c527487b116e1f9ccf8` ranked 14 candidates. The top `evaluation.output.assess` / `evaluation-rejected` cause had 1,845 occurrences.
+- Existing missions `590a73c5` and `455dd01a` linked to evaluation gaps; `ed87826a` linked to `workspace.plan.validate` / `workspace-plan-validation-failed`.
+- Released GoalSpec mission `d1fe7a03-07ba-4e4a-bf27-39e32e62e438` remained inert and repeated release returned the same mission.
+- Runtime 98/98, API 53/53 and frontend 25/25 tests passed; root typecheck and build passed.
+- Evidence: `reconstruction/CAPABILITY_GAP_FEEDBACK_VERIFICATION.json`.
+
 ## GoalSpec-level authorization - deterministic verification
 
 - `operator.goal-build` is the single approval-bearing parent for one bounded GoalSpec and its validated BuildGraph proposal.

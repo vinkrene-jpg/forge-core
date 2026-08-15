@@ -1,8 +1,8 @@
 # Forge Next Mission
 
-## Resume point after governed Forge source mutation
+## Resume point after capability-linked gap feedback
 
-Status: Forge has live-mutated real `lib/forge-runtime` TypeScript, added its own passing test, committed only after full verification, and automatically restored an exact snapshot after a genuinely breaking follow-up mutation. Existing immutable and governance paths remain protected.
+Status: Forge now derives and ranks recurring capability gaps from authoritative terminal mission evidence. An operator can release a candidate as one inert GoalSpec mission, but Forge cannot approve or execute it automatically. Existing mutation roots, immutable paths and push boundaries remain unchanged.
 
 ## Verified baseline
 
@@ -20,10 +20,14 @@ Status: Forge has live-mutated real `lib/forge-runtime` TypeScript, added its ow
 12. The restart-enabled street completed 21 steps with 20 PASS, one expected dirty-tree Git WARNING, zero errors and exit code 0; isolated restart proof left live PID `17556` and its single listener untouched.
 13. Live source mutation mission `4a4e4941-9caa-44de-9eb6-be21f08660d8` created two `lib/forge-runtime` files, passed typecheck, 146/146 tests and build, received accepted evaluation score 100, and committed locally as `9f6a125df3207c9e55c866c627d7b0eb7abc353d` without push.
 14. Breaking execution `c9059e83-967d-4113-bcc1-3497c451a960` failed the complete test gate, persisted `rolled_back`, created no commit, restored the original SHA and left HEAD unchanged with a clean worktree.
+15. Runtime commit `350aa9c5f766fd3206c80c527487b116e1f9ccf8` registered terminal outcome gaps in existing capability analyses and ranked 14 candidate goals by recurring cause.
+16. Historical missions `590a73c5`, `455dd01a` and `ed87826a` are linked respectively to evaluation and workspace-plan validation gaps.
+17. Operator release created GoalSpec mission `d1fe7a03-07ba-4e4a-bf27-39e32e62e438`; it remained `not_started` with zero attempts and zero approvals, and repeated release was idempotent.
+18. Runtime 98/98, API 53/53 and frontend 25/25 tests, root typecheck, build and live console verification passed.
 
 ## Next action
 
-Use the verified source-mutation baseline for the next bounded GoalSpec component. Keep the target under the existing three roots, require exact SHA preconditions and full verification, and inspect the final GoalSpec report through authoritative mission APIs. Do not widen allowed roots, immutable paths, graph limits or push authority.
+Select the next bounded GoalSpec only through explicit operator governance. Preserve candidate projection determinism, inspect the released `operator.goal-build` mission through authoritative APIs, and do not infer execution authority from release. Keep targets under the existing three roots and do not widen allowed roots, immutable paths, graph limits or push authority.
 
 ## Failure rules
 
@@ -42,3 +46,6 @@ Use the verified source-mutation baseline for the next bounded GoalSpec componen
 - Graph learning evidence remains forbidden until integration evaluation accepts every node.
 - Source mutation roots remain exactly `sandbox/`, `lib/` and `artifacts/`; every other root fails closed.
 - `lib/` and `artifacts/` mutations require typecheck, the complete test suite and build before commit; any failure must restore exact snapshots.
+- Capability gaps must remain analyses in the existing Capability Registry; do not add a parallel gap or candidate store.
+- Candidate ranking must remain a deterministic projection over capability analyses and missionstore records.
+- Releasing a candidate may create only an inert `operator.goal-build` mission; it may not approve, queue or execute that mission.

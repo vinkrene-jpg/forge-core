@@ -177,3 +177,14 @@ Status: implemented and live verified on real Forge TypeScript through the host-
 - Breaking execution `c9059e83-967d-4113-bcc1-3497c451a960` failed the complete test gate and persisted exact automatic rollback with no commit, unchanged HEAD, restored source SHA and clean worktree.
 - Evidence: `reconstruction/SELF_MUTATION_VERIFICATION.json`.
 - Source evidence: `reconstruction/SELF_MUTATION_SOURCE_VERIFICATION.json`.
+
+## Capability-linked gap feedback - 2026-08-15
+
+Status: implemented and live verified from historical authoritative mission evidence.
+
+- Failed missions, rejected evaluations and mandate boundaries register idempotent analyses in the existing Capability Registry.
+- Candidate goals are frequency-ranked projections over capability analyses and missionstore records; no second persistence store was added.
+- Existing missions `590a73c5`, `455dd01a` and `ed87826a` prove evaluation and workspace-plan validation gap linkage.
+- Operator release creates only an idempotent, `not_started` `operator.goal-build` mission. It grants no approval, execution or push authority.
+- Forge Desktop shows the missing capability, occurrence count, cause, proposed goal and released state.
+- Evidence: `reconstruction/CAPABILITY_GAP_FEEDBACK_VERIFICATION.json`.
