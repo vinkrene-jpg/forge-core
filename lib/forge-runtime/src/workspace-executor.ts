@@ -276,6 +276,7 @@ async function runProcess(
   args: readonly string[],
   cwd: string,
   signal?: AbortSignal,
+  env: NodeJS.ProcessEnv = process.env,
 ): Promise<WorkspaceCommandResult> {
   const started = Date.now();
 
@@ -285,7 +286,7 @@ async function runProcess(
       shell: false,
       windowsHide: true,
       signal,
-      env: process.env,
+      env,
     });
     let stdout = "";
     let stderr = "";
@@ -318,6 +319,9 @@ export class NodeWorkspaceVerificationRunner implements WorkspaceVerificationRun
     signal: AbortSignal,
     fullRepository: boolean,
   ): Promise<WorkspaceCommandResult> {
+    const environment = { ...process.env };
+    delete environment.STORAGE_DIR;
+    environment.FORGE_WORKSPACE_ROOT = rootPath;
     const args =
       step === "test"
         ? fullRepository
@@ -331,10 +335,11 @@ export class NodeWorkspaceVerificationRunner implements WorkspaceVerificationRun
         ["/d", "/s", "/c", "pnpm", ...args],
         rootPath,
         signal,
+        environment,
       );
     }
 
-    return runProcess("pnpm", args, rootPath, signal);
+    return runProcess("pnpm", args, rootPath, signal, environment);
   }
 }
 
