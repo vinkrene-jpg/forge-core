@@ -82,7 +82,7 @@ function proofRequest(overrides: Record<string, unknown> = {}) {
     input: {
       projectId: "forge-core",
       objective:
-        "Maak forge-proof.txt, lees het bestand terug en rapporteer de SHA-256 hash.",
+        "Maak sandbox/forge-proof.txt, lees het bestand terug en rapporteer de SHA-256 hash.",
       cycleIndex: 1,
       maxCycles: 1,
       files: [],
@@ -259,14 +259,14 @@ test("execution slice", { concurrency: false }, async (t) => {
     await withEnvironment(async () => {
       const stubExecutor: WorkspaceChangeExecutor = {
         async execute(rootPath, missionId, request) {
-          const proof = request.changes.find((change) => change.path === "forge-proof.txt");
+          const proof = request.changes.find((change) => change.path === "sandbox/forge-proof.txt");
           const content = proof?.content ?? "";
-          await mkdir(rootPath, { recursive: true });
-          await writeFile(path.join(rootPath, "forge-proof.txt"), content, "utf8");
+          await mkdir(path.join(rootPath, "sandbox"), { recursive: true });
+          await writeFile(path.join(rootPath, "sandbox", "forge-proof.txt"), content, "utf8");
 
           return buildExecutionResult({
             missionId,
-            path: "forge-proof.txt",
+            path: "sandbox/forge-proof.txt",
             afterSha: "",
             verification: Object.freeze([
               Object.freeze({
@@ -319,14 +319,14 @@ test("execution slice", { concurrency: false }, async (t) => {
     await withEnvironment(async () => {
       const stubExecutor: WorkspaceChangeExecutor = {
         async execute(rootPath, missionId, request) {
-          const proof = request.changes.find((change) => change.path === "forge-proof.txt");
+          const proof = request.changes.find((change) => change.path === "sandbox/forge-proof.txt");
           const content = proof?.content ?? "";
-          await mkdir(rootPath, { recursive: true });
-          await writeFile(path.join(rootPath, "forge-proof.txt"), content, "utf8");
+          await mkdir(path.join(rootPath, "sandbox"), { recursive: true });
+          await writeFile(path.join(rootPath, "sandbox", "forge-proof.txt"), content, "utf8");
 
           return buildExecutionResult({
             missionId,
-            path: "forge-proof.txt",
+            path: "sandbox/forge-proof.txt",
             afterSha: sha256(content),
             verification: Object.freeze([]),
           });
@@ -371,7 +371,7 @@ test("execution slice", { concurrency: false }, async (t) => {
 
       await runtime.start();
       const created = await runtime.createMission(
-        proofRequest({ proofTargetPath: ".env" }),
+        proofRequest({ proofTargetPath: "sandbox/.env" }),
       );
       assert.ok(created.approval);
       await runtime.approveApproval(created.approval.id, "execution-slice");

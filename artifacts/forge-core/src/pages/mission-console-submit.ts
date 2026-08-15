@@ -10,6 +10,7 @@ export interface MissionConsoleRequestDiagnostic {
 }
 
 function extractLabeledTargets(rawObjective: string): readonly string[] {
+  const allowedRoots = new Set(["sandbox", "lib", "artifacts"]);
   const pathLines = rawObjective
     .split(/\r?\n/)
     .map((line) => line.match(/^Pad:\s*(\S+)\s*$/i)?.[1] ?? null)
@@ -23,7 +24,7 @@ function extractLabeledTargets(rawObjective: string): readonly string[] {
   for (const targetPath of uniquePaths) {
     const segments = targetPath.replaceAll("\\", "/").split("/");
     if (
-      segments[0]?.toLowerCase() !== "sandbox" ||
+      !allowedRoots.has(segments[0]?.toLowerCase() ?? "") ||
       segments.length < 2 ||
       segments.some(
         (segment) =>
@@ -32,7 +33,7 @@ function extractLabeledTargets(rawObjective: string): readonly string[] {
           segment === "..",
       )
     ) {
-      throw new Error("Mission Console targets must remain inside sandbox/");
+      throw new Error("Mission Console targets must remain inside sandbox/, lib/, or artifacts/");
     }
   }
 

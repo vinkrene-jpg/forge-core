@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { createHash } from "node:crypto";
 import { execFile } from "node:child_process";
-import { mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
+import { mkdir, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
 import { promisify } from "node:util";
@@ -33,15 +33,20 @@ async function createRepository(): Promise<string> {
   await git(root, "init", "-b", "test/workspace-executor");
   await git(root, "config", "user.name", "Forge Test");
   await git(root, "config", "user.email", "forge-test@example.invalid");
-  await writeFile(path.join(root, "sample.txt"), "before\n", "utf8");
-  await git(root, "add", "sample.txt");
+  await mkdir(path.join(root, "sandbox"));
+  await writeFile(path.join(root, "sandbox", "sample.txt"), "before\n", "utf8");
+  await git(root, "add", "sandbox/sample.txt");
   await git(root, "commit", "-m", "test baseline");
   return root;
 }
 
-function runner(exitCode: number): WorkspaceVerificationRunner {
+function runner(
+  exitCode: number,
+  calls: { step: string; fullRepository: boolean }[] = [],
+): WorkspaceVerificationRunner {
   return {
-    async run(step) {
+    async run(step, _rootPath, _signal, fullRepository) {
+      calls.push({ step, fullRepository });
       return Object.freeze({
         command: `fake ${step}`,
         exitCode,
@@ -81,7 +86,7 @@ test("workspace executor", { concurrency: false }, async (t) => {
       const request = parseWorkspaceChangeRequest({
         changes: [
           {
-            path: "sample.txt",
+            path: "sandbox/sample.txt",
             expectedSha256: hash("before\n"),
             content: "after\n",
           },
@@ -103,7 +108,7 @@ test("workspace executor", { concurrency: false }, async (t) => {
       assert.equal(result.rollbackPerformed, false);
       assert.match(result.commitSha ?? "", /^[a-f0-9]{40}$/);
       assert.equal(
-        await readFile(path.join(root, "sample.txt"), "utf8"),
+        await readFile(path.join(root, "sandbox", "sample.txt"), "utf8"),
         "after\n",
       );
       assert.equal(await git(root, "status", "--porcelain"), "");
@@ -132,12 +137,12 @@ test("workspace executor", { concurrency: false }, async (t) => {
       const request = parseWorkspaceChangeRequest({
         changes: [
           {
-            path: "sample.txt",
+            path: "sandbox/sample.txt",
             expectedSha256: hash("before\n"),
             content: "unsafe\n",
           },
           {
-            path: "created.txt",
+            path: "sandbox/created.txt",
             expectedSha256: null,
             content: "temporary\n",
           },
@@ -162,11 +167,11 @@ test("workspace executor", { concurrency: false }, async (t) => {
       );
 
       assert.equal(
-        await readFile(path.join(root, "sample.txt"), "utf8"),
+        await readFile(path.join(root, "sandbox", "sample.txt"), "utf8"),
         "before\n",
       );
       assert.equal(await git(root, "status", "--porcelain"), "");
-      await assert.rejects(readFile(path.join(root, "created.txt")));
+      await assert.rejects(readFile(path.join(root, "sandbox", "created.txt")));
     } finally {
       await rm(root, { recursive: true, force: true });
     }
@@ -197,7 +202,7 @@ test("workspace executor", { concurrency: false }, async (t) => {
             projectId: "forge-core",
             changes: [
               {
-                path: "sample.txt",
+                path: "sandbox/sample.txt",
                 expectedSha256: hash("before\n"),
                 content: "runtime-after\n",
               },
@@ -214,7 +219,7 @@ test("workspace executor", { concurrency: false }, async (t) => {
         assert.equal(created.governance.decision, "require_approval");
         assert.ok(created.approval);
         assert.equal(
-          await readFile(path.join(root, "sample.txt"), "utf8"),
+          await readFile(path.join(root, "sandbox", "sample.txt"), "utf8"),
           "before\n",
         );
 
@@ -286,5 +291,105 @@ test("workspace executor", { concurrency: false }, async (t) => {
         }),
       /Protected workspace path/,
     );
+    assert.throws(
+      () =>
+        parseWorkspaceChangeRequest({
+          changes: [
+            { path: "scripts/example.ts", expectedSha256: null, content: "changed" },
+          ],
+          verification: ["typecheck", "test", "build"],
+          commit: null,
+        }),
+      /must remain inside sandbox\/, lib\/, or artifacts\//,
+    );
+  });
+
+  await t.test("requires the complete verification suite outside sandbox", () => {
+    const change = {
+      changes: [
+        { path: "lib/example.ts", expectedSha256: null, content: "export {};" },
+      ],
+      commit: null,
+    };
+    assert.throws(
+      () => parseWorkspaceChangeRequest({ ...change, verification: ["typecheck", "test"] }),
+      /require typecheck, test, and build/,
+    );
+    assert.doesNotThrow(() => parseWorkspaceChangeRequest({
+      ...change,
+      verification: ["typecheck", "test", "build"],
+    }));
+  });
+
+  await t.test("commits lib changes only after repository-wide verification", async () => {
+    const root = await createRepository();
+    const calls: { step: string; fullRepository: boolean }[] = [];
+    try {
+      const executor = new WorkspaceExecutor({
+        events: new RuntimeEventBus(),
+        verificationRunner: runner(0, calls),
+      });
+      const request = parseWorkspaceChangeRequest({
+        changes: [{
+          path: "lib/example.ts",
+          expectedSha256: null,
+          content: "export const example = true;\n",
+        }],
+        verification: ["typecheck", "test", "build"],
+        commit: { message: "test: verified lib change", push: false },
+      });
+
+      const result = await executor.execute(
+        root,
+        "mission-lib-success",
+        request,
+        new AbortController().signal,
+      );
+
+      assert.equal(result.status, "committed");
+      assert.deepEqual(calls, [
+        { step: "typecheck", fullRepository: true },
+        { step: "test", fullRepository: true },
+        { step: "build", fullRepository: true },
+      ]);
+      assert.equal(await git(root, "status", "--porcelain"), "");
+    } finally {
+      await rm(root, { recursive: true, force: true });
+    }
+  });
+
+  await t.test("rolls back a failed lib verification to a clean worktree", async () => {
+    const root = await createRepository();
+    const calls: { step: string; fullRepository: boolean }[] = [];
+    try {
+      const executor = new WorkspaceExecutor({
+        events: new RuntimeEventBus(),
+        verificationRunner: runner(1, calls),
+      });
+      const request = parseWorkspaceChangeRequest({
+        changes: [{
+          path: "lib/broken.ts",
+          expectedSha256: null,
+          content: "export const broken = ;\n",
+        }],
+        verification: ["typecheck", "test", "build"],
+        commit: { message: "test: rejected lib change", push: false },
+      });
+
+      await assert.rejects(
+        executor.execute(root, "mission-lib-failure", request, new AbortController().signal),
+        (error: unknown) => {
+          assert.ok(error instanceof WorkspaceExecutionError);
+          assert.equal(error.result.status, "rolled_back");
+          assert.equal(error.result.rollbackPerformed, true);
+          return true;
+        },
+      );
+      assert.deepEqual(calls, [{ step: "typecheck", fullRepository: true }]);
+      await assert.rejects(readFile(path.join(root, "lib", "broken.ts")));
+      assert.equal(await git(root, "status", "--porcelain"), "");
+    } finally {
+      await rm(root, { recursive: true, force: true });
+    }
   });
 });

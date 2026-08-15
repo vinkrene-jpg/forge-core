@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { createHash } from "node:crypto";
-import { mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
+import { mkdir, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
 import test from "node:test";
@@ -34,7 +34,8 @@ test("provider workspace planner", { concurrency: false }, async (t) => {
     const root = await mkdtemp(path.join(os.tmpdir(), "forge-planner-root-"));
     const storage = await mkdtemp(path.join(os.tmpdir(), "forge-planner-state-"));
     const source = "before\n";
-    await writeFile(path.join(root, "sample.txt"), source, "utf8");
+    await mkdir(path.join(root, "sandbox"));
+    await writeFile(path.join(root, "sandbox", "sample.txt"), source, "utf8");
 
     const original = new Map([
       ["STORAGE_DIR", process.env.STORAGE_DIR],
@@ -59,12 +60,12 @@ test("provider workspace planner", { concurrency: false }, async (t) => {
           outputText: JSON.stringify({
             schemaVersion: 1,
             assumptions: [
-              "sample.txt is the only approved target and its supplied SHA-256 is current.",
+              "sandbox/sample.txt is the only approved target and its supplied SHA-256 is current.",
             ],
             summary:
-              "Assumptions: sample.txt is the only approved target and its supplied SHA-256 still identifies the current source. Verification guidance: run typecheck and tests, then inspect the committed file and persisted executor evidence before accepting this bounded update.",
+              "Assumptions: sandbox/sample.txt is the only approved target and its supplied SHA-256 still identifies the current source. Verification guidance: run typecheck and tests, then inspect the committed file and persisted executor evidence before accepting this bounded update.",
             changes: [{
-              path: "sample.txt",
+              path: "sandbox/sample.txt",
               expectedSha256: sha256(source),
               content: "after\n",
             }],
@@ -95,13 +96,13 @@ test("provider workspace planner", { concurrency: false }, async (t) => {
         input: {
           projectId: "forge-core",
           objective: "Change the sample only.",
-          targets: [{ path: "sample.txt" }],
+          targets: [{ path: "sandbox/sample.txt" }],
         },
       });
 
       assert.equal(created.mission.status, "awaiting_approval");
       assert.ok(created.approval);
-      assert.equal(await readFile(path.join(root, "sample.txt"), "utf8"), source);
+      assert.equal(await readFile(path.join(root, "sandbox", "sample.txt"), "utf8"), source);
 
       await runtime.approveApproval(created.approval.id, "planner-test");
       await waitFor(
@@ -109,13 +110,13 @@ test("provider workspace planner", { concurrency: false }, async (t) => {
       );
 
       assert.equal(providerCalls, 1);
-      assert.equal(await readFile(path.join(root, "sample.txt"), "utf8"), source);
+      assert.equal(await readFile(path.join(root, "sandbox", "sample.txt"), "utf8"), source);
 
       const scheduled = await runtime.scheduleWorkspacePlan(created.mission.id);
       assert.equal(scheduled.executionMission.mission.status, "awaiting_approval");
       assert.ok(scheduled.executionMission.approval);
       assert.equal(scheduled.plan.request.commit?.push, false);
-      assert.equal(await readFile(path.join(root, "sample.txt"), "utf8"), source);
+      assert.equal(await readFile(path.join(root, "sandbox", "sample.txt"), "utf8"), source);
       assert.ok(
         runtime.snapshot().events.some(
           (event) => event.type === "workspace.plan.scheduled",
@@ -138,7 +139,7 @@ test("provider workspace planner", { concurrency: false }, async (t) => {
 
   await t.test("rejects unapproved paths and changed source hashes", () => {
     const target = {
-      path: "sample.txt",
+      path: "sandbox/sample.txt",
       expectedSha256: sha256("before\n"),
       exists: true,
     } as const;
@@ -157,7 +158,7 @@ test("provider workspace planner", { concurrency: false }, async (t) => {
         schemaVersion: 1,
         assumptions: [],
         summary: "Escape target",
-        changes: [{ path: "other.txt", expectedSha256: null, content: "x" }],
+        changes: [{ path: "sandbox/other.txt", expectedSha256: null, content: "x" }],
         verification: ["typecheck"],
         commit: { message: "test: rejected path", push: false },
       }),
@@ -169,7 +170,7 @@ test("provider workspace planner", { concurrency: false }, async (t) => {
         schemaVersion: 1,
         assumptions: [],
         summary: "Ignore precondition",
-        changes: [{ path: "sample.txt", expectedSha256: null, content: "x" }],
+        changes: [{ path: "sandbox/sample.txt", expectedSha256: null, content: "x" }],
         verification: ["typecheck"],
         commit: { message: "test: rejected hash", push: false },
       }),

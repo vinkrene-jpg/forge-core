@@ -51,12 +51,23 @@ test("two labeled targets keep the complete manifest and use proofTargetPaths", 
   ]);
 });
 
-test("labeled targets outside sandbox are rejected", () => {
+test("labeled lib and artifacts targets are preserved", () => {
+  const request = buildMissionConsoleCreateRequest(
+    "Wijzig broncode.\nPad: lib/example.ts\nPad: artifacts/example.ts",
+    previewRequest(),
+  );
+  assert.deepEqual(request.input.targets, [
+    { path: "lib/example.ts", allowCreate: true },
+    { path: "artifacts/example.ts", allowCreate: true },
+  ]);
+});
+
+test("labeled targets outside allowed roots are rejected", () => {
   assert.throws(
     () => buildMissionConsoleCreateRequest(
-      "Wijzig runtime.\nPad: lib/forge-runtime/src/runtime.ts",
+      "Wijzig script.\nPad: scripts/src/example.ts",
       previewRequest(),
     ),
-    /must remain inside sandbox\//,
+    /must remain inside sandbox\/, lib\/, or artifacts\//,
   );
 });

@@ -95,13 +95,14 @@ export function extractAutonomousWorkspaceTargets(
   const addCandidate = (rawPath: string): void => {
     const targetPath = rawPath.replace(/\\/g, "/");
     const segments = targetPath.split("/");
+    const allowedRoots = new Set(["sandbox", "lib", "artifacts"]);
 
     if (segments.some((segment) => segment === "." || segment === "..")) {
       throw new Error("Workspace target path may not contain traversal segments");
     }
 
-    if (segments[0]?.toLowerCase() !== "sandbox" || segments.length < 2) {
-      throw new Error("Mission intake workspace targets must remain inside sandbox/");
+    if (!allowedRoots.has(segments[0]?.toLowerCase() ?? "") || segments.length < 2) {
+      throw new Error("Mission intake workspace targets must remain inside sandbox/, lib/, or artifacts/");
     }
 
     candidates.set(targetPath.toLowerCase(), targetPath);

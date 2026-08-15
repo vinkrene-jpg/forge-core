@@ -144,6 +144,9 @@ test(
             providerResponseId: "api-workspace-plan",
             outputText: JSON.stringify({
               schemaVersion: 1,
+              assumptions: [
+                "The approved sandbox target does not exist before execution.",
+              ],
               summary:
                 "Assumptions: the requested proof is confined to one new sandbox file and no other repository path may change. Verification guidance: inspect the persisted receipts, file effects, verification runs, artifacts, hashes, and accepted evaluation before treating execution as complete.",
               changes: [{
@@ -229,17 +232,17 @@ test(
       };
       assert.equal(postfixReadOnlyPreview.request.input?.targets, undefined);
 
-      const outsideSandboxPreviewResponse = await fetch(
+      const outsideAllowedRootsPreviewResponse = await fetch(
         `${baseUrl}/api/operator/mission-intake/preview`,
         {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
-            command: "Wijzig lib/forge-runtime/src/runtime.ts.",
+            command: "Wijzig scripts/example.ts.",
           }),
         },
       );
-      assert.equal(outsideSandboxPreviewResponse.status, 400);
+      assert.equal(outsideAllowedRootsPreviewResponse.status, 400);
 
       const multiTargetPreviewResponse = await fetch(
         `${baseUrl}/api/operator/mission-intake/preview`,

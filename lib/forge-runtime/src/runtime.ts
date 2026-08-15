@@ -22,6 +22,7 @@ import {
   realpath,
   rm,
   stat,
+  writeFile,
 } from "node:fs/promises";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
@@ -706,7 +707,7 @@ export class ForgeRuntime {
       const targetPath =
         typeof mission.input.proofTargetPath === "string"
           ? mission.input.proofTargetPath
-          : "forge-proof.txt";
+          : "sandbox/forge-proof.txt";
       const proof = await this.#executeWorkspaceProof(
         mission.id,
         targetPath,
@@ -1204,15 +1205,51 @@ export class ForgeRuntime {
       throw new Error(`Failed to create proof branch: ${branch.stderr || branch.stdout}`);
     }
 
+    await writeFile(
+      path.join(workspaceRoot, "package.json"),
+      JSON.stringify(packageJson, null, 2),
+      "utf8",
+    );
+    const baseline = await runCommand(
+      "git",
+      [
+        "-c",
+        "user.name=Forge Proof",
+        "-c",
+        "user.email=forge-proof@example.invalid",
+        "add",
+        "package.json",
+      ],
+      workspaceRoot,
+      signal,
+    );
+    if (baseline.exitCode !== 0) {
+      throw new Error(`Failed to stage proof baseline: ${baseline.stderr || baseline.stdout}`);
+    }
+    const baselineCommit = await runCommand(
+      "git",
+      [
+        "-c",
+        "user.name=Forge Proof",
+        "-c",
+        "user.email=forge-proof@example.invalid",
+        "commit",
+        "-m",
+        "Initialize proof workspace",
+      ],
+      workspaceRoot,
+      signal,
+    );
+    if (baselineCommit.exitCode !== 0) {
+      throw new Error(
+        `Failed to commit proof baseline: ${baselineCommit.stderr || baselineCommit.stdout}`,
+      );
+    }
+
     let request;
     try {
       request = parseWorkspaceChangeRequest({
         changes: [
-          {
-            path: "package.json",
-            expectedSha256: null,
-            content: JSON.stringify(packageJson, null, 2),
-          },
           {
             path: targetPath,
             expectedSha256: null,
@@ -2239,12 +2276,16 @@ export class ForgeRuntime {
       }
 
       const verificationResults = [];
+      const fullRepositoryVerification = request.changes.some(
+        (change) => !change.path.startsWith("sandbox/"),
+      );
       for (const step of request.verification) {
         this.#throwIfWorkspaceRecoveryTimedOut(signal, mission);
         const result = await this.#workspaceVerificationRunner.run(
           step,
           project.rootPath,
           signal,
+          fullRepositoryVerification,
         );
         if (result.exitCode !== 0) {
           throw new Error(

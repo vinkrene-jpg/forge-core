@@ -32,6 +32,24 @@ test("authorizes exact bounded local goal work", () => {
   }));
 });
 
+test("allows only sandbox, lib and artifacts mandate roots", () => {
+  assert.doesNotThrow(() => parseGoalMandateRequest({
+    allowedPaths: ["lib/example.ts", "artifacts/example.ts"],
+    maximumMissions: 2,
+    maximumDurationMs: 60_000,
+    maximumCostUsd: 0,
+  }));
+  assert.throws(
+    () => parseGoalMandateRequest({
+      allowedPaths: ["scripts/example.ts"],
+      maximumMissions: 1,
+      maximumDurationMs: 60_000,
+      maximumCostUsd: 0,
+    }),
+    (error) => error instanceof GoalMandateBoundaryError && error.boundary === "path",
+  );
+});
+
 test("reports exact path, count, duration and cost boundaries", () => {
   const mandate = authorizeGoalMandate({
     request: request(),

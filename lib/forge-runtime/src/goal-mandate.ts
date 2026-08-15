@@ -42,8 +42,7 @@ export class GoalMandateBoundaryError extends Error {
   }
 }
 
-const hardProtectedPaths = [
-  "GOVERNANCE/",
+export const HARD_PROTECTED_FORGE_FILES = [
   "artifacts/api-server/src/lib/corelock.ts",
   "lib/forge-runtime/src/goal-build-graph.ts",
   "lib/forge-runtime/src/goal-mandate.ts",
@@ -56,6 +55,13 @@ const hardProtectedPaths = [
   "lib/forge-runtime/src/runtime-state.ts",
   "lib/forge-runtime/src/workspace-executor.ts",
 ] as const;
+
+const hardProtectedPaths = [
+  "GOVERNANCE/",
+  ...HARD_PROTECTED_FORGE_FILES,
+] as const;
+
+const allowedMutationRoots = new Set(["sandbox", "lib", "artifacts"]);
 
 function record(value: unknown, field: string): Readonly<Record<string, unknown>> {
   if (typeof value !== "object" || value === null || Array.isArray(value)) {
@@ -121,6 +127,17 @@ export function parseGoalMandateRequest(value: unknown): GoalMandateRequest {
   const protectedTarget = allowedPaths.find(isHardProtectedGoalPath);
   if (protectedTarget) {
     throw new GoalMandateBoundaryError("hard-protection", "core-and-guardians", protectedTarget);
+  }
+  const outsideAllowedRoots = allowedPaths.find((targetPath) => {
+    const segments = targetPath.split("/");
+    return segments.length < 2 || !allowedMutationRoots.has(segments[0].toLowerCase());
+  });
+  if (outsideAllowedRoots) {
+    throw new GoalMandateBoundaryError(
+      "path",
+      "sandbox/,lib/,artifacts/",
+      outsideAllowedRoots,
+    );
   }
 
   return Object.freeze({

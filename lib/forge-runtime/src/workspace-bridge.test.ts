@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { createHash } from "node:crypto";
 import { execFile } from "node:child_process";
-import { mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
+import { mkdir, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
 import test from "node:test";
@@ -32,8 +32,9 @@ async function repository(): Promise<string> {
   await git(root, "init", "-b", "test/provider-bridge");
   await git(root, "config", "user.name", "Forge Bridge Test");
   await git(root, "config", "user.email", "forge-bridge@example.invalid");
-  await writeFile(path.join(root, "sample.txt"), "before\n", "utf8");
-  await git(root, "add", "sample.txt");
+  await mkdir(path.join(root, "sandbox"));
+  await writeFile(path.join(root, "sandbox", "sample.txt"), "before\n", "utf8");
+  await git(root, "add", "sandbox/sample.txt");
   await git(root, "commit", "-m", "bridge baseline");
   return root;
 }
@@ -79,7 +80,7 @@ test("authenticated file workspace bridge", { concurrency: false }, async (t) =>
         "bridge-mission-success",
         parseWorkspaceChangeRequest({
           changes: [{
-            path: "sample.txt",
+            path: "sandbox/sample.txt",
             expectedSha256: hash("before\n"),
             content: "after\n",
           }],
@@ -93,7 +94,7 @@ test("authenticated file workspace bridge", { concurrency: false }, async (t) =>
       );
 
       assert.equal(result.status, "committed");
-      assert.equal(await readFile(path.join(root, "sample.txt"), "utf8"), "after\n");
+      assert.equal(await readFile(path.join(root, "sandbox", "sample.txt"), "utf8"), "after\n");
       assert.equal(await git(root, "status", "--porcelain"), "");
       assert.ok(events.snapshot().some((event) => event.type === "workspace.bridge.requested"));
       assert.ok(events.snapshot().some((event) => event.type === "workspace.bridge.responded"));
@@ -132,7 +133,7 @@ test("authenticated file workspace bridge", { concurrency: false }, async (t) =>
           "bridge-mission-failure",
           parseWorkspaceChangeRequest({
             changes: [{
-              path: "sample.txt",
+              path: "sandbox/sample.txt",
               expectedSha256: hash("before\n"),
               content: "unsafe\n",
             }],
@@ -149,7 +150,7 @@ test("authenticated file workspace bridge", { concurrency: false }, async (t) =>
         },
       );
 
-      assert.equal(await readFile(path.join(root, "sample.txt"), "utf8"), "before\n");
+      assert.equal(await readFile(path.join(root, "sandbox", "sample.txt"), "utf8"), "before\n");
       assert.equal(await git(root, "status", "--porcelain"), "");
     } finally {
       await host.stop();

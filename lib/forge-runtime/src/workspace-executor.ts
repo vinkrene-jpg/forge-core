@@ -11,6 +11,7 @@ import {
 } from "node:fs/promises";
 import path from "node:path";
 import type { RuntimeEventBus } from "./event-bus";
+import { HARD_PROTECTED_FORGE_FILES } from "./goal-mandate";
 
 export type WorkspaceVerificationStep = "typecheck" | "test" | "build";
 
@@ -54,6 +55,7 @@ export interface WorkspaceVerificationRunner {
     step: WorkspaceVerificationStep,
     rootPath: string,
     signal: AbortSignal,
+    fullRepository: boolean,
   ): Promise<WorkspaceCommandResult>;
 }
 
@@ -100,19 +102,8 @@ const protectedSegments = new Set([
 
 const protectedNames = new Set([".env", "id_rsa", "id_ed25519"]);
 
-const immutableForgePaths = new Set([
-  "artifacts/api-server/src/lib/corelock.ts",
-  "lib/forge-runtime/src/goal-build-graph.ts",
-  "lib/forge-runtime/src/goal-mandate.ts",
-  "lib/forge-runtime/src/governance.ts",
-  "lib/forge-runtime/src/governance-engine.ts",
-  "lib/forge-runtime/src/governance-store.ts",
-  "lib/forge-runtime/src/kernel.ts",
-  "lib/forge-runtime/src/mission-ai-review.ts",
-  "lib/forge-runtime/src/mission-review.ts",
-  "lib/forge-runtime/src/runtime-state.ts",
-  "lib/forge-runtime/src/workspace-executor.ts",
-]);
+const immutableForgePaths: ReadonlySet<string> = new Set(HARD_PROTECTED_FORGE_FILES);
+const allowedMutationRoots = new Set(["sandbox", "lib", "artifacts"]);
 
 function message(error: unknown): string {
   return error instanceof Error
@@ -149,6 +140,10 @@ function normalizedRelativePath(value: string): string {
     || immutableForgePaths.has(normalized)
   ) {
     throw new Error(`Protected workspace path: ${normalized}`);
+  }
+
+  if (segments.length < 2 || !allowedMutationRoots.has(segments[0].toLowerCase())) {
+    throw new Error(`Workspace path must remain inside sandbox/, lib/, or artifacts/: ${normalized}`);
   }
 
   return normalized;
@@ -240,6 +235,15 @@ export function parseWorkspaceChangeRequest(
     return step;
   });
 
+  if (
+    changes.some((change) => !change.path.startsWith("sandbox/")) &&
+    !(["typecheck", "test", "build"] as const).every((step) => verification.includes(step))
+  ) {
+    throw new Error(
+      "Workspace changes outside sandbox/ require typecheck, test, and build verification",
+    );
+  }
+
   const commitValue = value.commit;
   let commit: WorkspaceCommitRequest | null = null;
 
@@ -312,10 +316,13 @@ export class NodeWorkspaceVerificationRunner implements WorkspaceVerificationRun
     step: WorkspaceVerificationStep,
     rootPath: string,
     signal: AbortSignal,
+    fullRepository: boolean,
   ): Promise<WorkspaceCommandResult> {
     const args =
       step === "test"
-        ? ["--filter", "@workspace/forge-runtime", "test"]
+        ? fullRepository
+          ? ["-r", "--if-present", "test"]
+          : ["--filter", "@workspace/forge-runtime", "test"]
         : ["run", step];
 
     if (process.platform === "win32") {
@@ -554,11 +561,15 @@ export class WorkspaceExecutor {
         throw new Error("git diff --check failed");
       }
 
+      const fullRepositoryVerification = request.changes.some(
+        (change) => !change.path.startsWith("sandbox/"),
+      );
       for (const step of request.verification) {
         const verification = await this.#verificationRunner.run(
           step,
           root,
           signal,
+          fullRepositoryVerification,
         );
         verifications.push(verification);
 

@@ -21,9 +21,21 @@ test("extracts every named sandbox target in stable order", () => {
   );
 });
 
-test("rejects a repository-relative mutation target outside sandbox", () => {
+test("extracts lib and artifacts mutation targets", () => {
+  assert.deepEqual(
+    extractAutonomousWorkspaceTargets(
+      "Wijzig lib/forge-runtime/src/example.ts en artifacts/forge-core/src/example.ts.",
+    ),
+    [
+      { path: "lib/forge-runtime/src/example.ts", allowCreate: true },
+      { path: "artifacts/forge-core/src/example.ts", allowCreate: true },
+    ],
+  );
+});
+
+test("rejects a repository-relative mutation target outside allowed roots", () => {
   assert.throws(
-    () => extractAutonomousWorkspaceTargets("Wijzig lib/forge-runtime/src/runtime.ts."),
-    /must remain inside sandbox\//,
+    () => extractAutonomousWorkspaceTargets("Wijzig scripts/src/example.ts."),
+    /must remain inside sandbox\/, lib\/, or artifacts\//,
   );
 });
