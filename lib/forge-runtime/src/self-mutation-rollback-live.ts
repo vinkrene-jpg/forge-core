@@ -55,6 +55,7 @@ if (await git("status", "--porcelain")) {
 }
 const acceptedContent = await readFile(targetPath, "utf8");
 const acceptedHead = await git("rev-parse", "HEAD");
+const successCommit = await git("log", "-1", "--format=%H", "--", target);
 const executor = new WorkspaceExecutor({
   events: new RuntimeEventBus(),
   verificationRunner: new BrokenSuiteVerificationRunner(),
@@ -93,7 +94,7 @@ await writeFile(evidencePath, `${JSON.stringify({
   schemaVersion: 1,
   verifiedAt: new Date().toISOString(),
   sourceCommit: "7af6ea0",
-  successCommit: acceptedHead,
+  successCommit,
   target,
   rollback,
   assertions: {
@@ -106,7 +107,7 @@ await writeFile(evidencePath, `${JSON.stringify({
   },
 }, null, 2)}\n`, "utf8");
 process.stdout.write(`${JSON.stringify({
-  successCommit: acceptedHead,
+  successCommit,
   rollbackExecutionId: rollback.id,
   evidencePath: path.relative(root, evidencePath),
 })}\n`);

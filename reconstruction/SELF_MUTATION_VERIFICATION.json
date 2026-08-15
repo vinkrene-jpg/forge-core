@@ -1,0 +1,62 @@
+{
+  "schemaVersion": 1,
+  "verifiedAt": "2026-08-15T07:06:16.353Z",
+  "sourceCommit": "7af6ea0",
+  "successCommit": "3aa4e2a510160800495c262cc1a1e2123af62644",
+  "target": "artifacts/self-mutation-live-proof.txt",
+  "rollback": {
+    "id": "269eb0ee-3a54-422b-88fe-b8aac8fb241a",
+    "missionId": "c6d31a0b-4a31-4fde-bacb-395fdcdb0011",
+    "status": "rolled_back",
+    "branch": "forge-sync-primary",
+    "changedFiles": [
+      {
+        "path": "artifacts/self-mutation-live-proof.txt",
+        "beforeSha256": "ffe67e78084e0fdae7c7c45064bf747dc275d61bc61c5474a69e64f29c3081ab",
+        "afterSha256": "efeb5f4db8007923a5b03b7ae9388d2df0b00d5d962ffe95cbc7dbd33483bef9"
+      }
+    ],
+    "verification": [
+      {
+        "command": "git diff --check",
+        "exitCode": 0,
+        "stdoutChars": 0,
+        "stderrChars": 131,
+        "stdoutSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "stderrSha256": "bce388e093a73e0c2f177b23813668427904c2c18647b9de4271dc5a36e8a906",
+        "durationMs": 66
+      },
+      {
+        "command": "C:\\WINDOWS\\system32\\cmd.exe /d /s /c pnpm run typecheck",
+        "exitCode": 0,
+        "stdoutChars": 412,
+        "stderrChars": 125,
+        "stdoutSha256": "2a9a14c91bc18087e2fc5fcac738efe8d5a75f419513c0c5c4f8e44b883cd6c7",
+        "stderrSha256": "e243c1ea0a55d1798eef837a7d20c93b2cdff3ade37f86de6098d4a19a9ef9b9",
+        "durationMs": 4311
+      },
+      {
+        "command": "pnpm -r --if-present test",
+        "exitCode": 1,
+        "stdoutChars": 0,
+        "stderrChars": 45,
+        "stdoutSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "stderrSha256": "2eb7f4d591857c9204d5d9e3f683f08f069bb981dc0d7941e97bb3b81e25dccd",
+        "durationMs": 0
+      }
+    ],
+    "rollbackPerformed": true,
+    "commitSha": null,
+    "error": "Verification failed: test",
+    "startedAt": "2026-08-15T07:06:11.604Z",
+    "completedAt": "2026-08-15T07:06:16.257Z"
+  },
+  "assertions": {
+    "fullSuitePassedBeforeSuccessCommit": true,
+    "pushPerformedByExecutor": false,
+    "brokenSuiteRejected": true,
+    "contentRestored": true,
+    "headRestored": true,
+    "worktreeCleanAfterRollback": true
+  }
+}

@@ -122,7 +122,9 @@ A Goal-to-Software Build Graph is a bounded, deterministic orchestration view ov
 
 ## AD-026 - Mission intake preserves the complete approved target manifest
 
-Mutation intake extracts every unique explicitly named repository-relative target in stable order. Operator intake remains restricted to `sandbox/`; traversal, root-level files and other repository areas fail closed. A single target retains `proofTargetPath`; multiple targets use `proofTargetPaths` and never retain a misleading singular proof field. The same complete `targets` array crosses preview, Desktop submission and direct runtime inference. Goal mandate creation requires its `allowedPaths` to equal the complete BuildGraph target set, while provider plans continue to match the approved target manifest exactly. No extraction result can broaden provider, workspace or push authority.
+Mutation intake extracts every unique explicitly named repository-relative target in stable order. Operator intake permits only `sandbox/`, `lib/` and `artifacts/`; traversal, root-level files and every other repository area fail closed. A single target retains `proofTargetPath`; multiple targets use `proofTargetPaths` and never retain a misleading singular proof field. The same complete `targets` array crosses preview, Desktop submission and direct runtime inference. Goal mandate creation requires its `allowedPaths` to equal the complete BuildGraph target set, while provider plans continue to match the approved target manifest exactly. No extraction result can broaden provider, workspace or push authority.
+
+Mutations outside `sandbox/` require the complete repository `typecheck`, `test` and `build` identifiers before execution. The host executor runs those fixed checks before commit and restores exact snapshots when any check fails. Goal mandates and WorkspaceExecutor share one immutable eleven-file list; `GOVERNANCE/`, secret paths and the existing protected segments remain independently denied. Push remains separate and forbidden in provider plans.
 
 ## AD-027 - Generic-build assumptions are structured plan authority
 

@@ -1,8 +1,8 @@
 # Forge Next Mission
 
-## Resume point after structured generic-build assumptions
+## Resume point after governed Forge self-mutation
 
-Status: intake preserves complete one- or two-target sandbox manifests; workspace plans carry structured assumptions into evaluation; one bounded GoalSpec mandate replaces per-child approvals while preserving all execution gates.
+Status: Forge may now mutate bounded targets under `sandbox/`, `lib/` and `artifacts/`; non-sandbox changes require the complete repository suite and roll back before commit on any failure. Existing immutable and governance paths remain protected.
 
 ## Verified baseline
 
@@ -21,7 +21,7 @@ Status: intake preserves complete one- or two-target sandbox manifests; workspac
 
 ## Next action
 
-Repeat the measured generic-build/BuildGraph path as one governed live API proof on a clean named non-main branch: verify both sandbox targets persist, the provider plan contains `assumptions`, component A evaluates accepted and releases B, and the final report contains both accepted components. Preserve the current two-component, one-dependency, one-repository limit. Do not add parallel execution, deployment, push automation or reusable pattern libraries.
+Route one bounded GoalSpec through the live API on a clean named non-main branch with one `lib/` or `artifacts/` target. Verify the approved manifest, structured assumptions, full typecheck/test/build receipts, accepted evaluation and final report through the authoritative mission APIs. Do not widen the three allowed roots, immutable paths, graph limits or push authority.
 
 ## Failure rules
 
@@ -38,3 +38,5 @@ Repeat the measured generic-build/BuildGraph path as one governed live API proof
 - A GoalSpec mandate may never expand after approval or include hard-protected core/guardian paths.
 - A paid call may never proceed when the approved maximum cost does not cover it.
 - Graph learning evidence remains forbidden until integration evaluation accepts every node.
+- Source mutation roots remain exactly `sandbox/`, `lib/` and `artifacts/`; every other root fails closed.
+- `lib/` and `artifacts/` mutations require typecheck, the complete test suite and build before commit; any failure must restore exact snapshots.

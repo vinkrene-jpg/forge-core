@@ -312,3 +312,14 @@ Status: implemented with focused runtime and API integration evidence.
 - Both workspace approval gates remain existing Governance Engine records. Approval of a dependent node fails closed until its predecessor mission is `succeeded` with `evaluation.decision=accepted`.
 - Integration evaluation is derived from mission records. It writes one idempotent project evidence record, and becomes learning-eligible, only after the complete graph is accepted.
 - Focused validator and runtime tests pass 6/6; the complete Forge Runtime suite passes 78/78. Final root `pnpm run typecheck` and `pnpm run build` both pass.
+
+## Governed Forge self-mutation - 2026-08-15
+
+- Intake, Mission Console, GoalSpec mandates and WorkspaceExecutor now permit repository-relative targets only under `sandbox/`, `lib/` and `artifacts/`.
+- The original eleven immutable Forge files remain unchanged and are exported once from `goal-mandate.ts` for executor reuse. `GOVERNANCE/`, secret names, protected segments, traversal and every other root remain denied.
+- Any mutation outside `sandbox/` must request `typecheck`, `test` and `build`; the executor runs the full repository commands before commit and rolls back exact snapshots on failure.
+- Verification children do not inherit active `STORAGE_DIR` or `FORGE_WORKSPACE_ROOT`, preventing source checks from reading or mutating authoritative runtime state.
+- Deterministic evidence: runtime 92/92, API 53/53, focused WorkspaceExecutor 8/8, root typecheck and build passed.
+- Live success: WorkspaceExecutor created and committed `artifacts/self-mutation-live-proof.txt` as `3aa4e2a` after the complete verification set passed.
+- Live failure: execution `269eb0ee-3a54-422b-88fe-b8aac8fb241a` received a controlled failing test receipt, returned `rolled_back`, made no commit and restored target content, HEAD and clean worktree.
+- Evidence: `reconstruction/SELF_MUTATION_VERIFICATION.json`.

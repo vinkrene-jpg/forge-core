@@ -163,3 +163,14 @@ Status: implemented with contract, parser, evaluator and end-to-end provider-loo
 - Validated assumptions persist in `WorkspaceChangePlan` and flow into execution evaluation.
 - `assumptions-explicit` no longer depends on free-text recognition for generic builds and still fails when structured plan context is absent.
 - No target, verification, evidence, approval or no-push gate was weakened.
+
+## Governed Forge self-mutation - 2026-08-15
+
+Status: implemented and live verified on the host-local WorkspaceExecutor.
+
+- Mission intake, GoalSpec mandates and WorkspaceExecutor accept only `sandbox/`, `lib/` and `artifacts/` mutation targets.
+- The existing eleven immutable Forge files are defined once and consumed by both mandate and executor enforcement; `GOVERNANCE/` and secret/protected paths remain denied.
+- Every `lib/` or `artifacts/` mutation requires repository-wide typecheck, tests and build before commit.
+- Live dogfood commit `3aa4e2a` created `artifacts/self-mutation-live-proof.txt` through WorkspaceExecutor after all three gates passed.
+- Controlled rollback execution `269eb0ee-3a54-422b-88fe-b8aac8fb241a` rejected a broken test receipt, created no commit and restored content, HEAD and clean worktree exactly.
+- Evidence: `reconstruction/SELF_MUTATION_VERIFICATION.json`.
