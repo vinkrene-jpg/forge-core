@@ -1,0 +1,2 @@
+capability=tool.live-proof.render
+status=proven
