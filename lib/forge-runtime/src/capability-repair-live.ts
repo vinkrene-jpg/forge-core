@@ -3,6 +3,7 @@ import os from "node:os";
 import path from "node:path";
 import { ForgeRuntime } from "./runtime";
 
+const repositoryRoot = path.resolve(import.meta.dirname, "../../..");
 const repairTarget = "artifacts/capability-repair-live-tool.txt";
 const originalTarget = "artifacts/capability-repair-live-result.json";
 const missingCapabilityId = "tool.live-proof.render";
@@ -14,6 +15,8 @@ async function waitFor(predicate: () => boolean, timeoutMs = 20 * 60_000): Promi
     await new Promise((resolve) => setTimeout(resolve, 250));
   }
 }
+
+process.chdir(repositoryRoot);
 
 const storage = await mkdtemp(path.join(os.tmpdir(), "forge-capability-repair-live-"));
 const previousStorage = process.env.STORAGE_DIR;
@@ -123,9 +126,15 @@ try {
       : null;
     if (!goalMissionId) return false;
     const goalMission = runtime.getMission(goalMissionId);
+    if (["failed", "blocked", "rejected", "cancelled"].includes(goalMission?.status ?? "")) {
+      throw new Error(goalMission?.lastError ?? `Live original goal ended as ${goalMission?.status}`);
+    }
     const graph = goalMission?.output?.graph as { nodes?: { missionId: string }[] } | undefined;
     return graph?.nodes?.every((node) => {
       const child = runtime.getMission(node.missionId);
+      if (["failed", "blocked", "rejected", "cancelled"].includes(child?.status ?? "")) {
+        throw new Error(child?.lastError ?? `Live workspace mission ended as ${child?.status}`);
+      }
       return child?.status === "succeeded" &&
         (child.output?.evaluation as { decision?: string } | undefined)?.decision === "accepted";
     }) === true;
