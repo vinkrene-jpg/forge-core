@@ -52,6 +52,7 @@ test("stop drains persistence started before shutdown", async () => {
     listLearningProposals: () => [],
     listLearningProfiles: () => [],
     scheduleLearningProposal: async () => undefined,
+    scheduleNextExercise: async () => false,
     scheduleWorkspacePlan: async () => {
       throw new Error("No workspace plan expected while paused");
     },

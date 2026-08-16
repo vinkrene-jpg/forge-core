@@ -41,7 +41,7 @@ Status: in progress; canonical Learning Engine foundation live verified.
 
 - Implement the canonical Learning Engine.
 - Maintain capability scores and learning history.
-- Generate adaptive development exercises from a capability matrix instead of following a fixed list.
+- Acquire third-party exercise collections with their own tests and work them from low to high difficulty; Forge does not generate its own learning exercises or acceptance tests.
 - Begin with Human Intent Understanding before advanced software-engineering levels.
 
 ## Phase R5 â€” Complete end architecture
@@ -262,3 +262,16 @@ Status: implemented and live verified in an isolated runtime.
 - Live isolated API and browser proof showed exactly three seeds, correct origins and paths, Forge Core running with passed verification, Assumption Engine startable and the not-yet-created CAD workspace not startable. Desktop 1440x900 and mobile 390x844 had no horizontal overflow.
 - Futur remains separate: no imports, endpoints or shared state were added.
 - Evidence: `reconstruction/PRODUCT_REGISTER_VERIFICATION.json`.
+
+## Stream 1 upstream exercise ladder - 2026-08-16
+
+Status: implemented, deterministic coverage green and live Exercism acquisition/test execution verified.
+
+- A bounded `operator.learning-run` obtains one approval for track, count, duration and cost. Internal exercise children then continue without operator requests or child approvals.
+- The Exercise Registry atomically imports instructions, declared solution paths, all declared upstream test bytes, difficulty, concepts, provenance, commit and SHA-256 values from Exercism track repositories.
+- Selection is ascending by difficulty. Attempts persist pass/fail, ordinal and elapsed milliseconds; historical durations provide median estimates for later same-language work.
+- Success requires exit zero from every explicitly declared upstream test file and identical test hashes before and after a read-only, no-network container run. Forge has no self-authored exercise test path.
+- Passed concepts enter the Capability Registry with exercise and attempt IDs as their evidence source.
+- An empty approved ladder schedules one idempotent mission from the literal final assignment in `GOVERNANCE/EINDOPDRACHT.md`.
+- Live acquisition imported 140 Python exercises and 141 test files from Exercism revision `1f6aab8667bf653b10cc3799f94352fcdb749db6`. Live `hello-world` ran exact command `python3 -B -m unittest hello_world_test.py` with exit 0 and unchanged test hash in immutable image `sha256:bbd5a5e45ecc1fcdb0e07401b42f6acd690a3a35b96c1628f78909ee9895987d`.
+- Evidence: `reconstruction/EXERCISE_LADDER_VERIFICATION.json`.

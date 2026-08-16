@@ -162,6 +162,8 @@ export interface MissionRecord {
     | "runtime.self-check"
     | "runtime.stability-window"
     | "operator.autonomous-cycle"
+    | "operator.learning-run"
+    | "operator.learning-exercise"
     | "operator.goal-run"
     | "operator.goal-build"
     | "operator.workspace-plan"

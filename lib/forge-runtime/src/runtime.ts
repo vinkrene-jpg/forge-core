@@ -157,6 +157,11 @@ import {
   type LearningStateStore,
 } from "./learning-store";
 import { LearningEvidenceTool } from "./learning-evidence-tool";
+import { aggregateTestHash, ExerciseRegistry, type ExercismTrackSource } from "./exercise-registry";
+import { DockerExerciseRunner } from "./exercise-runner";
+import { FileExerciseStateStore, type ExerciseStateStore } from "./exercise-store";
+import type { ExerciseAttemptRecord, ExerciseRecord, ExerciseRegistrySummary, ExerciseRunner, ExerciseSolutionFile } from "./exercise";
+import { parseLearningRunMandate, type LearningRunMandate } from "./learning-run-mandate";
 import {
   getLearningMatrixEntry,
   listLearningMatrixEntries,
@@ -323,6 +328,7 @@ export interface ForgeRuntimeSnapshot {
   readonly operator: OperatorCoreSummary;
   readonly aiGateway: AiGatewaySummary;
   readonly learning: LearningSummary;
+  readonly exercises: ExerciseRegistrySummary;
   readonly autonomy: AutonomousRuntimeSummary;
   readonly memoryBridge: MemoryBridgeSummary;
   readonly events: readonly RuntimeEvent[];
@@ -336,6 +342,9 @@ export interface ForgeRuntimeOptions {
   readonly operatorStateStore?: OperatorStateStore;
   readonly aiGatewayStateStore?: AiGatewayStateStore;
   readonly learningStateStore?: LearningStateStore;
+  readonly exerciseStateStore?: ExerciseStateStore;
+  readonly exercismTrackSource?: ExercismTrackSource;
+  readonly exerciseRunner?: ExerciseRunner;
   readonly autonomyStateStore?: AutonomyStateStore;
   readonly workspaceVerificationRunner?: WorkspaceVerificationRunner;
   readonly workspaceRecoveryTimeoutMs?: number;
@@ -412,6 +421,25 @@ function missionSpendMandate(mission: MissionRecord) {
     maximumRunCostUsd,
     maximumDailyCostUsd,
   });
+}
+
+function parseExerciseSolution(value: Readonly<Record<string, unknown>>, exercise: ExerciseRecord): readonly ExerciseSolutionFile[] {
+  if (!Array.isArray(value.files) || value.files.length !== exercise.starterFiles.length) {
+    throw new Error("Exercise solution must contain exactly the declared solution files");
+  }
+  const files = value.files.map((raw, index) => {
+    const item = record(raw);
+    if (!item || typeof item.path !== "string" || typeof item.content !== "string" || item.content.length > 250_000) {
+      throw new Error(`Exercise solution files[${index}] is invalid`);
+    }
+    return Object.freeze({ path: item.path, content: item.content });
+  });
+  const expected = [...exercise.starterFiles.map((file) => file.path)].sort();
+  const actual = [...files.map((file) => file.path)].sort();
+  if (JSON.stringify(actual) !== JSON.stringify(expected)) {
+    throw new Error("Exercise solution paths do not match the upstream manifest");
+  }
+  return Object.freeze(files);
 }
 
 interface MissionExecutionFailure extends Error {
@@ -523,6 +551,8 @@ export class ForgeRuntime {
   readonly #operatorCore: OperatorCore;
   readonly #aiGateway: AiGatewayEngine;
   readonly #learningEngine: LearningEngine;
+  readonly #exerciseRegistry: ExerciseRegistry;
+  readonly #exerciseRunner: ExerciseRunner;
   readonly #autonomyEngine: AutonomousEngine;
   readonly #memoryBridge: FileMemoryBridge;
   readonly #learningEvidenceTool: LearningEvidenceTool;
@@ -547,6 +577,8 @@ export class ForgeRuntime {
       getRuntimeHealth: () => this.#kernel.healthSnapshot(),
       executeAutonomousCycle: (mission, signal) =>
         this.#executeAutonomousCycle(mission, signal),
+      executeLearningRun: (mission, signal) => this.#executeLearningRun(mission, signal),
+      executeLearningExercise: (mission, signal) => this.#executeLearningExercise(mission, signal),
       executeGoalBuild: (mission, signal) =>
         this.#executeGoalBuild(mission, signal),
       executeGoalRun: (mission, signal) =>
@@ -676,6 +708,25 @@ export class ForgeRuntime {
     this.#learningEngine =
       new LearningEngine(learningOptions);
 
+    this.#exerciseRunner = options.exerciseRunner ?? new DockerExerciseRunner();
+    this.#exerciseRegistry = new ExerciseRegistry({
+      events: this.#events,
+      stateStore: options.exerciseStateStore ?? new FileExerciseStateStore(),
+      exercismSource: options.exercismTrackSource,
+      promoteCapability: async ({ capabilityId, name, exerciseId, attemptId }) => {
+        const existing = this.#capabilityRegistry.getCapability(capabilityId);
+        await this.#capabilityRegistry.upsert({
+          id: capabilityId,
+          name,
+          description: `Capability verified by the unmodified upstream tests for ${exerciseId}.`,
+          status: "validated",
+          version: existing?.version ?? "1.0.0",
+          confidence: 1,
+          source: `exercise:${exerciseId}:attempt:${attemptId}`,
+        });
+      },
+    });
+
     this.#autonomyEngine = new AutonomousEngine({
       events: this.#events,
       stateStore:
@@ -691,6 +742,7 @@ export class ForgeRuntime {
       listLearningProfiles: () => this.#learningEngine.listProfiles(),
       scheduleLearningProposal: (proposalId) =>
         this.scheduleLearningProposal(proposalId),
+      scheduleNextExercise: () => this.#scheduleNextLearningExercise(),
       scheduleWorkspacePlan: (missionId) =>
         this.scheduleWorkspacePlan(missionId),
       aiGatewaySummary: () => this.#aiGateway.summary(),
@@ -1267,6 +1319,149 @@ export class ForgeRuntime {
       learningProposalId: learning.proposal.id,
       nextMissionId,
     });
+  }
+
+  async #executeLearningRun(mission: MissionRecord, signal: AbortSignal): Promise<Readonly<Record<string, unknown>>> {
+    const mandate = parseLearningRunMandate(mission.input.learningRunMandate);
+    const approval = this.#governanceEngine.findByMissionId(mission.id);
+    if (!approval || approval.status !== "approved" || !approval.decidedAt) {
+      throw new Error("Learning run requires its persisted operator approval");
+    }
+    if (signal.aborted) throw new MissionAbortError();
+    const exercises = this.#exerciseRegistry.hasAcquiredTrack(mandate.track)
+      ? this.#exerciseRegistry.listExercises().filter((exercise) => exercise.source.track === mandate.track)
+      : await this.#exerciseRegistry.acquireExercismTrack(mandate.track);
+    if (exercises.length === 0) throw new Error(`Acquisition returned no exercises for ${mandate.track}`);
+    const startedAt = new Date().toISOString();
+    return Object.freeze({
+      learningRunMandate: mandate,
+      authorizedAt: approval.decidedAt,
+      startedAt,
+      expiresAt: new Date(Date.parse(startedAt) + mandate.maximumDurationMs).toISOString(),
+      acquiredExercises: exercises.length,
+      sourceRevision: exercises[0].source.revision,
+      status: "active",
+    });
+  }
+
+  async #executeLearningExercise(mission: MissionRecord, signal: AbortSignal): Promise<Readonly<Record<string, unknown>>> {
+    const runMissionId = typeof mission.input.learningRunMissionId === "string" ? mission.input.learningRunMissionId : "";
+    const run = this.#missionEngine.get(runMissionId);
+    const approval = run ? this.#governanceEngine.findByMissionId(run.id) : null;
+    if (!run || run.kind !== "operator.learning-run" || run.status !== "succeeded" || approval?.status !== "approved") {
+      throw new Error("Learning exercise requires a succeeded approved learning run");
+    }
+    const mandate = parseLearningRunMandate(run.input.learningRunMandate);
+    if (typeof run.output?.expiresAt !== "string" || run.output.expiresAt <= new Date().toISOString()) {
+      throw new Error("Learning run duration boundary expired");
+    }
+    const exerciseId = typeof mission.input.exerciseId === "string" ? mission.input.exerciseId : "";
+    const exercise = this.#exerciseRegistry.getExercise(exerciseId);
+    if (!exercise || exercise.source.track !== mandate.track) throw new Error("Learning exercise is outside the approved track");
+    const testCommand = exercise.source.track === "python"
+      ? Object.freeze(["python3", "-B", "-m", "unittest", ...exercise.testFiles.map((file) => file.path)])
+      : Object.freeze([`unsupported:${exercise.source.track}`]);
+    const attempt = await this.#exerciseRegistry.startAttempt(exercise.id, mission.id, testCommand);
+    const startedAt = Date.now();
+    let completed = false;
+    try {
+      const composition = await this.#operatorCore.composePrompt({
+        projectId: "forge-core",
+        objective: [
+          `Solve the upstream Exercism ${exercise.language} exercise ${exercise.title}.`,
+          "Return exactly one JSON object with shape {\"files\":[{\"path\":string,\"content\":string}]}; no prose and no test files.",
+          `The files must be exactly: ${exercise.starterFiles.map((file) => file.path).join(", ")}.`,
+          "The supplied tests are immutable acceptance evidence. Do not rewrite, add, omit or bypass them.",
+          "", "UPSTREAM INSTRUCTIONS:", exercise.instructions,
+          "", "UPSTREAM STARTER FILES:",
+          ...exercise.starterFiles.map((file) => `--- ${file.path} ---\n${file.content}`),
+          "", "UPSTREAM TEST FILES (READ ONLY):",
+          ...exercise.testFiles.map((file) => `--- ${file.path} [sha256:${file.sha256}] ---\n${file.content}`),
+        ].join("\n"),
+        taskType: "coding",
+        privacy: "standard",
+        budget: "medium",
+        files: [],
+        memoryKinds: [],
+      });
+      const execution = await this.#aiGateway.executeComposition(composition.id, mission.id, {
+        id: run.id,
+        maximumRunCostUsd: mandate.maximumRunCostUsd,
+        maximumDailyCostUsd: mandate.maximumDailyCostUsd,
+      });
+      if (execution.status !== "succeeded" || !execution.outputText) throw new Error("Exercise provider execution did not return a solution");
+      const solutionFiles = parseExerciseSolution(parseSingleProviderJsonObject(execution.outputText), exercise);
+      const result = await this.#exerciseRunner.run(exercise, solutionFiles, signal);
+      const completedAttempt = await this.#exerciseRegistry.completeAttempt(attempt.id, result);
+      completed = true;
+      if (completedAttempt.status !== "passed") {
+        const failure = new Error("Exercise failed its unmodified upstream test suite") as MissionExecutionFailure;
+        failure.missionResultStatus = "failed";
+        failure.missionResultCause = "upstream-tests";
+        failure.missionOutput = Object.freeze({ exerciseId, attemptId: attempt.id, attemptNumber: attempt.attemptNumber, durationMs: completedAttempt.durationMs, verification: completedAttempt.verification });
+        throw failure;
+      }
+      return Object.freeze({
+        exerciseId, attemptId: completedAttempt.id, attemptNumber: completedAttempt.attemptNumber,
+        durationMs: completedAttempt.durationMs, difficulty: exercise.difficulty,
+        source: exercise.source, upstreamTestsSha256: completedAttempt.upstreamTestsSha256,
+        verification: completedAttempt.verification,
+      });
+    } catch (error) {
+      if (!completed) {
+        await this.#exerciseRegistry.completeAttempt(attempt.id, {
+          command: testCommand, exitCode: 1, durationMs: Date.now() - startedAt,
+          testsSha256Before: aggregateTestHash(exercise), testsSha256After: aggregateTestHash(exercise), image: null, containerId: null,
+        });
+      }
+      throw error;
+    }
+  }
+
+  async #scheduleNextLearningExercise(): Promise<boolean> {
+    const run = [...this.#missionEngine.list()]
+      .filter((mission) => mission.kind === "operator.learning-run" && mission.status === "succeeded" && mission.output?.status === "active")
+      .sort((left, right) => right.updatedAt.localeCompare(left.updatedAt))[0];
+    if (!run) return false;
+    const approval = this.#governanceEngine.findByMissionId(run.id);
+    if (approval?.status !== "approved") return false;
+    const mandate = parseLearningRunMandate(run.input.learningRunMandate);
+    if (typeof run.output?.expiresAt !== "string" || run.output.expiresAt <= new Date().toISOString()) return false;
+    const children = this.#missionEngine.list().filter((mission) => mission.input.learningRunMissionId === run.id);
+    if (children.filter((mission) => mission.kind === "operator.learning-exercise").length >= mandate.maximumExercises) return false;
+    const exercise = this.#exerciseRegistry.nextExercise(mandate.track);
+    if (exercise) {
+      const mission = await this.#missionEngine.enqueue({
+        kind: "operator.learning-exercise",
+        title: `Upstream exercise: ${exercise.title}`,
+        input: {
+          learningRunMissionId: run.id,
+          exerciseId: exercise.id,
+          estimatedDurationMs: this.#exerciseRegistry.estimateDurationMs(exercise),
+        },
+        idempotencyKey: `learning-exercise:${run.id}:${exercise.id}:${this.#exerciseRegistry.listAttempts(exercise.id).length + 1}`,
+      }, "queued");
+      this.#events.publish("learning.proposal.scheduled", { learningRunMissionId: run.id, exerciseId: exercise.id, missionId: mission.id, upstream: true });
+      this.#missionLoop.wake();
+      return true;
+    }
+    if (children.some((mission) => mission.input.finalAssignmentFallback === true)) return false;
+    const objective = await readFile(path.join(canonicalRepositoryRoot, "GOVERNANCE", "EINDOPDRACHT.md"), "utf8");
+    const fallback = await this.#missionEngine.enqueue({
+      kind: "operator.autonomous-cycle",
+      title: "Stream 1 fallback: Eindopdracht",
+      input: {
+        projectId: "forge-core", objective, reasonForSelection: "The approved upstream exercise ladder is empty.",
+        expectedNewEvidence: Object.freeze(["A verified next increment measured against GOVERNANCE/EINDOPDRACHT.md"]),
+        cycleIndex: 1, maxCycles: 1, continuationAuthorized: true, files: Object.freeze(["GOVERNANCE/EINDOPDRACHT.md"]),
+        learningRunMissionId: run.id, finalAssignmentFallback: true,
+        maximumCostUsd: mandate.maximumRunCostUsd, maximumDailyCostUsd: mandate.maximumDailyCostUsd,
+      },
+      idempotencyKey: `learning-run:${run.id}:final-assignment`,
+    }, "queued");
+    this.#events.publish("learning.proposal.scheduled", { learningRunMissionId: run.id, missionId: fallback.id, finalAssignmentFallback: true });
+    this.#missionLoop.wake();
+    return true;
   }
 
   async #executeWorkspaceProof(
@@ -3629,6 +3824,7 @@ export class ForgeRuntime {
       await this.#operatorCore.initialize();
       await this.#aiGateway.initialize();
       await this.#learningEngine.initialize();
+      await this.#exerciseRegistry.initialize();
       await this.#memoryBridge.initialize();
       await this.#missionEngine.initialize();
       await this.#autonomyEngine.initialize();
@@ -3855,6 +4051,9 @@ export class ForgeRuntime {
   async createMission(
     request: CreateMissionRequest,
   ): Promise<RuntimeMissionCreationResult> {
+    if (request.kind === "operator.learning-exercise") {
+      throw new Error("Learning exercise missions can only be created internally by an approved learning run");
+    }
     if (request.kind === "operator.autonomous-cycle") {
       const missionInput = request.input ?? {};
       const objective =
@@ -4114,6 +4313,28 @@ export class ForgeRuntime {
       title: `Authorize autonomous run for at most ${runMandate.maximumGoals} goals`,
       input: { runMandate },
     });
+  }
+
+  async createLearningRun(mandateInput: unknown): Promise<RuntimeMissionCreationResult> {
+    const learningRunMandate = parseLearningRunMandate(mandateInput);
+    return this.createMission({
+      kind: "operator.learning-run",
+      title: `Authorize upstream exercise ladder for ${learningRunMandate.track}`,
+      input: { learningRunMandate },
+      idempotencyKey: `learning-run:${learningRunMandate.track}:${JSON.stringify(learningRunMandate)}`,
+    });
+  }
+
+  exerciseSummary(): ExerciseRegistrySummary {
+    return this.#exerciseRegistry.summary();
+  }
+
+  listExercises(): readonly ExerciseRecord[] {
+    return this.#exerciseRegistry.listExercises();
+  }
+
+  listExerciseAttempts(exerciseId?: string): readonly ExerciseAttemptRecord[] {
+    return this.#exerciseRegistry.listAttempts(exerciseId);
   }
 
   getCapabilityGoalRunReport(missionId: string): Readonly<Record<string, unknown>> {
@@ -4867,6 +5088,7 @@ export class ForgeRuntime {
       operator: this.#operatorCore.summary(),
       aiGateway: this.#aiGateway.summary(),
       learning: this.#learningEngine.summary(),
+      exercises: this.#exerciseRegistry.summary(),
       autonomy: this.#autonomyEngine.summary(),
       memoryBridge: this.#memoryBridge.summary(),
       events: this.#events.snapshot(),

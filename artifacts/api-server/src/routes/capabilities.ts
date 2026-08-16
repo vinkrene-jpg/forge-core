@@ -97,6 +97,28 @@ router.get("/capability-goal-runs", (_req, res): void => {
   res.json({ runs });
 });
 
+router.get("/learning-exercises", (_req, res): void => {
+  res.json({ summary: forgeRuntime.exerciseSummary(), exercises: forgeRuntime.listExercises() });
+});
+
+router.get("/learning-exercises/:exerciseId/attempts", (req, res): void => {
+  res.json({ attempts: forgeRuntime.listExerciseAttempts(req.params.exerciseId) });
+});
+
+router.post("/learning-runs", async (req, res): Promise<void> => {
+  try {
+    const result = await forgeRuntime.createLearningRun(req.body?.mandate);
+    res.status(202).json({
+      ...result.mission,
+      governance: result.governance,
+      approval: result.approval,
+      capabilityAnalysis: result.capabilityAnalysis,
+    });
+  } catch (error) {
+    res.status(400).json({ error: message(error) });
+  }
+});
+
 router.post("/capability-goal-runs", async (req, res): Promise<void> => {
   try {
     const result = await forgeRuntime.createCapabilityGoalRun(req.body?.mandate);

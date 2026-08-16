@@ -1,0 +1,88 @@
+{
+  "schemaVersion": 1,
+  "verifiedAt": "2026-08-16T18:31:42.6186576+02:00",
+  "branch": "forge-sync-primary",
+  "baseCommit": "df8034a",
+  "architecture": {
+    "stream": 1,
+    "authoritativeExerciseStore": "storage/forge-runtime/exercise-registry.json",
+    "missionStoreRemainsAuthoritative": true,
+    "selfAuthoredExercises": false,
+    "selfAuthoredAcceptanceTests": false,
+    "directExerciseMissionIntake": false,
+    "oneParentApproval": true,
+    "childApprovals": 0
+  },
+  "acquisition": {
+    "source": "https://github.com/exercism/python.git",
+    "adapter": "GitHubExercismTrackSource",
+    "revision": "1f6aab8667bf653b10cc3799f94352fcdb749db6",
+    "exercisesImported": 140,
+    "testFilesImported": 141,
+    "atomic": true,
+    "partialStateOnFailure": false,
+    "temporaryProofStateRemoved": true
+  },
+  "selectionAndMetrics": {
+    "ordering": ["difficulty ascending", "exercise id ascending"],
+    "attemptFields": ["status", "attemptNumber", "durationMs"],
+    "durationEstimate": "median completed duration for the same language at or below candidate difficulty",
+    "focusedOrderingAndEstimateTestPassed": true
+  },
+  "acceptance": {
+    "solutionPathsMustEqualUpstreamManifest": true,
+    "testPathsComeOnlyFromUpstreamManifest": true,
+    "allDeclaredTestPathsExecutedExplicitly": true,
+    "network": "none",
+    "exerciseMount": "read-only",
+    "successRequiresExitZero": true,
+    "successRequiresUnchangedTestHash": true,
+    "packageInstallationDuringAttempt": false
+  },
+  "liveExercise": {
+    "id": "exercism:python:hello-world",
+    "testFiles": ["hello_world_test.py"],
+    "command": ["python3", "-B", "-m", "unittest", "hello_world_test.py"],
+    "exitCode": 0,
+    "durationMs": 495,
+    "testsSha256Before": "bb6f21b5495d56d8ee16aba4767761eb59e9e217a2d47205a860920a8868971c",
+    "testsSha256After": "bb6f21b5495d56d8ee16aba4767761eb59e9e217a2d47205a860920a8868971c",
+    "imageId": "sha256:bbd5a5e45ecc1fcdb0e07401b42f6acd690a3a35b96c1628f78909ee9895987d"
+  },
+  "capabilityEvidence": {
+    "statusAfterPass": "validated",
+    "sourceFormat": "exercise:<exerciseId>:attempt:<attemptId>",
+    "providerOutputIsEvidence": false,
+    "selfAuthoredArtifactIsEvidence": false
+  },
+  "fallback": {
+    "when": "no remaining exercise inside an active approved learning run",
+    "source": "GOVERNANCE/EINDOPDRACHT.md",
+    "literalCurrentContent": true,
+    "idempotent": true,
+    "focusedTestPassed": true
+  },
+  "tests": {
+    "focusedExercise": { "passed": 3, "total": 3, "exitCode": 0 },
+    "runtime": { "passed": 118, "total": 118, "exitCode": 0, "durationMs": 19492 },
+    "api": { "passed": 53, "total": 53, "exitCode": 0, "durationMs": 4904 }
+  },
+  "finalValidation": {
+    "command": "pnpm validate",
+    "startedAt": "2026-08-16T18:31:05.9472507+02:00",
+    "completedAt": "2026-08-16T18:31:42.6186576+02:00",
+    "durationMs": 36668,
+    "exitCode": 0,
+    "typecheck": "passed",
+    "build": "passed",
+    "coreTests": {
+      "forge-runtime": { "passed": 118, "total": 118 },
+      "api-server": { "passed": 53, "total": 53 },
+      "forge-core": { "passed": 26, "total": 26 },
+      "passed": 197,
+      "total": 197
+    },
+    "runtimeAndHttpProof": "passed",
+    "validationReport": "reports/validation-report.json"
+  }
+}

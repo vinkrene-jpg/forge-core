@@ -1,8 +1,8 @@
 # Forge Next Mission
 
-## Resume point after product-register delivery
+## Resume point after Stream 1 exercise-ladder delivery
 
-Status: Forge has one persisted product register in OperatorCore and Forge Control exposes its live derived status and bounded lifecycle controls. Do not add a second product store or connect it to Futur.
+Status: Stream 1 can acquire Exercism Python atomically, execute its upstream tests unchanged in isolation, persist attempt metrics, promote exercise-backed capabilities and fall back to the final assignment. Do not generate Forge-owned learning exercises or tests.
 
 ## Verified baseline
 
@@ -40,10 +40,13 @@ Status: Forge has one persisted product register in OperatorCore and Forge Contr
 32. Every configured command validation enters the Turbo graph; a forced uncached runtime graph passes 112/112 and exits 0 after active autonomy ticks and persistence writes are drained during shutdown.
 33. OperatorCore seeds Forge Core, Assumption Engine and Forge CAD Engine as products, automatically registers successful Forge-created products, and derives live status without persisting a second truth.
 34. Forge Control shows product runtime, change, verification and active-work state with bounded start/stop controls; desktop and mobile browser checks have no horizontal overflow.
+35. One approved learning-run imports an immutable Exercism track and schedules lowest-difficulty internal exercises without per-exercise approval.
+36. Exercise success requires every declared upstream test path to exit zero with unchanged before/after hashes; attempts persist ordinal and duration, and capabilities cite exercise plus attempt as source.
+37. Live Python acquisition imported 140 exercises and 141 tests; real hello-world verification passed exact upstream `hello_world_test.py` in the no-network image. Empty-ladder fallback uses the literal final assignment.
 
 ## Next action
 
-Resume the package acquisition and independent capability-promotion mission. New product-creation missions must populate the validated product-registration contract and rely on automatic registration after success. Preserve Turborepo as scheduler and keep Futur fully separate.
+Extend the acquisition adapter only when another language has an immutable network-disabled runner capable of executing every declared upstream test without package installation during attempts. Preserve the current Python path and its evidence rules. New product-creation missions still use automatic product registration; Futur remains separate.
 
 ## Failure rules
 
@@ -74,3 +77,8 @@ Resume the package acquisition and independent capability-promotion mission. New
 - Product metadata must remain in OperatorCore; running, change, verification and current-work status remain derived projections.
 - Product start/stop may control only a registered child process owned by the current runtime. Forge Core remains launcher-owned.
 - Product creation may register only after mission success; no manual registration endpoint or Futur data link may be introduced.
+- Exercise acquisition must complete atomically before Stream 1 can schedule that track; failed acquisition creates no partial ladder and no exercise mission.
+- Exercise acceptance may use only the imported upstream test manifest and bytes. No Forge-authored, changed, added, omitted or wildcard-selected test may influence success.
+- Exercise children require a succeeded approved learning-run and must remain within its track, count, duration and cost boundaries; direct intake is forbidden.
+- Capability promotion requires a passed attempt with unchanged test hashes and must cite the exercise and attempt, never provider output or a self-authored artefact, as evidence source.
+- An empty ladder creates at most one idempotent fallback from the literal current `GOVERNANCE/EINDOPDRACHT.md`.

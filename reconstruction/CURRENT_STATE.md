@@ -2,6 +2,19 @@
 
 Verified through: 2026-08-16
 
+## Stream 1 upstream exercise ladder
+
+- `operator.learning-run` is the single approval-bearing parent for one bounded external exercise track. Its immutable mandate limits track, exercise count, duration, run cost and UTC-day cost.
+- The Exercise Registry is authoritative for imported exercise metadata and attempts. Exercism acquisition uses a bounded argument-array Git clone, records the exact commit and atomically replaces a track only after every instruction, solution declaration and upstream test file validates.
+- Stream 1 schedules `operator.learning-exercise` internally before legacy generic learning proposals. Direct exercise mission intake is rejected; children receive no separate approval and remain bounded by the approved parent.
+- Exercises sort by numeric difficulty then ID. Attempts record number, status and wall-clock duration. The median completed duration for the same language at or below candidate difficulty is exposed as the estimate for new work.
+- Provider output is a strict JSON manifest containing exactly the declared solution files. The model cannot return test paths. The runner writes registered upstream tests itself, mounts the complete exercise read-only, disables network and executes every declared Python test path explicitly in the immutable verification image.
+- A pass requires test exit code zero and matching aggregate registered test hashes before and after. Failed, malformed or modified-test attempts persist as failed and promote no capability.
+- Passed Exercism concepts create/update `language.<track>.<concept>` as `validated`, with `exercise:<exerciseId>:attempt:<attemptId>` as the capability source.
+- When a bounded run has no remaining exercise, exactly one fallback `operator.autonomous-cycle` receives the literal current `GOVERNANCE/EINDOPDRACHT.md` objective.
+- Focused exercise coverage passes 3/3; complete runtime passes 118/118 and API passes 53/53. Live acquisition imported 140 exercises/141 tests at revision `1f6aab8667bf653b10cc3799f94352fcdb749db6`; live immutable no-network `hello-world` verification passed with unchanged upstream test hash.
+- Evidence: `reconstruction/EXERCISE_LADDER_VERIFICATION.json`.
+
 ## Product register and Forge Control
 
 - The persisted OperatorCore project collection is now the authoritative product register. Records contain name, code root, structured start and verification commands, origin, product goal and optional creating mission ID.

@@ -70,7 +70,12 @@ export type RuntimeEventType =
   | "learning.proposal.created"
   | "learning.proposal.scheduled"
   | "learning.proposal.completed"
-  | "learning.proposal.failed";
+  | "learning.proposal.failed"
+  | "exercise.registry.loaded"
+  | "exercise.track.acquired"
+  | "exercise.track.acquisition.failed"
+  | "exercise.attempt.started"
+  | "exercise.attempt.completed";
 
 export interface RuntimeEvent {
   readonly sequence: number;

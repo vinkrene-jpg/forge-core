@@ -35,6 +35,14 @@ export interface MissionEngineOptions {
     mission: MissionRecord,
     signal: AbortSignal,
   ) => Promise<Readonly<Record<string, unknown>>>;
+  readonly executeLearningRun?: (
+    mission: MissionRecord,
+    signal: AbortSignal,
+  ) => Promise<Readonly<Record<string, unknown>>>;
+  readonly executeLearningExercise?: (
+    mission: MissionRecord,
+    signal: AbortSignal,
+  ) => Promise<Readonly<Record<string, unknown>>>;
   readonly executeGoalBuild?: (
     mission: MissionRecord,
     signal: AbortSignal,
@@ -172,6 +180,8 @@ function assertSupportedKind(kind: unknown): asserts kind is MissionKind {
     kind !== "runtime.self-check" &&
     kind !== "runtime.stability-window" &&
     kind !== "operator.autonomous-cycle" &&
+    kind !== "operator.learning-run" &&
+    kind !== "operator.learning-exercise" &&
     kind !== "operator.goal-run" &&
     kind !== "operator.goal-build" &&
     kind !== "operator.workspace-change" &&
@@ -239,6 +249,8 @@ export class MissionEngine {
   readonly #getRuntimeHealth: () => RuntimeHealthSnapshot;
   readonly #executeAutonomousCycle:
     MissionEngineOptions["executeAutonomousCycle"];
+  readonly #executeLearningRun: MissionEngineOptions["executeLearningRun"];
+  readonly #executeLearningExercise: MissionEngineOptions["executeLearningExercise"];
   readonly #executeGoalBuild:
     MissionEngineOptions["executeGoalBuild"];
   readonly #executeGoalRun:
@@ -262,6 +274,8 @@ export class MissionEngine {
     this.#getRuntimeHealth = options.getRuntimeHealth;
     this.#executeAutonomousCycle =
       options.executeAutonomousCycle;
+    this.#executeLearningRun = options.executeLearningRun;
+    this.#executeLearningExercise = options.executeLearningExercise;
     this.#executeGoalBuild = options.executeGoalBuild;
     this.#executeGoalRun = options.executeGoalRun;
     this.#executeWorkspaceChange =
@@ -1054,6 +1068,16 @@ export class MissionEngine {
       }
 
       return this.#executeAutonomousCycle(mission, signal);
+    }
+
+    if (mission.kind === "operator.learning-run") {
+      if (!this.#executeLearningRun) throw new Error("Learning run executor is not configured");
+      return this.#executeLearningRun(mission, signal);
+    }
+
+    if (mission.kind === "operator.learning-exercise") {
+      if (!this.#executeLearningExercise) throw new Error("Learning exercise executor is not configured");
+      return this.#executeLearningExercise(mission, signal);
     }
 
     if (mission.kind === "operator.goal-build") {

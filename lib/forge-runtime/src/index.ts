@@ -87,6 +87,39 @@ export {
   type LearningEvidenceBundle,
   type LearningEvidenceToolOptions,
 } from "./learning-evidence-tool";
+export {
+  ExerciseRegistry,
+  GitHubExercismTrackSource,
+  aggregateTestHash,
+  type ExerciseRegistryOptions,
+  type ExercismTrackCheckout,
+  type ExercismTrackSource,
+} from "./exercise-registry";
+export {
+  DockerExerciseRunner,
+} from "./exercise-runner";
+export {
+  createInitialExerciseState,
+  FileExerciseStateStore,
+  resolveExerciseStatePath,
+  EXERCISE_STORE_VERSION,
+  type ExerciseStateStore,
+  type PersistedExerciseState,
+} from "./exercise-store";
+export {
+  parseLearningRunMandate,
+  type LearningRunMandate,
+} from "./learning-run-mandate";
+export type {
+  ExerciseAttemptRecord,
+  ExerciseFile,
+  ExerciseRecord,
+  ExerciseRegistrySummary,
+  ExerciseRunResult,
+  ExerciseRunner,
+  ExerciseSolutionFile,
+  ExerciseSourceKind,
+} from "./exercise";
 
 export {
   getLearningMatrixEntry,

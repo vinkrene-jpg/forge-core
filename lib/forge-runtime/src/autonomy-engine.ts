@@ -50,6 +50,7 @@ export interface AutonomousEngineOptions {
   readonly listLearningProposals: () => readonly LearningMissionProposal[];
   readonly listLearningProfiles: () => readonly LearningCapabilityProfile[];
   readonly scheduleLearningProposal: (proposalId: string) => Promise<unknown>;
+  readonly scheduleNextExercise: () => Promise<boolean>;
   readonly scheduleWorkspacePlan: (
     missionId: string,
   ) => Promise<WorkspacePlanSchedulingResult>;
@@ -197,6 +198,7 @@ export class AutonomousEngine {
   readonly #listLearningProposals: AutonomousEngineOptions["listLearningProposals"];
   readonly #listLearningProfiles: AutonomousEngineOptions["listLearningProfiles"];
   readonly #scheduleLearningProposal: AutonomousEngineOptions["scheduleLearningProposal"];
+  readonly #scheduleNextExercise: AutonomousEngineOptions["scheduleNextExercise"];
   readonly #scheduleWorkspacePlan: AutonomousEngineOptions["scheduleWorkspacePlan"];
   readonly #aiGatewaySummary: AutonomousEngineOptions["aiGatewaySummary"];
 
@@ -217,6 +219,7 @@ export class AutonomousEngine {
     this.#listLearningProposals = options.listLearningProposals;
     this.#listLearningProfiles = options.listLearningProfiles;
     this.#scheduleLearningProposal = options.scheduleLearningProposal;
+    this.#scheduleNextExercise = options.scheduleNextExercise;
     this.#scheduleWorkspacePlan = options.scheduleWorkspacePlan;
     this.#aiGatewaySummary = options.aiGatewaySummary;
   }
@@ -504,6 +507,13 @@ export class AutonomousEngine {
     const scheduledWorkspace = await this.#scheduleReadyWorkspacePlan(missions);
 
     if (scheduledWorkspace) {
+      await this.#persist();
+      return;
+    }
+
+    const scheduledExercise = await this.#scheduleNextExercise();
+
+    if (scheduledExercise) {
       await this.#persist();
       return;
     }

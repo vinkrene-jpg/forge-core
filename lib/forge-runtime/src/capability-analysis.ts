@@ -127,6 +127,15 @@ export function requirementsForMission(
     ]);
   }
 
+  if (kind === "operator.learning-run" || kind === "operator.learning-exercise") {
+    return Object.freeze([
+      ...shared,
+      { capabilityId: "ai.provider.execute", minimumStatus: "operational", reason: "Exercises require one controlled solution attempt." },
+      { capabilityId: "tool.workspace.verify", minimumStatus: "operational", reason: "Only the upstream test suite may accept an exercise." },
+      { capabilityId: "capability.registry.read", minimumStatus: "operational", reason: "Passed exercise evidence is recorded in the capability registry." },
+    ]);
+  }
+
   if (kind === "operator.workspace-change") {
     return Object.freeze([
       ...shared,

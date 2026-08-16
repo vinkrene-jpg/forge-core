@@ -108,6 +108,30 @@ export function assessMissionRequest(
     });
   }
 
+  if (request.kind === "operator.learning-run") {
+    return Object.freeze({
+      policyVersion: GOVERNANCE_POLICY_VERSION,
+      action: "mission.execute",
+      missionKind: request.kind,
+      riskLevel: "medium",
+      decision: "require_approval",
+      reason: "One bounded learning-run approval authorizes acquisition and ordered upstream-test exercises within its fixed track, count, duration and cost limits.",
+      assessedAt,
+    });
+  }
+
+  if (request.kind === "operator.learning-exercise") {
+    return Object.freeze({
+      policyVersion: GOVERNANCE_POLICY_VERSION,
+      action: "mission.execute",
+      missionKind: request.kind,
+      riskLevel: "low",
+      decision: "allow",
+      reason: "Learning exercises are created internally only after a persisted approved learning-run boundary is revalidated.",
+      assessedAt,
+    });
+  }
+
   if (request.kind === "operator.goal-build") {
     return Object.freeze({
       policyVersion: GOVERNANCE_POLICY_VERSION,
