@@ -133,6 +133,7 @@ test("one run approval executes ranked capability goals and resolves accepted ga
       maximumGoals: 2,
       maximumDurationMs: 60_000,
       maximumCostUsd: 0,
+      maximumDailyCostUsd: 0,
     });
     assert.equal(created.mission.status, "awaiting_approval");
     assert.ok(created.approval);

@@ -12,6 +12,7 @@ export interface GoalRunMandateRequest {
   readonly maximumImprovementDepth: number;
   readonly maximumDurationMs: number;
   readonly maximumCostUsd: number;
+  readonly maximumDailyCostUsd: number;
 }
 
 const allowedMutationRoots = new Set(["sandbox", "lib", "artifacts"]);
@@ -30,9 +31,9 @@ function boundedInteger(value: unknown, field: string, minimum: number, maximum:
   return Number(value);
 }
 
-function money(value: unknown): number {
+function money(value: unknown, field: string): number {
   if (typeof value !== "number" || !Number.isFinite(value) || value < 0 || value > 1_000_000) {
-    throw new Error("runMandate.maximumCostUsd must be between 0 and 1000000");
+    throw new Error(`${field} must be between 0 and 1000000`);
   }
   return Math.round(value * 1_000_000) / 1_000_000;
 }
@@ -88,7 +89,8 @@ export function parseGoalRunMandateRequest(value: unknown): GoalRunMandateReques
       2,
     ),
     maximumDurationMs: boundedInteger(candidate.maximumDurationMs, "runMandate.maximumDurationMs", 1_000, 86_400_000),
-    maximumCostUsd: money(candidate.maximumCostUsd),
+    maximumCostUsd: money(candidate.maximumCostUsd, "runMandate.maximumCostUsd"),
+    maximumDailyCostUsd: money(candidate.maximumDailyCostUsd, "runMandate.maximumDailyCostUsd"),
   });
 }
 

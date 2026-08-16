@@ -100,6 +100,8 @@ export interface ObserveAutonomousLearningRequest {
   readonly evidenceMemoryId: string;
   readonly projectId: string;
   readonly capabilityIds: readonly string[];
+  readonly maximumCostUsd?: number;
+  readonly maximumDailyCostUsd?: number;
   readonly sourceProposalId?: string | null;
   readonly targetCapabilityId?: string | null;
   readonly capabilityResult?: "pass" | "gap" | null;

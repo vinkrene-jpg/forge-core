@@ -350,6 +350,21 @@ function errorMessage(error: unknown): string {
     : String(error ?? "Unknown error");
 }
 
+function missionSpendMandate(mission: MissionRecord) {
+  const maximumRunCostUsd = mission.input.maximumCostUsd;
+  const maximumDailyCostUsd = mission.input.maximumDailyCostUsd;
+  if (typeof maximumRunCostUsd !== "number" || typeof maximumDailyCostUsd !== "number") {
+    return null;
+  }
+  return Object.freeze({
+    id: typeof mission.input.rootMissionId === "string"
+      ? mission.input.rootMissionId
+      : mission.id,
+    maximumRunCostUsd,
+    maximumDailyCostUsd,
+  });
+}
+
 interface MissionExecutionFailure extends Error {
   missionResultStatus?: "failed" | "blocked" | "rejected";
   missionResultCause?: string;
@@ -979,6 +994,7 @@ export class ForgeRuntime {
     const execution = await this.#aiGateway.executeComposition(
       composition.id,
       mission.id,
+      missionSpendMandate(mission),
     );
 
     if (
@@ -1107,6 +1123,14 @@ export class ForgeRuntime {
         "evaluation.output.assess",
         "mission.autonomous.continue",
       ],
+      maximumCostUsd:
+        typeof mission.input.maximumCostUsd === "number"
+          ? mission.input.maximumCostUsd
+          : undefined,
+      maximumDailyCostUsd:
+        typeof mission.input.maximumDailyCostUsd === "number"
+          ? mission.input.maximumDailyCostUsd
+          : undefined,
       sourceProposalId:
         typeof mission.input.learningProposalId === "string"
           ? mission.input.learningProposalId
@@ -1151,6 +1175,8 @@ export class ForgeRuntime {
             objective: input.objective,
             cycleIndex: input.cycleIndex + 1,
             maxCycles: input.maxCycles,
+            maximumCostUsd: mission.input.maximumCostUsd,
+            maximumDailyCostUsd: mission.input.maximumDailyCostUsd,
             rootMissionId,
             previousMissionId: mission.id,
             continuationAuthorized: true,
@@ -1787,7 +1813,15 @@ export class ForgeRuntime {
       files: [],
       memoryKinds: [],
     });
-    const execution = await this.#aiGateway.executeComposition(composition.id, runMissionId);
+    const execution = await this.#aiGateway.executeComposition(
+      composition.id,
+      runMissionId,
+      {
+        id: runMissionId,
+        maximumRunCostUsd: mandate.maximumCostUsd,
+        maximumDailyCostUsd: mandate.maximumDailyCostUsd,
+      },
+    );
     if (execution.status !== "succeeded" || !execution.outputText) {
       throw new Error(`Goal run provider planning failed: ${execution.error ?? execution.status}`);
     }
@@ -3158,6 +3192,7 @@ export class ForgeRuntime {
     const execution = await this.#aiGateway.executeComposition(
       composition.id,
       mission.id,
+      missionSpendMandate(mission),
     );
 
     if (execution.providerId === "manual-fallback") {
@@ -3373,6 +3408,14 @@ export class ForgeRuntime {
           "evaluation.output.assess",
           "mission.autonomous.continue",
         ],
+        maximumCostUsd:
+          typeof mission.input.maximumCostUsd === "number"
+            ? mission.input.maximumCostUsd
+            : undefined,
+        maximumDailyCostUsd:
+          typeof mission.input.maximumDailyCostUsd === "number"
+            ? mission.input.maximumDailyCostUsd
+            : undefined,
         sourceProposalId:
           typeof mission.input.learningProposalId === "string"
             ? mission.input.learningProposalId
@@ -4046,9 +4089,9 @@ export class ForgeRuntime {
         gapResolved: candidateId.length > 0 && !currentCandidateIds.has(candidateId),
       });
     });
-    const baseline = typeof run.output.baselineCostUsd === "number"
-      ? run.output.baselineCostUsd
-      : 0;
+    const actualEstimatedCostUsd = this.#aiGateway.listExecutions()
+      .filter((execution) => execution.spendMandateId === run.id)
+      .reduce((total, execution) => total + execution.estimatedCostUsd, 0);
     return Object.freeze({
       missionId: run.id,
       status: run.status,
@@ -4057,10 +4100,8 @@ export class ForgeRuntime {
       resolvedGapIds: Object.freeze(
         results.filter((item) => item.gapResolved).map((item) => item.candidateId),
       ),
-      actualEstimatedCostUsd: Math.max(
-        0,
-        this.#aiGateway.summary().totalEstimatedCostUsd - baseline,
-      ),
+      actualEstimatedCostUsd: Math.round(actualEstimatedCostUsd * 1_000_000) / 1_000_000,
+      dailyEstimatedCostUsd: this.#aiGateway.summary().dailyEstimatedCostUsd,
       generatedAt: new Date().toISOString(),
     });
   }

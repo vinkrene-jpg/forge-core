@@ -1,6 +1,16 @@
 ﻿# Forge Current State
 
-Verified through: 2026-07-12 19:16 +02:00
+Verified through: 2026-08-16
+
+## Spend, sandbox and runtime lifecycle hardening
+
+- Every OpenAI provider call now requires explicit persisted run and UTC-day spend authority. The gateway serializes conservative reservation with the boundary check before connector execution and reports mandate-linked actual cost.
+- Operator autonomous mission intake includes fixed `$5` run and daily boundaries before governance assessment; bounded continuation missions inherit them.
+- Host package installation, lifecycle scripts and package-script verification are denied without a network-isolated executor that disables package installation. Workspace and API execution paths fail closed rather than running Forge-written code directly on Windows.
+- Forge child-process environment construction strips unrelated secret-like values and permits only the explicitly allowlisted OpenAI credential.
+- `execution-slice.test.ts` registers every `ForgeRuntime` with exception-safe cleanup, stops runtimes before restoring global environment or deleting storage, and uses a bounded proof verifier compatible with the production host-execution denial.
+- Timed evidence: complete execution-slice file 6/6 in 4.573 seconds; real WorkspaceExecutor proof alone 1/1 in 1.811 seconds; restart evidence alone 1/1 in 1.955 seconds. No pending-promise warning or post-suite handle delay remained.
+- Complete API suite passed 53/53 after mission intake was aligned with mandatory spend authority.
 
 ## Recursive capability repair and automatic resume - deterministic verification
 

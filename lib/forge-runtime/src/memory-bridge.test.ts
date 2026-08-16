@@ -35,7 +35,11 @@ async function waitFor(
 }
 
 async function withEnvironment(
-  run: (storageRoot: string) => Promise<void>,
+  run: (scope: {
+    readonly registerRuntime: (runtime: ForgeRuntime) => ForgeRuntime;
+    readonly stopRuntime: (runtime: ForgeRuntime) => Promise<void>;
+    readonly storageRoot: string;
+  }) => Promise<void>,
 ): Promise<void> {
   const original = new Map(
     environmentKeys.map((key) => [key, process.env[key]]),
@@ -43,6 +47,16 @@ async function withEnvironment(
   const storageRoot = await mkdtemp(
     path.join(os.tmpdir(), "forge-memory-bridge-"),
   );
+  const runtimes: ForgeRuntime[] = [];
+  const registerRuntime = (runtime: ForgeRuntime) => {
+    runtimes.push(runtime);
+    return runtime;
+  };
+  const stopRuntime = async (runtime: ForgeRuntime) => {
+    await runtime.stop();
+    const index = runtimes.lastIndexOf(runtime);
+    if (index >= 0) runtimes.splice(index, 1);
+  };
 
   process.env.STORAGE_DIR = storageRoot;
   process.env.FORGE_WORKSPACE_ROOT = process.cwd();
@@ -52,8 +66,17 @@ async function withEnvironment(
   process.env.FORGE_AUTONOMY_ENABLED = "false";
 
   try {
-    await run(storageRoot);
+    await run({ registerRuntime, stopRuntime, storageRoot });
   } finally {
+    const cleanupErrors: unknown[] = [];
+    for (const runtime of runtimes.reverse()) {
+      try {
+        await runtime.stop();
+      } catch (error) {
+        cleanupErrors.push(error);
+      }
+    }
+
     for (const key of environmentKeys) {
       const value = original.get(key);
 
@@ -65,6 +88,10 @@ async function withEnvironment(
     }
 
     await rm(storageRoot, { recursive: true, force: true });
+
+    if (cleanupErrors.length > 0) {
+      throw new AggregateError(cleanupErrors, "Failed to stop memory bridge runtimes");
+    }
   }
 }
 
@@ -129,7 +156,7 @@ test("memory bridge stores and retrieves durable context", async () => {
 });
 
 test("memory bridge captures mission outcomes from runtime", async () => {
-  await withEnvironment(async () => {
+  await withEnvironment(async ({ registerRuntime, stopRuntime }) => {
     let providerCalls = 0;
     const connector: AiProviderConnector = {
       id: "openai-responses",
@@ -157,11 +184,11 @@ test("memory bridge captures mission outcomes from runtime", async () => {
       },
     };
 
-    const runtime = new ForgeRuntime({
+    const runtime = registerRuntime(new ForgeRuntime({
       aiProviderConnectors: [connector],
       missionLoopPollIntervalMs: 100,
       memoryBridgeRootPath: path.join(process.env.STORAGE_DIR!, "durable-memory"),
-    });
+    }));
 
     await runtime.start();
 
@@ -173,6 +200,8 @@ test("memory bridge captures mission outcomes from runtime", async () => {
         objective: "Capture mission output as durable lesson.",
         cycleIndex: 1,
         maxCycles: 1,
+        maximumCostUsd: 1,
+        maximumDailyCostUsd: 1,
         files: [],
       },
     });
@@ -195,6 +224,6 @@ test("memory bridge captures mission outcomes from runtime", async () => {
     const relevant = runtime.memoryBridgeRelevantContext("durable lesson", 5);
     assert.ok(relevant.relevant.length >= 1);
 
-    await runtime.stop();
+    await stopRuntime(runtime);
   });
 });

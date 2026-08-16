@@ -26,6 +26,7 @@ export interface AiGatewaySummary {
   readonly failed: number;
   readonly unavailable: number;
   readonly totalEstimatedCostUsd: number;
+  readonly dailyEstimatedCostUsd: number;
   readonly budgetLimitUsd: number;
   readonly budgetRemainingUsd: number;
   readonly byProvider: readonly {

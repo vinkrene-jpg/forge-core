@@ -145,6 +145,7 @@ test("builds a missing capability and resumes the original goal under one run ma
       maximumImprovementDepth: 2,
       maximumDurationMs: 60_000,
       maximumCostUsd: 0,
+      maximumDailyCostUsd: 0,
     });
     assert.ok(created.approval);
     await runtime.approveApproval(created.approval.id, "repair-chain-operator");
@@ -328,6 +329,7 @@ test("failed capability repair stops the original goal with a complete chain rep
       maximumImprovementDepth: 2,
       maximumDurationMs: 60_000,
       maximumCostUsd: 0,
+      maximumDailyCostUsd: 0,
     });
     assert.ok(created.approval);
     await runtime.approveApproval(created.approval.id, "repair-failure-operator");

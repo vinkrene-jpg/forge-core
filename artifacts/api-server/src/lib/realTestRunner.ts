@@ -25,6 +25,7 @@ import { sandboxDir, storageRoot } from "./storage";
 import { audit } from "./audit";
 import { logger } from "./logger";
 import { TestTargetError } from "./testRunner";
+import { assertHostPackageExecutionDenied } from "@workspace/forge-runtime";
 
 export const REAL_EXECUTABLE_TYPES = ["lint", "typecheck", "build", "unit", "integration"] as const;
 
@@ -349,6 +350,11 @@ export async function executeRealTestRun(input: {
   const notExecutable = input.types.filter((t) => !(REAL_EXECUTABLE_TYPES as readonly string[]).includes(t));
 
   const pkg = readPackageJson(dir);
+  try {
+    assertHostPackageExecutionDenied(pkg !== null);
+  } catch (error) {
+    throw new TestTargetError(error instanceof Error ? error.message : String(error));
+  }
   const { env, deniedAllowlistVars } = buildRestrictedEnv(dir);
   if (deniedAllowlistVars.length > 0) {
     await audit({
@@ -366,31 +372,12 @@ export async function executeRealTestRun(input: {
   const runStarted = Date.now();
   const steps: StepOutcome[] = [];
 
-  // 1. Dependency install: --ignore-scripts means no package code executes
-  // during install; only the permission-restricted steps run module code.
-  let installFailed = false;
-  if (pkg) {
-    const install = await runStep(
-      "install",
-      "npm",
-      ["install", "--ignore-scripts", "--no-audit", "--no-fund", "--loglevel=error"],
-      dir,
-      env,
-    );
-    steps.push(install);
-    installFailed = install.status === "failed";
-  } else {
-    steps.push(skipped("install", "No package.json in sandbox; dependency install skipped."));
-  }
+  steps.push(skipped("install", "Package installation is prohibited during governed execution."));
 
   const scripts = pkg?.scripts ?? {};
   const hasTsconfig = fs.existsSync(path.join(dir, "tsconfig.json"));
 
   for (const type of requested) {
-    if (installFailed) {
-      steps.push(skipped(type, "Skipped because dependency install failed."));
-      continue;
-    }
     switch (type) {
       case "lint":
         steps.push(

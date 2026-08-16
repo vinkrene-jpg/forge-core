@@ -46,8 +46,13 @@ export class GoalMandateBoundaryError extends Error {
 
 export const HARD_PROTECTED_FORGE_FILES = [
   "artifacts/api-server/src/lib/corelock.ts",
+  "artifacts/api-server/src/lib/realTestRunner.ts",
+  "lib/forge-runtime/src/ai-gateway-engine.ts",
+  "lib/forge-runtime/src/ai-gateway-store.ts",
+  "lib/forge-runtime/src/ai-gateway.ts",
   "lib/forge-runtime/src/goal-build-graph.ts",
   "lib/forge-runtime/src/goal-mandate.ts",
+  "lib/forge-runtime/src/goal-run-mandate.ts",
   "lib/forge-runtime/src/governance.ts",
   "lib/forge-runtime/src/governance-engine.ts",
   "lib/forge-runtime/src/governance-store.ts",
@@ -55,6 +60,7 @@ export const HARD_PROTECTED_FORGE_FILES = [
   "lib/forge-runtime/src/mission-ai-review.ts",
   "lib/forge-runtime/src/mission-review.ts",
   "lib/forge-runtime/src/runtime-state.ts",
+  "lib/forge-runtime/src/runtime.ts",
   "lib/forge-runtime/src/workspace-executor.ts",
 ] as const;
 

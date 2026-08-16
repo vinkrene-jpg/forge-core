@@ -100,7 +100,18 @@ const protectedSegments = new Set([
   "dist",
 ]);
 
-const protectedNames = new Set([".env", "id_rsa", "id_ed25519"]);
+const protectedNames = new Set([
+  ".env",
+  ".npmrc",
+  ".pnpmfile.cjs",
+  "id_rsa",
+  "id_ed25519",
+  "package.json",
+  "package-lock.json",
+  "pnpm-lock.yaml",
+  "pnpm-workspace.yaml",
+  "yarn.lock",
+]);
 
 const immutableForgePaths: ReadonlySet<string> = new Set(HARD_PROTECTED_FORGE_FILES);
 const allowedMutationRoots = new Set(["sandbox", "lib", "artifacts"]);
@@ -319,27 +330,21 @@ export class NodeWorkspaceVerificationRunner implements WorkspaceVerificationRun
     signal: AbortSignal,
     fullRepository: boolean,
   ): Promise<WorkspaceCommandResult> {
-    const environment = { ...process.env };
-    delete environment.STORAGE_DIR;
-    delete environment.FORGE_WORKSPACE_ROOT;
-    const args =
-      step === "test"
-        ? fullRepository
-          ? ["-r", "--if-present", "test"]
-          : ["--filter", "@workspace/forge-runtime", "test"]
-        : ["run", step];
+    void step;
+    void rootPath;
+    void signal;
+    void fullRepository;
+    throw new Error(
+      "Host verification is disabled: Forge-written code requires a network-isolated executor with package installation disabled. Windows host processes cannot provide this boundary without an active sandbox backend.",
+    );
+  }
+}
 
-    if (process.platform === "win32") {
-      return runProcess(
-        process.env.ComSpec?.trim() || "cmd.exe",
-        ["/d", "/s", "/c", "pnpm", ...args],
-        rootPath,
-        signal,
-        environment,
-      );
-    }
-
-    return runProcess("pnpm", args, rootPath, signal, environment);
+export function assertHostPackageExecutionDenied(packageManifestPresent: boolean): void {
+  if (packageManifestPresent) {
+    throw new Error(
+      "Host package execution is disabled: dependency installation, lifecycle scripts, and package scripts require a network-isolated sandbox backend.",
+    );
   }
 }
 

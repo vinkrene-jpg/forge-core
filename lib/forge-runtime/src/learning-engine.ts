@@ -498,6 +498,12 @@ export class LearningEngine {
           expectedNewEvidence: selection.expectedNewEvidence,
           cycleIndex: 1 as const,
           maxCycles: 1 as const,
+          ...(typeof request.maximumCostUsd === "number"
+            ? { maximumCostUsd: request.maximumCostUsd }
+            : {}),
+          ...(typeof request.maximumDailyCostUsd === "number"
+            ? { maximumDailyCostUsd: request.maximumDailyCostUsd }
+            : {}),
           continuationAuthorized: false as const,
           files: Object.freeze([
             "GOVERNANCE/ROADMAP.md",

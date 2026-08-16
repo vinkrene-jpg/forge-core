@@ -265,6 +265,7 @@ export interface CapabilityGoalRunReport {
     readonly maximumImprovementDepth: number;
     readonly maximumDurationMs: number;
     readonly maximumCostUsd: number;
+    readonly maximumDailyCostUsd: number;
   };
   readonly goals: readonly {
     readonly candidateId: string;
@@ -288,6 +289,7 @@ export interface CapabilityGoalRunReport {
   }[];
   readonly resolvedGapIds: readonly string[];
   readonly actualEstimatedCostUsd: number;
+  readonly dailyEstimatedCostUsd: number;
   readonly generatedAt: string;
 }
 
@@ -410,6 +412,7 @@ export interface AiGatewaySummaryResponse {
   readonly failed: number;
   readonly unavailable: number;
   readonly totalEstimatedCostUsd: number;
+  readonly dailyEstimatedCostUsd: number;
   readonly budgetLimitUsd: number;
   readonly budgetRemainingUsd: number;
   readonly byProvider: readonly AiGatewayCostSummary[];
@@ -517,6 +520,7 @@ export const forgeApi = {
     readonly maximumImprovementDepth: number;
     readonly maximumDurationMs: number;
     readonly maximumCostUsd: number;
+    readonly maximumDailyCostUsd: number;
   }): Promise<MissionRecord & { readonly approval: ApprovalRecord | null }> {
     return requestJson("/api/capability-goal-runs", {
       method: "POST",

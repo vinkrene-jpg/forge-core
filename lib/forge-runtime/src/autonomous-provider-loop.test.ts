@@ -40,7 +40,10 @@ async function waitFor(
 }
 
 async function withEnvironment(
-  run: (storageRoot: string) => Promise<void>,
+  run: (scope: {
+    readonly registerRuntime: (runtime: ForgeRuntime) => ForgeRuntime;
+    readonly stopRuntime: (runtime: ForgeRuntime) => Promise<void>;
+  }) => Promise<void>,
 ): Promise<void> {
   const original = new Map(
     environmentKeys.map((key) => [key, process.env[key]]),
@@ -48,6 +51,16 @@ async function withEnvironment(
   const storageRoot = await mkdtemp(
     path.join(os.tmpdir(), "forge-autonomous-loop-"),
   );
+  const runtimes: ForgeRuntime[] = [];
+  const registerRuntime = (runtime: ForgeRuntime) => {
+    runtimes.push(runtime);
+    return runtime;
+  };
+  const stopRuntime = async (runtime: ForgeRuntime) => {
+    await runtime.stop();
+    const index = runtimes.lastIndexOf(runtime);
+    if (index >= 0) runtimes.splice(index, 1);
+  };
 
   process.env.STORAGE_DIR = storageRoot;
   process.env.FORGE_WORKSPACE_ROOT = process.cwd();
@@ -57,8 +70,17 @@ async function withEnvironment(
   process.env.FORGE_AUTONOMY_ENABLED = "false";
 
   try {
-    await run(storageRoot);
+    await run({ registerRuntime, stopRuntime });
   } finally {
+    const cleanupErrors: unknown[] = [];
+    for (const runtime of runtimes.reverse()) {
+      try {
+        await runtime.stop();
+      } catch (error) {
+        cleanupErrors.push(error);
+      }
+    }
+
     for (const key of environmentKeys) {
       const value = original.get(key);
 
@@ -70,6 +92,10 @@ async function withEnvironment(
     }
 
     await removeWithRetry(storageRoot);
+
+    if (cleanupErrors.length > 0) {
+      throw new AggregateError(cleanupErrors, "Failed to stop autonomous-loop runtimes");
+    }
   }
 }
 
@@ -108,6 +134,8 @@ function autonomousRequest(maxCycles: number) {
         "Identify the next evidence-backed Forge implementation step without modifying files.",
       cycleIndex: 1,
       maxCycles,
+      maximumCostUsd: 1,
+      maximumDailyCostUsd: 1,
       files: [],
     },
   };
@@ -123,6 +151,8 @@ function proofRequest() {
         "Maak in een tijdelijke sandbox een bestand forge-proof.txt met een unieke tekst, lees het bestand terug en lever de SHA-256 hash.",
       cycleIndex: 1,
       maxCycles: 1,
+      maximumCostUsd: 1,
+      maximumDailyCostUsd: 1,
       files: [],
     },
   };
@@ -199,7 +229,7 @@ function assertNoExecutionEvidence(value: unknown): void {
 
 test("autonomous provider loop", { concurrency: false }, async (t) => {
   await t.test("completes, continues and survives restart", async () => {
-    await withEnvironment(async () => {
+    await withEnvironment(async ({ registerRuntime, stopRuntime }) => {
       let providerCalls = 0;
       const connector: AiProviderConnector = {
         id: "openai-responses",
@@ -227,10 +257,10 @@ test("autonomous provider loop", { concurrency: false }, async (t) => {
           });
         },
       };
-      const runtime = new ForgeRuntime({
+      const runtime = registerRuntime(new ForgeRuntime({
         aiProviderConnectors: [connector],
         missionLoopPollIntervalMs: 100,
-      });
+      }));
 
       await runtime.start();
 
@@ -301,12 +331,12 @@ test("autonomous provider loop", { concurrency: false }, async (t) => {
           ),
       );
 
-      await runtime.stop();
+      await stopRuntime(runtime);
 
-      const restarted = new ForgeRuntime({
+      const restarted = registerRuntime(new ForgeRuntime({
         aiProviderConnectors: [connector],
         missionLoopPollIntervalMs: 100,
-      });
+      }));
       await restarted.start();
 
       assert.equal(autonomousMissions(restarted).length, 2);
@@ -319,14 +349,14 @@ test("autonomous provider loop", { concurrency: false }, async (t) => {
         2,
       );
 
-      await restarted.stop();
+      await stopRuntime(restarted);
     });
   });
 
   await t.test(
     "pauses after a learning exercise and resumes only explicitly",
     async () => {
-      await withEnvironment(async () => {
+      await withEnvironment(async ({ registerRuntime, stopRuntime }) => {
         let providerCalls = 0;
         const connector: AiProviderConnector = {
           id: "openai-responses",
@@ -364,10 +394,10 @@ test("autonomous provider loop", { concurrency: false }, async (t) => {
             });
           },
         };
-        const runtime = new ForgeRuntime({
+        const runtime = registerRuntime(new ForgeRuntime({
           aiProviderConnectors: [connector],
           missionLoopPollIntervalMs: 100,
-        });
+        }));
 
         await runtime.start();
         const created = await runtime.createMission(autonomousRequest(1));
@@ -449,7 +479,7 @@ test("autonomous provider loop", { concurrency: false }, async (t) => {
         assert.equal(providerCalls, providerCallsBeforeResume);
         assert.equal(runtime.autonomySummary().pauseRequiresResume, false);
 
-        await runtime.stop();
+        await stopRuntime(runtime);
       });
     },
   );
@@ -457,7 +487,7 @@ test("autonomous provider loop", { concurrency: false }, async (t) => {
   await t.test(
     "accepts proof mission only with concrete execution evidence",
     async () => {
-      await withEnvironment(async () => {
+      await withEnvironment(async ({ registerRuntime, stopRuntime }) => {
         const connector: AiProviderConnector = {
           id: "openai-responses",
           async execute() {
@@ -477,11 +507,11 @@ test("autonomous provider loop", { concurrency: false }, async (t) => {
             });
           },
         };
-        const runtime = new ForgeRuntime({
+        const runtime = registerRuntime(new ForgeRuntime({
           aiProviderConnectors: [connector],
           workspaceVerificationRunner: successfulWorkspaceRunner,
           missionLoopPollIntervalMs: 100,
-        });
+        }));
 
         try {
           await runtime.start();
@@ -509,7 +539,7 @@ test("autonomous provider loop", { concurrency: false }, async (t) => {
           assert.match(String(evidence?.artifacts?.[0]?.path ?? ""), /forge-proof\.txt/i);
           assert.match(String(evidence?.artifacts?.[0]?.sha256 ?? ""), /^[a-f0-9]{64}$/);
         } finally {
-          await runtime.stop();
+          await stopRuntime(runtime);
         }
       });
     },
@@ -518,16 +548,16 @@ test("autonomous provider loop", { concurrency: false }, async (t) => {
   await t.test(
     "blocks build objective when provider route falls back to manual-fallback",
     async () => {
-      await withEnvironment(async () => {
+      await withEnvironment(async ({ registerRuntime, stopRuntime }) => {
         delete process.env.FORGE_AI_PROVIDER;
         delete process.env.OPENAI_API_KEY;
         delete process.env.OPENAI_MODEL;
         delete process.env.FORGE_LOCAL_MODEL_ENABLED;
 
-        const runtime = new ForgeRuntime({
+        const runtime = registerRuntime(new ForgeRuntime({
           workspaceVerificationRunner: successfulWorkspaceRunner,
           missionLoopPollIntervalMs: 100,
-        });
+        }));
 
         try {
           await runtime.start();
@@ -553,7 +583,7 @@ test("autonomous provider loop", { concurrency: false }, async (t) => {
           );
           assert.match(mission?.lastError ?? "", /manual-fallback/i);
         } finally {
-          await runtime.stop();
+          await stopRuntime(runtime);
         }
       });
     },
@@ -562,7 +592,7 @@ test("autonomous provider loop", { concurrency: false }, async (t) => {
   await t.test(
     "routes generic build through plan, approval, executor, and evaluator",
     async () => {
-      await withEnvironment(async () => {
+      await withEnvironment(async ({ registerRuntime, stopRuntime }) => {
         const root = await createWorkspaceRepository();
         process.env.FORGE_WORKSPACE_ROOT = root;
         const liveObjective = [
@@ -612,11 +642,11 @@ test("autonomous provider loop", { concurrency: false }, async (t) => {
             });
           },
         };
-        const runtime = new ForgeRuntime({
+        const runtime = registerRuntime(new ForgeRuntime({
           aiProviderConnectors: [connector],
           workspaceVerificationRunner: successfulWorkspaceRunner,
           missionLoopPollIntervalMs: 100,
-        });
+        }));
 
         try {
           await runtime.start();
@@ -629,6 +659,8 @@ test("autonomous provider loop", { concurrency: false }, async (t) => {
               proofTargetPath: "generic-build-proof.txt",
               cycleIndex: 1,
               maxCycles: 1,
+              maximumCostUsd: 1,
+              maximumDailyCostUsd: 1,
               files: [],
             },
           });
@@ -754,7 +786,7 @@ test("autonomous provider loop", { concurrency: false }, async (t) => {
           assert.ok((evidence?.verificationRuns?.length ?? 0) > 0);
           assert.ok((evidence?.artifacts?.length ?? 0) > 0);
           assert.equal(providerCalls, 1);
-          await runtime.stop();
+          await stopRuntime(runtime);
         } finally {
           await rm(root, { recursive: true, force: true });
         }
@@ -765,7 +797,7 @@ test("autonomous provider loop", { concurrency: false }, async (t) => {
   await t.test(
     "blocks generic build without targets before provider execution",
     async () => {
-      await withEnvironment(async () => {
+      await withEnvironment(async ({ registerRuntime, stopRuntime }) => {
         let providerCalls = 0;
         const connector: AiProviderConnector = {
           id: "openai-responses",
@@ -774,10 +806,10 @@ test("autonomous provider loop", { concurrency: false }, async (t) => {
             throw new Error("Provider must not execute without targets");
           },
         };
-        const runtime = new ForgeRuntime({
+        const runtime = registerRuntime(new ForgeRuntime({
           aiProviderConnectors: [connector],
           missionLoopPollIntervalMs: 100,
-        });
+        }));
 
         await runtime.start();
         const created = await runtime.createMission({
@@ -788,6 +820,8 @@ test("autonomous provider loop", { concurrency: false }, async (t) => {
             objective: "Bouw een nieuwe generieke runtimefunctie.",
             cycleIndex: 1,
             maxCycles: 1,
+            maximumCostUsd: 1,
+            maximumDailyCostUsd: 1,
             files: [],
           },
         });
@@ -805,23 +839,23 @@ test("autonomous provider loop", { concurrency: false }, async (t) => {
           "blocked",
         );
         assert.match(mission?.lastError ?? "", /validated target files/i);
-        await runtime.stop();
+        await stopRuntime(runtime);
       });
     },
   );
 
   await t.test("contains provider failure without continuation", async () => {
-    await withEnvironment(async () => {
+    await withEnvironment(async ({ registerRuntime, stopRuntime }) => {
       const connector: AiProviderConnector = {
         id: "openai-responses",
         async execute() {
           throw new Error("Simulated quota failure");
         },
       };
-      const runtime = new ForgeRuntime({
+      const runtime = registerRuntime(new ForgeRuntime({
         aiProviderConnectors: [connector],
         missionLoopPollIntervalMs: 100,
-      });
+      }));
 
       await runtime.start();
       const created = await runtime.createMission(autonomousRequest(2));
@@ -845,12 +879,12 @@ test("autonomous provider loop", { concurrency: false }, async (t) => {
       assert.equal(runtime.listAiExecutions()[0].status, "failed");
       assert.equal(runtime.snapshot().kernel.status, "running");
 
-      await runtime.stop();
+      await stopRuntime(runtime);
     });
   });
 
   await t.test("persists rejected mission output when evaluation rejects", async () => {
-    await withEnvironment(async () => {
+    await withEnvironment(async ({ registerRuntime, stopRuntime }) => {
       const connector: AiProviderConnector = {
         id: "openai-responses",
         async execute() {
@@ -866,10 +900,10 @@ test("autonomous provider loop", { concurrency: false }, async (t) => {
         },
       };
 
-      const runtime = new ForgeRuntime({
+      const runtime = registerRuntime(new ForgeRuntime({
         aiProviderConnectors: [connector],
         missionLoopPollIntervalMs: 100,
-      });
+      }));
 
       await runtime.start();
       const created = await runtime.createMission(autonomousRequest(1));
@@ -895,20 +929,20 @@ test("autonomous provider loop", { concurrency: false }, async (t) => {
         "rejected",
       );
 
-      await runtime.stop();
+      await stopRuntime(runtime);
     });
   });
 
   await t.test("uses manual fallback when local model is not explicitly enabled", async () => {
-    await withEnvironment(async () => {
+    await withEnvironment(async ({ registerRuntime, stopRuntime }) => {
       delete process.env.FORGE_AI_PROVIDER;
       delete process.env.OPENAI_API_KEY;
       delete process.env.OPENAI_MODEL;
       delete process.env.FORGE_LOCAL_MODEL_ENABLED;
 
-      const runtime = new ForgeRuntime({
+      const runtime = registerRuntime(new ForgeRuntime({
         missionLoopPollIntervalMs: 100,
-      });
+      }));
 
       await runtime.start();
 
@@ -936,7 +970,7 @@ test("autonomous provider loop", { concurrency: false }, async (t) => {
       assert.equal(execution?.providerId, "manual-fallback");
       assert.equal(execution?.status, "succeeded");
 
-      await runtime.stop();
+      await stopRuntime(runtime);
     });
   });
 });

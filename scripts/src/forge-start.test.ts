@@ -101,3 +101,29 @@ test("provider diagnostics expose names without credential values", () => {
   assert.deepEqual(providers, ["openai", "anthropic", "local-model"]);
   assert.doesNotMatch(diagnostic, /value-must-not-appear/);
 });
+
+test("Forge child receives only the approved provider secret", () => {
+  const root = mkdtempSync(path.join(os.tmpdir(), "forge-start-secrets-"));
+  try {
+    writeFileSync(
+      path.join(root, ".env"),
+      [
+        "OPENAI_API_KEY=test-openai",
+        "FORGE_WORKSPACE_BRIDGE_TOKEN=test-bridge",
+        "DATABASE_URL=test-database",
+        "SMTP_PASSWORD=test-mail",
+        "STRIPE_SECRET_KEY=test-payment",
+        "GITHUB_TOKEN=test-github",
+      ].join("\n"),
+    );
+    const environment = loadRootEnvironment(root, {});
+    assert.equal(environment.OPENAI_API_KEY, "test-openai");
+    assert.equal(environment.FORGE_WORKSPACE_BRIDGE_TOKEN, undefined);
+    assert.equal(environment.DATABASE_URL, undefined);
+    assert.equal(environment.SMTP_PASSWORD, undefined);
+    assert.equal(environment.STRIPE_SECRET_KEY, undefined);
+    assert.equal(environment.GITHUB_TOKEN, undefined);
+  } finally {
+    rmSync(root, { recursive: true, force: true });
+  }
+});

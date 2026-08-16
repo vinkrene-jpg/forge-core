@@ -210,3 +210,14 @@ Status: implemented with deterministic runtime verification; real WorkspaceExecu
 - The run mandate now bounds repair count and depth; depth is at most two and original goals plus repairs remain capped at twenty.
 - Existing mutation roots, immutable paths, governance gates, rollback and no-push policy are unchanged. Standalone BuildGraph parsing still rejects unavailable capabilities.
 - Deterministic coverage proves repair then resume, failed repair reporting, depth blocking and repair-count blocking.
+
+## Spend and execution isolation hardening - 2026-08-16
+
+Status: implemented with deterministic runtime, API and lifecycle verification.
+
+- Paid provider calls reserve persisted run and daily authority before connector execution; concurrent calls share the same serialized budget view.
+- Operator mission intake carries explicit `$5` run and UTC-day limits into the governance preview and approved mission. Continuations inherit those limits.
+- Host package execution and verification fail closed until a network-isolated, package-install-disabled backend is available.
+- The Forge launcher forwards only explicitly allowlisted provider credentials and removes unrelated secrets from the child environment.
+- Every execution-slice test owns and stops its runtime before environment and temporary-storage cleanup. The complete file passes 6/6 and exits in 4.573 seconds; each real proof test also passes alone.
+- Real capability-repair dogfood is blocked until the isolated execution backend exists; deterministic verification remains authoritative meanwhile.

@@ -12,6 +12,8 @@ const environmentKeys = [
   "FORGE_AI_PROVIDER",
   "OPENAI_API_KEY",
   "OPENAI_MODEL",
+  "FORGE_OPENAI_INPUT_USD_PER_1K",
+  "FORGE_OPENAI_OUTPUT_USD_PER_1K",
   "FORGE_AUTONOMY_ENABLED",
 ] as const;
 
@@ -31,7 +33,11 @@ async function waitFor(
 }
 
 async function withEnvironment(
-  run: (storageRoot: string) => Promise<void>,
+  run: (scope: {
+    readonly createRuntime: (connector: AiProviderConnector) => ForgeRuntime;
+    readonly stopRuntime: (runtime: ForgeRuntime) => Promise<void>;
+    readonly storageRoot: string;
+  }) => Promise<void>,
 ): Promise<void> {
   const original = new Map(
     environmentKeys.map((key) => [key, process.env[key]]),
@@ -39,6 +45,20 @@ async function withEnvironment(
   const storageRoot = await mkdtemp(
     path.join(os.tmpdir(), "forge-learning-engine-"),
   );
+  const runtimes: ForgeRuntime[] = [];
+  const createRuntime = (connector: AiProviderConnector) => {
+    const runtime = new ForgeRuntime({
+      aiProviderConnectors: [connector],
+      missionLoopPollIntervalMs: 100,
+    });
+    runtimes.push(runtime);
+    return runtime;
+  };
+  const stopRuntime = async (runtime: ForgeRuntime) => {
+    await runtime.stop();
+    const index = runtimes.lastIndexOf(runtime);
+    if (index >= 0) runtimes.splice(index, 1);
+  };
 
   process.env.STORAGE_DIR = storageRoot;
   process.env.FORGE_WORKSPACE_ROOT = path.resolve(
@@ -48,11 +68,22 @@ async function withEnvironment(
   process.env.FORGE_AI_PROVIDER = "openai-responses";
   process.env.OPENAI_API_KEY = "test-only-not-a-real-secret";
   process.env.OPENAI_MODEL = "test-model";
+  delete process.env.FORGE_OPENAI_INPUT_USD_PER_1K;
+  delete process.env.FORGE_OPENAI_OUTPUT_USD_PER_1K;
   process.env.FORGE_AUTONOMY_ENABLED = "false";
 
   try {
-    await run(storageRoot);
+    await run({ createRuntime, stopRuntime, storageRoot });
   } finally {
+    const cleanupErrors: unknown[] = [];
+    for (const runtime of runtimes.reverse()) {
+      try {
+        await runtime.stop();
+      } catch (error) {
+        cleanupErrors.push(error);
+      }
+    }
+
     for (const key of environmentKeys) {
       const value = original.get(key);
 
@@ -64,6 +95,10 @@ async function withEnvironment(
     }
 
     await rm(storageRoot, { recursive: true, force: true });
+
+    if (cleanupErrors.length > 0) {
+      throw new AggregateError(cleanupErrors, "Failed to stop learning runtimes");
+    }
   }
 }
 
@@ -71,7 +106,7 @@ test(
   "learning engine persists evidence and uses governance for proposals",
   { concurrency: false },
   async () => {
-    await withEnvironment(async (storageRoot) => {
+    await withEnvironment(async ({ createRuntime, stopRuntime, storageRoot }) => {
       let providerCalls = 0;
       const connector: AiProviderConnector = {
         id: "openai-responses",
@@ -127,10 +162,7 @@ test(
           });
         },
       };
-      const runtime = new ForgeRuntime({
-        aiProviderConnectors: [connector],
-        missionLoopPollIntervalMs: 100,
-      });
+      const runtime = createRuntime(connector);
 
       await runtime.start();
       const created = await runtime.createMission({
@@ -141,6 +173,8 @@ test(
           objective: "Produce one accepted evidence source for learning.",
           cycleIndex: 1,
           maxCycles: 1,
+          maximumCostUsd: 1,
+          maximumDailyCostUsd: 1,
           files: [],
         },
       });
@@ -175,12 +209,9 @@ test(
       );
       assert.equal(runtime.listLearningMatrix().length, 3);
 
-      await runtime.stop();
+      await stopRuntime(runtime);
 
-      const restarted = new ForgeRuntime({
-        aiProviderConnectors: [connector],
-        missionLoopPollIntervalMs: 100,
-      });
+      const restarted = createRuntime(connector);
       await restarted.start();
 
       assert.equal(restarted.learningSummary().observations, 1);
@@ -193,17 +224,14 @@ test(
         runtime.listLearningProfiles(),
       );
 
-      await restarted.stop();
+      await stopRuntime(restarted);
 
       await rm(
         path.join(storageRoot, "forge-runtime", "learning-engine.json"),
         { force: true },
       );
 
-      const reconciled = new ForgeRuntime({
-        aiProviderConnectors: [connector],
-        missionLoopPollIntervalMs: 100,
-      });
+      const reconciled = createRuntime(connector);
       await reconciled.start();
 
       assert.equal(reconciled.learningSummary().observations, 1);
@@ -404,12 +432,9 @@ test(
         /scheduled learning proposal/,
       );
 
-      await reconciled.stop();
+      await stopRuntime(reconciled);
 
-      const feedbackRestart = new ForgeRuntime({
-        aiProviderConnectors: [connector],
-        missionLoopPollIntervalMs: 100,
-      });
+      const feedbackRestart = createRuntime(connector);
       await feedbackRestart.start();
 
       assert.equal(feedbackRestart.learningSummary().completed, 1);
@@ -417,7 +442,7 @@ test(
       assert.equal(feedbackRestart.learningSummary().proposed, 1);
       assert.equal(providerCalls, 3);
 
-      await feedbackRestart.stop();
+      await stopRuntime(feedbackRestart);
     });
   },
 );

@@ -112,6 +112,7 @@ try {
     maximumImprovementDepth: 2,
     maximumDurationMs: 20 * 60_000,
     maximumCostUsd: 0,
+    maximumDailyCostUsd: 0,
   });
   if (!created.approval) throw new Error("Live goal run did not create its one required approval");
   await runtime.approveApproval(created.approval.id, "capability-repair-live-operator");

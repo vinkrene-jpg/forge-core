@@ -20,6 +20,7 @@ export {
   type AiProviderConnector,
   type AiProviderId,
   type AiProviderResult,
+  type AiSpendMandate,
   type AiUsage,
 } from "./ai-gateway";
 
@@ -135,6 +136,7 @@ export {
 } from "./workspace-connector";
 
 export {
+  assertHostPackageExecutionDenied,
   NodeWorkspaceVerificationRunner,
   parseWorkspaceChangeRequest,
   WorkspaceExecutionError,

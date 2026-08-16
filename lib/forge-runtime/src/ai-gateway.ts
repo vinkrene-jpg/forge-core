@@ -41,11 +41,21 @@ export interface AiExecutionRecord {
   readonly outputText: string | null;
   readonly usage: AiUsage;
   readonly estimatedCostUsd: number;
+  readonly reservedCostUsd: number;
+  readonly spendMandateId: string | null;
+  readonly maximumRunCostUsd: number | null;
+  readonly maximumDailyCostUsd: number | null;
   readonly providerResponseId: string | null;
   readonly error: string | null;
   readonly createdAt: string;
   readonly startedAt: string;
   readonly completedAt: string | null;
+}
+
+export interface AiSpendMandate {
+  readonly id: string;
+  readonly maximumRunCostUsd: number;
+  readonly maximumDailyCostUsd: number;
 }
 
 export interface AiProviderResult {
@@ -77,6 +87,7 @@ export interface AiGatewaySummary {
   readonly failed: number;
   readonly unavailable: number;
   readonly totalEstimatedCostUsd: number;
+  readonly dailyEstimatedCostUsd: number;
   readonly budgetLimitUsd: number;
   readonly budgetRemainingUsd: number;
   readonly byProvider: readonly AiCostSummary[];

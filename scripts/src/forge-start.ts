@@ -15,7 +15,8 @@ const entrypoint = path.join(
   "index.mjs",
 );
 
-const sensitiveEnvironmentName = /(TOKEN|KEY|SECRET)/i;
+const sensitiveEnvironmentName = /(TOKEN|KEY|SECRET|PASSWORD|PASSWD|CREDENTIAL|COOKIE|SESSION|DATABASE|^PG|MAIL|SMTP|PAY|STRIPE|AZURE|AWS|GITHUB|SLACK|AUTH|PRIVATE)/i;
+const allowedRuntimeSecrets = new Set(["OPENAI_API_KEY"]);
 
 interface PortListener {
   readonly pid: number;
@@ -40,10 +41,15 @@ export function loadRootEnvironment(
     }
   }
 
-  return {
+  const merged = {
     ...fileEnvironment,
     ...inheritedEnvironment,
   };
+  return Object.fromEntries(
+    Object.entries(merged).filter(([name]) =>
+      !sensitiveEnvironmentName.test(name) || allowedRuntimeSecrets.has(name)
+    ),
+  );
 }
 
 export function formatEnvironmentDiagnostic(

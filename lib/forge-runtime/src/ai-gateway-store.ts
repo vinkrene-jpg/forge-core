@@ -10,7 +10,7 @@ import type {
   AiExecutionRecord,
 } from "./ai-gateway";
 
-export const AI_GATEWAY_STORE_VERSION = 1 as const;
+export const AI_GATEWAY_STORE_VERSION = 2 as const;
 
 export interface PersistedAiGatewayState {
   readonly version: typeof AI_GATEWAY_STORE_VERSION;
@@ -46,7 +46,7 @@ function validateState(
     throw new Error("Persisted AI Gateway state must be an object");
   }
 
-  if (value.version !== AI_GATEWAY_STORE_VERSION) {
+  if (value.version !== 1 && value.version !== AI_GATEWAY_STORE_VERSION) {
     throw new Error("Unsupported AI Gateway store version");
   }
 
@@ -162,7 +162,7 @@ export class FileAiGatewayStateStore
     validateState(parsed);
 
     return Object.freeze({
-      version: parsed.version,
+      version: AI_GATEWAY_STORE_VERSION,
       executions: Object.freeze(
         parsed.executions.map((execution) =>
           Object.freeze({
@@ -172,6 +172,22 @@ export class FileAiGatewayStateStore
               typeof execution.estimatedCostUsd === "number"
                 ? execution.estimatedCostUsd
                 : 0,
+            reservedCostUsd:
+              typeof execution.reservedCostUsd === "number"
+                ? execution.reservedCostUsd
+                : 0,
+            spendMandateId:
+              typeof execution.spendMandateId === "string"
+                ? execution.spendMandateId
+                : null,
+            maximumRunCostUsd:
+              typeof execution.maximumRunCostUsd === "number"
+                ? execution.maximumRunCostUsd
+                : null,
+            maximumDailyCostUsd:
+              typeof execution.maximumDailyCostUsd === "number"
+                ? execution.maximumDailyCostUsd
+                : null,
           }),
         ),
       ),

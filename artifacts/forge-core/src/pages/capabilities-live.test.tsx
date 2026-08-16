@@ -84,6 +84,7 @@ test("shows ranked outcome gaps and releases a candidate GoalSpec", async () => 
         maximumImprovementDepth: 2,
         maximumDurationMs: 3_600_000,
         maximumCostUsd: 5,
+        maximumDailyCostUsd: 5,
       });
       return Response.json({ id: "goal-run", status: "awaiting_approval", approval: { id: "approval" } }, { status: 202 });
     }

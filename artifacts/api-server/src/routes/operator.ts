@@ -16,6 +16,8 @@ import {
 } from "@workspace/forge-runtime";
 
 const router: IRouter = Router();
+const OPERATOR_MISSION_MAXIMUM_COST_USD = 5;
+const OPERATOR_DAILY_MAXIMUM_COST_USD = 5;
 
 type IntakeGovernanceStatus =
   | "can_start"
@@ -243,6 +245,8 @@ function buildMissionIntakePreview(
             ...(targets.length > 0 ? { targets } : {}),
             cycleIndex: 1,
             maxCycles: extractMaxCycles(command),
+            maximumCostUsd: OPERATOR_MISSION_MAXIMUM_COST_USD,
+            maximumDailyCostUsd: OPERATOR_DAILY_MAXIMUM_COST_USD,
             continuationAuthorized: false,
           },
         }

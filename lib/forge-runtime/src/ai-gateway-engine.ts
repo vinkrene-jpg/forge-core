@@ -13,6 +13,7 @@ import type {
   AiGatewaySummary,
   AiProviderConnector,
   AiProviderId,
+  AiSpendMandate,
   AiUsage,
 } from "./ai-gateway";
 import type {
@@ -78,11 +79,12 @@ function cloneExecution(
     missionId: execution.missionId ?? null,
     usage: Object.freeze({ ...execution.usage }),
     estimatedCostUsd: execution.estimatedCostUsd,
+    reservedCostUsd: execution.reservedCostUsd,
   });
 }
 
 function roundUsd(value: number): number {
-  return Math.max(0, Math.round(value * 10_000) / 10_000);
+  return Math.max(0, Math.round(value * 1_000_000) / 1_000_000);
 }
 
 function tokenRate(
@@ -122,16 +124,35 @@ function executionCost(
   );
 }
 
-function budgetLimitUsd(): number {
-  const configured = Number(
-    process.env.FORGE_BUDGET_USD_PER_RUN?.trim() || "5",
-  );
-
-  if (!Number.isFinite(configured) || configured <= 0) {
-    return 5;
+function mandateMoney(value: number, field: string): number {
+  if (!Number.isFinite(value) || value < 0 || value > 1_000_000) {
+    throw new Error(`${field} must be between 0 and 1000000`);
   }
+  return Math.round(value * 1_000_000) / 1_000_000;
+}
 
-  return roundUsd(configured);
+function reservedExecutionCost(
+  providerId: AiProviderId,
+  inputChars: number,
+  maximumOutputTokens: number,
+): number {
+  if (providerId !== "openai-responses") return 0;
+  const rates = tokenRate(providerId);
+  const conservativeInputTokens = inputChars;
+  const cost =
+    (conservativeInputTokens / 1_000) * rates.inputPer1k +
+    (maximumOutputTokens / 1_000) * rates.outputPer1k;
+  return Math.ceil(cost * 1_000_000) / 1_000_000;
+}
+
+function utcDay(value: string): string {
+  return value.slice(0, 10);
+}
+
+function chargedOrReserved(execution: AiExecutionRecord): number {
+  return execution.status === "running"
+    ? execution.reservedCostUsd
+    : execution.estimatedCostUsd;
 }
 
 function localModelEnabled(): boolean {
@@ -211,9 +232,7 @@ export class AiGatewayEngine {
     this.#state = Object.freeze({
       version: AI_GATEWAY_STORE_VERSION,
       executions: Object.freeze(
-        state.executions
-          .slice(-100)
-          .map(cloneExecution),
+        state.executions.map(cloneExecution),
       ),
     });
 
@@ -373,8 +392,13 @@ export class AiGatewayEngine {
       );
     }
 
-    const budgetLimit = budgetLimitUsd();
     const roundedTotalCost = roundUsd(totalEstimatedCostUsd);
+    const currentUtcDay = utcDay(new Date().toISOString());
+    const dailyEstimatedCostUsd = roundUsd(
+      this.#state.executions
+        .filter((execution) => utcDay(execution.createdAt) === currentUtcDay)
+        .reduce((total, execution) => total + execution.estimatedCostUsd, 0),
+    );
 
     return Object.freeze({
       configured: status.configured,
@@ -385,8 +409,9 @@ export class AiGatewayEngine {
       failed,
       unavailable,
       totalEstimatedCostUsd: roundedTotalCost,
-      budgetLimitUsd: budgetLimit,
-      budgetRemainingUsd: roundUsd(Math.max(0, budgetLimit - roundedTotalCost)),
+      dailyEstimatedCostUsd,
+      budgetLimitUsd: 0,
+      budgetRemainingUsd: 0,
       byProvider: Object.freeze([...byProvider.values()]),
       lastExecutionAt:
         this.#state.executions.at(-1)?.completedAt ??
@@ -422,6 +447,7 @@ export class AiGatewayEngine {
   async executeComposition(
     compositionId: string,
     missionId: string | null = null,
+    spendMandate: AiSpendMandate | null = null,
   ): Promise<AiExecutionRecord> {
     this.#ensureInitialized();
 
@@ -435,18 +461,9 @@ export class AiGatewayEngine {
     }
 
     const status = this.status();
-    const budget = status.maxInputChars > 0 ? budgetLimitUsd() : budgetLimitUsd();
-    const spentUsd = roundUsd(
-      this.#state.executions.reduce(
-        (total, execution) => total + execution.estimatedCostUsd,
-        0,
-      ),
-    );
     const providerId = this.#selectProvider(
       composition,
       status,
-      spentUsd,
-      budget,
     );
     const providerModel =
       providerId === "openai-responses"
@@ -457,6 +474,27 @@ export class AiGatewayEngine {
     const timestamp =
       new Date().toISOString();
     const executionId = randomUUID();
+    const reservedCostUsd = reservedExecutionCost(
+      providerId,
+      composition.content.length,
+      status.maxOutputTokens,
+    );
+    const normalizedMandate = spendMandate === null
+      ? null
+      : Object.freeze({
+          id: spendMandate.id.trim(),
+          maximumRunCostUsd: mandateMoney(
+            spendMandate.maximumRunCostUsd,
+            "spendMandate.maximumRunCostUsd",
+          ),
+          maximumDailyCostUsd: mandateMoney(
+            spendMandate.maximumDailyCostUsd,
+            "spendMandate.maximumDailyCostUsd",
+          ),
+        });
+    if (normalizedMandate !== null && normalizedMandate.id.length === 0) {
+      throw new Error("spendMandate.id is required");
+    }
 
     const running: AiExecutionRecord =
       Object.freeze({
@@ -475,6 +513,10 @@ export class AiGatewayEngine {
         outputText: null,
         usage: emptyUsage(),
         estimatedCostUsd: 0,
+        reservedCostUsd,
+        spendMandateId: normalizedMandate?.id ?? null,
+        maximumRunCostUsd: normalizedMandate?.maximumRunCostUsd ?? null,
+        maximumDailyCostUsd: normalizedMandate?.maximumDailyCostUsd ?? null,
         providerResponseId: null,
         error: status.configured
           ? null
@@ -487,6 +529,30 @@ export class AiGatewayEngine {
       });
 
     await this.#mutate(async () => {
+      if (providerId === "openai-responses") {
+        if (normalizedMandate === null) {
+          throw new Error("Paid provider execution requires an explicit spend mandate");
+        }
+        const runSpentUsd = this.#state.executions
+          .filter((execution) => execution.spendMandateId === normalizedMandate.id)
+          .reduce((total, execution) => total + chargedOrReserved(execution), 0);
+        const dailySpentUsd = this.#state.executions
+          .filter((execution) =>
+            execution.providerId === "openai-responses" &&
+            utcDay(execution.createdAt) === utcDay(timestamp)
+          )
+          .reduce((total, execution) => total + chargedOrReserved(execution), 0);
+        if (runSpentUsd + reservedCostUsd > normalizedMandate.maximumRunCostUsd) {
+          throw new Error(
+            `Provider run cost boundary exceeded before call: limit=${normalizedMandate.maximumRunCostUsd}; reserved=${runSpentUsd + reservedCostUsd}`,
+          );
+        }
+        if (dailySpentUsd + reservedCostUsd > normalizedMandate.maximumDailyCostUsd) {
+          throw new Error(
+            `Provider daily cost boundary exceeded before call: limit=${normalizedMandate.maximumDailyCostUsd}; reserved=${dailySpentUsd + reservedCostUsd}`,
+          );
+        }
+      }
       await this.#save({
         ...this.#state,
         executions: [
@@ -616,6 +682,7 @@ export class AiGatewayEngine {
             update.status === "succeeded"
               ? executionCost(update.providerId, update.usage)
               : 0,
+              reservedCostUsd: 0,
           providerResponseId:
             update.status === "succeeded"
               ? update.providerResponseId
@@ -660,8 +727,6 @@ export class AiGatewayEngine {
   #selectProvider(
     composition: PromptComposition,
     status: AiGatewayStatus,
-    spentUsd: number,
-    budgetLimit: number,
   ): AiProviderId {
     const localEnabled =
       this.#connectors.has("local-model") &&
@@ -672,20 +737,6 @@ export class AiGatewayEngine {
       Boolean(process.env.OPENAI_MODEL?.trim());
     const manualEnabled = this.#connectors.has("manual-fallback");
     const budget = composition.route.request.budget;
-    const hardBudgetReached = spentUsd >= budgetLimit;
-
-    if (hardBudgetReached) {
-      if (localEnabled) {
-        return "local-model";
-      }
-
-      if (manualEnabled) {
-        return "manual-fallback";
-      }
-
-      return "openai-responses";
-    }
-
     if (budget === "low") {
       if (localEnabled) {
         return "local-model";

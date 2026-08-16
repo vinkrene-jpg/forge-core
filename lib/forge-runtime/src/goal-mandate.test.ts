@@ -78,6 +78,12 @@ test("hard core and guardian protection cannot be added to a mandate", () => {
     "lib/forge-runtime/src/kernel.ts",
     "lib/forge-runtime/src/mission-review.ts",
     "lib/forge-runtime/src/workspace-executor.ts",
+    "lib/forge-runtime/src/ai-gateway.ts",
+    "lib/forge-runtime/src/ai-gateway-store.ts",
+    "lib/forge-runtime/src/ai-gateway-engine.ts",
+    "lib/forge-runtime/src/goal-run-mandate.ts",
+    "lib/forge-runtime/src/runtime.ts",
+    "artifacts/api-server/src/lib/realTestRunner.ts",
   ]) {
     assert.throws(
       () => parseGoalMandateRequest({

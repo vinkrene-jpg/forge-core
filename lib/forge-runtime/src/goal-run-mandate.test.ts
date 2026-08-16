@@ -14,6 +14,7 @@ test("goal run mandate permits only bounded existing mutation roots", () => {
     maximumImprovementDepth: 2,
     maximumDurationMs: 60_000,
     maximumCostUsd: 2.5,
+    maximumDailyCostUsd: 5,
   });
 
   assert.deepEqual(mandate.allowedDirectories, ["lib/", "artifacts/goal-runs/"]);
@@ -28,22 +29,31 @@ test("goal run mandate permits only bounded existing mutation roots", () => {
 
 test("goal run mandate rejects broadened roots and invalid limits", () => {
   assert.throws(() => parseGoalRunMandateRequest({
+    allowedDirectories: ["lib/"],
+    maximumGoals: 1,
+    maximumDurationMs: 60_000,
+    maximumCostUsd: 0,
+  }), /maximumDailyCostUsd/);
+  assert.throws(() => parseGoalRunMandateRequest({
     allowedDirectories: ["GOVERNANCE/"],
     maximumGoals: 3,
     maximumDurationMs: 60_000,
     maximumCostUsd: 0,
+    maximumDailyCostUsd: 0,
   }), /hard-protection/);
   assert.throws(() => parseGoalRunMandateRequest({
     allowedDirectories: ["src/"],
     maximumGoals: 3,
     maximumDurationMs: 60_000,
     maximumCostUsd: 0,
+    maximumDailyCostUsd: 0,
   }), /boundary path exceeded/);
   assert.throws(() => parseGoalRunMandateRequest({
     allowedDirectories: ["lib/"],
     maximumGoals: 0,
     maximumDurationMs: 60_000,
     maximumCostUsd: 0,
+    maximumDailyCostUsd: 0,
   }), /maximumGoals/);
   assert.throws(() => parseGoalRunMandateRequest({
     allowedDirectories: ["lib/"],
@@ -52,6 +62,7 @@ test("goal run mandate rejects broadened roots and invalid limits", () => {
     maximumImprovementDepth: 2,
     maximumDurationMs: 60_000,
     maximumCostUsd: 0,
+    maximumDailyCostUsd: 0,
   }), /may not exceed 20/);
   assert.throws(() => parseGoalRunMandateRequest({
     allowedDirectories: ["lib/"],
@@ -60,5 +71,6 @@ test("goal run mandate rejects broadened roots and invalid limits", () => {
     maximumImprovementDepth: 3,
     maximumDurationMs: 60_000,
     maximumCostUsd: 0,
+    maximumDailyCostUsd: 0,
   }), /maximumImprovementDepth/);
 });

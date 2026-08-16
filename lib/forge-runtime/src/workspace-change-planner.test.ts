@@ -97,6 +97,8 @@ test("provider workspace planner", { concurrency: false }, async (t) => {
           projectId: "forge-core",
           objective: "Change the sample only.",
           targets: [{ path: "sandbox/sample.txt" }],
+          maximumCostUsd: 1,
+          maximumDailyCostUsd: 1,
         },
       });
 

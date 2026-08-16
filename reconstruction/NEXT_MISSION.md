@@ -1,8 +1,8 @@
 # Forge Next Mission
 
-## Resume point before live recursive capability-repair dogfood
+## Resume point after spend and execution-isolation hardening
 
-Status: Source and deterministic tests now prove missing-capability repair, evidence-only promotion and automatic original-goal resume. The implementation must be committed to obtain a clean worktree, then the real WorkspaceExecutor dogfood script must create one repair commit and one resumed-original commit without push.
+Status: Source and deterministic tests prove missing-capability repair, mandatory paid-provider spend authority, fail-closed host package execution and exception-safe runtime cleanup. Real WorkspaceExecutor capability-repair dogfood is intentionally blocked until a network-isolated execution backend with package installation disabled is available.
 
 ## Verified baseline
 
@@ -28,10 +28,14 @@ Status: Source and deterministic tests now prove missing-capability repair, evid
 20. Run boundaries cover exact directories, maximum goals, duration and estimated cost; three failures for one capability stop before a fourth attempt and an out-of-directory target blocks immediately.
 21. Goal-run preflight detects unavailable BuildGraph capabilities, plans deepest repair first and activates dependent repair/original missions only after accepted workspace evidence.
 22. Repair depth is at most two; repair count is explicit; original goals plus repairs remain capped at twenty. Failed repair leaves capability status unchanged and records the full chain failure.
+23. Paid provider execution requires persisted run and daily limits, reserves conservatively before connector access and rejects missing or exhausted authority without a provider call.
+24. Operator autonomous intake places `$5` run and UTC-day limits in the governance-visible mission request; continuations inherit them.
+25. Host package execution and package-script verification are disabled until a network-isolated backend exists; tests use injected bounded fixture runners only.
+26. Execution-slice runtime ownership is exception-safe. The complete file passes 6/6 and exits in 4.573 seconds; both real proof tests pass independently in under two seconds.
 
 ## Next action
 
-Commit the validated implementation, confirm a clean `forge-sync-primary` worktree, then run `lib/forge-runtime/src/capability-repair-live.ts` once with `PNPM_WORKSPACE_CONCURRENCY=1`. Capture the missing capability, repair/original mission IDs, both local commit SHAs, accepted evaluations and final result in reconstruction evidence. Do not push from the WorkspaceExecutor; push only after final evidence and governance updates are committed.
+Implement or configure the governed network-isolated execution backend with package installation disabled. Then run `lib/forge-runtime/src/capability-repair-live.ts` once with `PNPM_WORKSPACE_CONCURRENCY=1` and capture the missing capability, repair/original mission IDs, local commit SHAs, accepted evaluations and final result in reconstruction evidence. Never re-enable direct host package execution as a shortcut.
 
 ## Failure rules
 

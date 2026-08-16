@@ -66,6 +66,7 @@ export default function Capabilities() {
               maximumImprovementDepth: 2,
               maximumDurationMs: 3_600_000,
               maximumCostUsd: 5,
+              maximumDailyCostUsd: 5,
             })}
           >
             <Play className="h-4 w-4" />
@@ -108,6 +109,9 @@ export default function Capabilities() {
                   <div>{report?.resolvedGapIds.length ?? 0} gaps weg</div>
                   <div className="text-muted-foreground">
                     ${(report?.actualEstimatedCostUsd ?? 0).toFixed(4)}
+                  </div>
+                  <div className="text-muted-foreground">
+                    dag ${(report?.dailyEstimatedCostUsd ?? 0).toFixed(4)}
                   </div>
                 </div>
               </div>

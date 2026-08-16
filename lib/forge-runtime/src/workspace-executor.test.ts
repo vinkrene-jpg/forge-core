@@ -9,8 +9,10 @@ import test from "node:test";
 import {
   ForgeRuntime,
   RuntimeEventBus,
+  assertHostPackageExecutionDenied,
   WorkspaceExecutionError,
   WorkspaceExecutor,
+  NodeWorkspaceVerificationRunner,
   parseWorkspaceChangeRequest,
   type WorkspaceVerificationRunner,
 } from "./index.js";
@@ -302,6 +304,33 @@ test("workspace executor", { concurrency: false }, async (t) => {
         }),
       /must remain inside sandbox\/, lib\/, or artifacts\//,
     );
+    assert.throws(
+      () =>
+        parseWorkspaceChangeRequest({
+          changes: [
+            { path: "artifacts/example/package.json", expectedSha256: null, content: "{}" },
+          ],
+          verification: ["typecheck", "test", "build"],
+          commit: null,
+        }),
+      /Protected workspace path/,
+    );
+  });
+
+  await t.test("refuses host verification without a network-isolated backend", async () => {
+    const runner = new NodeWorkspaceVerificationRunner();
+    await assert.rejects(
+      runner.run("test", process.cwd(), new AbortController().signal, true),
+      /network-isolated executor with package installation disabled/,
+    );
+  });
+
+  await t.test("refuses package execution on the host", () => {
+    assert.throws(
+      () => assertHostPackageExecutionDenied(true),
+      /dependency installation, lifecycle scripts, and package scripts/,
+    );
+    assert.doesNotThrow(() => assertHostPackageExecutionDenied(false));
   });
 
   await t.test("requires the complete verification suite outside sandbox", () => {

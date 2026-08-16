@@ -70,6 +70,7 @@ test("three failures on one capability stop the run before a fourth plan", async
       maximumGoals: 4,
       maximumDurationMs: 60_000,
       maximumCostUsd: 0,
+      maximumDailyCostUsd: 0,
     });
     assert.ok(created.approval);
     await runtime.approveApproval(created.approval.id, "failure-limit-test");
@@ -103,6 +104,7 @@ test("a target outside the run directories blocks the run", async () => {
       maximumGoals: 1,
       maximumDurationMs: 60_000,
       maximumCostUsd: 0,
+      maximumDailyCostUsd: 0,
     });
     assert.ok(created.approval);
     await runtime.approveApproval(created.approval.id, "boundary-test");
@@ -167,6 +169,7 @@ test("a repair chain cannot plan beyond depth two", async () => {
       maximumImprovementDepth: 2,
       maximumDurationMs: 60_000,
       maximumCostUsd: 0,
+      maximumDailyCostUsd: 0,
     });
     assert.ok(created.approval);
     await runtime.approveApproval(created.approval.id, "repair-depth-test");
@@ -205,6 +208,7 @@ test("a repair chain respects the maximum improvements per run", async () => {
       maximumImprovementDepth: 2,
       maximumDurationMs: 60_000,
       maximumCostUsd: 0,
+      maximumDailyCostUsd: 0,
     });
     assert.ok(created.approval);
     await runtime.approveApproval(created.approval.id, "repair-count-test");

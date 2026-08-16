@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { createHash } from "node:crypto";
-import { mkdtemp, rm, writeFile, mkdir } from "node:fs/promises";
+import { mkdtemp, readFile, rm, writeFile, mkdir } from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
 import test from "node:test";
@@ -10,7 +10,10 @@ import {
   type ForgeRuntimeOptions,
 } from "./index.js";
 import type { WorkspaceChangeExecutor } from "./workspace-bridge";
-import type { WorkspaceExecutionResult } from "./workspace-executor";
+import type {
+  WorkspaceExecutionResult,
+  WorkspaceVerificationRunner,
+} from "./workspace-executor";
 
 const environmentKeys = [
   "STORAGE_DIR",
@@ -24,6 +27,10 @@ const environmentKeys = [
 
 function sha256(value: string): string {
   return createHash("sha256").update(value, "utf8").digest("hex");
+}
+
+function isTerminalMissionStatus(status: string | undefined): boolean {
+  return status === "succeeded" || status === "failed" || status === "cancelled";
 }
 
 async function waitFor(
@@ -42,7 +49,11 @@ async function waitFor(
 }
 
 async function withEnvironment(
-  run: (storageRoot: string) => Promise<void>,
+  run: (scope: {
+    readonly createRuntime: (options?: ForgeRuntimeOptions) => ForgeRuntime;
+    readonly stopRuntime: (runtime: ForgeRuntime) => Promise<void>;
+    readonly storageRoot: string;
+  }) => Promise<void>,
 ): Promise<void> {
   const original = new Map(
     environmentKeys.map((key) => [key, process.env[key]]),
@@ -50,6 +61,20 @@ async function withEnvironment(
   const storageRoot = await mkdtemp(
     path.join(os.tmpdir(), "forge-execution-slice-"),
   );
+  const runtimes: ForgeRuntime[] = [];
+
+  const createRuntime = (options: ForgeRuntimeOptions = {}) => {
+    const runtime = new ForgeRuntime(options);
+    runtimes.push(runtime);
+    return runtime;
+  };
+  const stopRuntime = async (runtime: ForgeRuntime) => {
+    await runtime.stop();
+    const index = runtimes.lastIndexOf(runtime);
+    if (index >= 0) {
+      runtimes.splice(index, 1);
+    }
+  };
 
   process.env.STORAGE_DIR = storageRoot;
   process.env.FORGE_WORKSPACE_ROOT = process.cwd();
@@ -59,8 +84,17 @@ async function withEnvironment(
   process.env.FORGE_AUTONOMY_ENABLED = "false";
 
   try {
-    await run(storageRoot);
+    await run({ createRuntime, stopRuntime, storageRoot });
   } finally {
+    const cleanupErrors: unknown[] = [];
+    for (const runtime of runtimes.reverse()) {
+      try {
+        await runtime.stop();
+      } catch (error) {
+        cleanupErrors.push(error);
+      }
+    }
+
     for (const key of environmentKeys) {
       const value = original.get(key);
 
@@ -72,6 +106,13 @@ async function withEnvironment(
     }
 
     await rm(storageRoot, { recursive: true, force: true });
+
+    if (cleanupErrors.length > 0) {
+      throw new AggregateError(
+        cleanupErrors,
+        "Failed to stop execution-slice runtime instances",
+      );
+    }
   }
 }
 
@@ -85,6 +126,8 @@ function proofRequest(overrides: Record<string, unknown> = {}) {
         "Maak sandbox/forge-proof.txt, lees het bestand terug en rapporteer de SHA-256 hash.",
       cycleIndex: 1,
       maxCycles: 1,
+      maximumCostUsd: 1,
+      maximumDailyCostUsd: 1,
       files: [],
       ...overrides,
     },
@@ -109,6 +152,27 @@ function successfulConnector(): AiProviderConnector {
           outputTokens: 80,
           totalTokens: 200,
         }),
+      });
+    },
+  };
+}
+
+function proofVerificationRunner(): WorkspaceVerificationRunner {
+  return {
+    async run(step, rootPath) {
+      const startedAt = Date.now();
+      const proofContent = await readFile(
+        path.join(rootPath, "sandbox", "forge-proof.txt"),
+        "utf8",
+      );
+      const passed = step === "typecheck" && proofContent.trim().length > 0;
+
+      return Object.freeze({
+        command: "isolated proof content verification",
+        exitCode: passed ? 0 : 1,
+        stdout: passed ? "proof verification ok" : "",
+        stderr: passed ? "" : "proof verification failed",
+        durationMs: Date.now() - startedAt,
       });
     },
   };
@@ -143,13 +207,14 @@ function buildExecutionResult(input: {
   });
 }
 
-test("execution slice", { concurrency: false }, async (t) => {
-  await t.test(
-    "real WorkspaceExecutor proof run stores full evidence and completes",
-    async () => {
-      await withEnvironment(async () => {
-        const runtime = new ForgeRuntime({
+test(
+  "real WorkspaceExecutor proof run stores full evidence and completes",
+  { concurrency: false },
+  async () => {
+      await withEnvironment(async ({ createRuntime, stopRuntime }) => {
+        const runtime = createRuntime({
           aiProviderConnectors: [successfulConnector()],
+          workspaceVerificationRunner: proofVerificationRunner(),
           missionLoopPollIntervalMs: 100,
         });
 
@@ -159,13 +224,12 @@ test("execution slice", { concurrency: false }, async (t) => {
         assert.ok(created.approval);
         await runtime.approveApproval(created.approval.id, "execution-slice");
 
-        await waitFor(() => {
-          const mission = runtime.getMission(created.mission.id);
-          return mission?.status === "succeeded";
-        });
+        await waitFor(() =>
+          isTerminalMissionStatus(runtime.getMission(created.mission.id)?.status),
+        );
 
         const mission = runtime.getMission(created.mission.id);
-        assert.equal(mission?.status, "succeeded");
+        assert.equal(mission?.status, "succeeded", mission?.lastError ?? undefined);
         assert.equal(
           (mission?.output?.missionResult as { status?: unknown } | undefined)
             ?.status,
@@ -208,19 +272,19 @@ test("execution slice", { concurrency: false }, async (t) => {
             .some((memory) => memory.id === evidenceId),
         );
 
-        await runtime.stop();
+        await stopRuntime(runtime);
       });
-    },
-  );
+  },
+);
 
-  await t.test("manual fallback without file is not completed", async () => {
-    await withEnvironment(async () => {
+test("manual fallback without file is not completed", { concurrency: false }, async () => {
+    await withEnvironment(async ({ createRuntime, stopRuntime }) => {
       delete process.env.FORGE_AI_PROVIDER;
       delete process.env.OPENAI_API_KEY;
       delete process.env.OPENAI_MODEL;
       delete process.env.FORGE_LOCAL_MODEL_ENABLED;
 
-      const runtime = new ForgeRuntime({
+      const runtime = createRuntime({
         missionLoopPollIntervalMs: 100,
       });
       await runtime.start();
@@ -251,12 +315,12 @@ test("execution slice", { concurrency: false }, async (t) => {
       );
       assert.equal(mission?.output?.proofFilePath, undefined);
 
-      await runtime.stop();
+      await stopRuntime(runtime);
     });
-  });
+});
 
-  await t.test("missing hash gate prevents completed", async () => {
-    await withEnvironment(async () => {
+test("missing hash gate prevents completed", { concurrency: false }, async () => {
+    await withEnvironment(async ({ createRuntime, stopRuntime }) => {
       const stubExecutor: WorkspaceChangeExecutor = {
         async execute(rootPath, missionId, request) {
           const proof = request.changes.find((change) => change.path === "sandbox/forge-proof.txt");
@@ -283,7 +347,7 @@ test("execution slice", { concurrency: false }, async (t) => {
         },
       };
 
-      const runtime = new ForgeRuntime({
+      const runtime = createRuntime({
         aiProviderConnectors: [successfulConnector()],
         workspaceChangeExecutor: stubExecutor,
         missionLoopPollIntervalMs: 100,
@@ -311,12 +375,12 @@ test("execution slice", { concurrency: false }, async (t) => {
           ?.missingGates ?? []).includes("sha256"),
       );
 
-      await runtime.stop();
+      await stopRuntime(runtime);
     });
-  });
+});
 
-  await t.test("missing verification gate prevents completed", async () => {
-    await withEnvironment(async () => {
+test("missing verification gate prevents completed", { concurrency: false }, async () => {
+    await withEnvironment(async ({ createRuntime, stopRuntime }) => {
       const stubExecutor: WorkspaceChangeExecutor = {
         async execute(rootPath, missionId, request) {
           const proof = request.changes.find((change) => change.path === "sandbox/forge-proof.txt");
@@ -333,7 +397,7 @@ test("execution slice", { concurrency: false }, async (t) => {
         },
       };
 
-      const runtime = new ForgeRuntime({
+      const runtime = createRuntime({
         aiProviderConnectors: [successfulConnector()],
         workspaceChangeExecutor: stubExecutor,
         missionLoopPollIntervalMs: 100,
@@ -358,13 +422,13 @@ test("execution slice", { concurrency: false }, async (t) => {
           ?.missingGates ?? []).includes("verification-result"),
       );
 
-      await runtime.stop();
+      await stopRuntime(runtime);
     });
-  });
+});
 
-  await t.test("protected path is blocked", async () => {
-    await withEnvironment(async () => {
-      const runtime = new ForgeRuntime({
+test("protected path is blocked", { concurrency: false }, async () => {
+    await withEnvironment(async ({ createRuntime, stopRuntime }) => {
+      const runtime = createRuntime({
         aiProviderConnectors: [successfulConnector()],
         missionLoopPollIntervalMs: 100,
       });
@@ -391,33 +455,37 @@ test("execution slice", { concurrency: false }, async (t) => {
         "protected-path",
       );
 
-      await runtime.stop();
+      await stopRuntime(runtime);
     });
-  });
+});
 
-  await t.test("restart preserves execution evidence", async () => {
-    await withEnvironment(async () => {
+test("restart preserves execution evidence", { concurrency: false }, async () => {
+    await withEnvironment(async ({ createRuntime, stopRuntime }) => {
       const options: ForgeRuntimeOptions = {
         aiProviderConnectors: [successfulConnector()],
+        workspaceVerificationRunner: proofVerificationRunner(),
         missionLoopPollIntervalMs: 100,
       };
-      const runtime = new ForgeRuntime(options);
+      const runtime = createRuntime(options);
 
       await runtime.start();
       const created = await runtime.createMission(proofRequest());
       assert.ok(created.approval);
       await runtime.approveApproval(created.approval.id, "execution-slice");
 
-      await waitFor(() => runtime.getMission(created.mission.id)?.status === "succeeded");
+      await waitFor(() =>
+        isTerminalMissionStatus(runtime.getMission(created.mission.id)?.status),
+      );
 
       const before = runtime.getMission(created.mission.id);
+      assert.equal(before?.status, "succeeded", before?.lastError ?? undefined);
       const evidenceId = String(before?.output?.evidenceMemoryId ?? "");
       assert.ok(evidenceId.length > 0);
       assert.ok(before?.output?.executionEvidence);
 
-      await runtime.stop();
+      await stopRuntime(runtime);
 
-      const restarted = new ForgeRuntime(options);
+      const restarted = createRuntime(options);
       await restarted.start();
 
       const after = restarted.getMission(created.mission.id);
@@ -429,7 +497,6 @@ test("execution slice", { concurrency: false }, async (t) => {
           .some((memory) => memory.id === evidenceId),
       );
 
-      await restarted.stop();
+      await stopRuntime(restarted);
     });
-  });
 });
