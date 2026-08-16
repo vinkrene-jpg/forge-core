@@ -2,6 +2,18 @@
 
 Verified through: 2026-08-16
 
+## Product register and Forge Control
+
+- The persisted OperatorCore project collection is now the authoritative product register. Records contain name, code root, structured start and verification commands, origin, product goal and optional creating mission ID.
+- Startup migrates legacy records and idempotently seeds `forge-core`, `assumption-engine` and `forge-cad-engine`. External product roots are discovered through `FORGE_PRODUCTS_ROOT`, the workspace parent and existing Windows `Forge` roots; live proof resolved `D:\Forge\assumption-engine` and `D:\Forge\forge-cad-engine`.
+- A succeeded mission with a valid `productRegistration` contract is registered automatically with `forge-built` origin. Invalid or failed work writes no product; persistence failure emits `operator.product.registration.failed`. There is no manual registration route.
+- `GET /api/operator/products` derives live state from kernel/process ownership, Git/filesystem timestamps, mission or validation evidence and active missions. POST start/stop routes operate only on registered products; Forge Core remains owned by the launcher.
+- Forge Control Products shows running state, last change, last verification, current work, origin, goal and accessible start/stop controls. Assumption Engine is startable; the absent CAD workspace is visibly not startable.
+- Product process shutdown owns and terminates its child tree, including Windows descendants, and runtime shutdown drains all owned product processes.
+- The product register has no Futur imports, endpoints or shared data.
+- Focused runtime register/process tests passed 3/3; the product UI test passed 1/1; the forced affected Turbo graph passed 15/15 tasks. Browser checks at 1440x900 and 390x844 found zero horizontal overflow.
+- Evidence: `reconstruction/PRODUCT_REGISTER_VERIFICATION.json`.
+
 ## Turborepo verification acceleration
 
 - Turborepo 2.10.10 is the scheduler and local cache for workspace `typecheck`, `build` and `test`; root scripts delegate to its dependency graph.

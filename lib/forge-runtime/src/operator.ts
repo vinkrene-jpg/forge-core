@@ -6,13 +6,57 @@ export type ProjectMemoryKind =
   | "evidence"
   | "note";
 
+export type ProductOrigin = "forge-built" | "introduced";
+
+export interface RegisterProjectRequest {
+  readonly id: string;
+  readonly name: string;
+  readonly rootPath: string;
+  readonly startCommand: readonly string[];
+  readonly verificationCommand: readonly string[];
+  readonly origin: ProductOrigin;
+  readonly goal: string;
+  readonly description?: string;
+  readonly sourceMissionId?: string | null;
+}
+
 export interface ProjectRecord {
   readonly id: string;
   readonly name: string;
   readonly rootPath: string;
   readonly description: string;
+  readonly startCommand: readonly string[];
+  readonly verificationCommand: readonly string[];
+  readonly origin: ProductOrigin;
+  readonly goal: string;
+  readonly sourceMissionId: string | null;
   readonly createdAt: string;
   readonly updatedAt: string;
+}
+
+export interface ProductVerificationSummary {
+  readonly status: "passed" | "failed";
+  readonly verifiedAt: string;
+  readonly source: "mission" | "forge-validation";
+  readonly missionId: string | null;
+}
+
+export interface ProductActivitySummary {
+  readonly missionId: string;
+  readonly title: string;
+  readonly status: "queued" | "running" | "awaiting_approval";
+}
+
+export interface ProductOverview {
+  readonly product: ProjectRecord;
+  readonly workspaceExists: boolean;
+  readonly running: boolean;
+  readonly managedProcess: boolean;
+  readonly canStart: boolean;
+  readonly canStop: boolean;
+  readonly lastChangedAt: string | null;
+  readonly lastVerification: ProductVerificationSummary | null;
+  readonly currentWork: ProductActivitySummary | null;
 }
 
 export interface ProjectMemoryEntry {

@@ -250,3 +250,15 @@ Status: implemented and measured.
 - The verification image copies manifests plus the frozen lockfile before installation and source afterward. After a source-only change, the image rebuilt in 6.445 seconds and the install step was explicitly cached in 0.0 seconds.
 - All thirteen config-driven command checks now enter the Turbo graph instead of invoking package scripts directly. Autonomy shutdown drains its active tick and every started persistence write, preventing a late storage write from turning an otherwise passing runtime suite into process exit code 1.
 - Evidence: `reconstruction/VERIFICATION_LOOP_ACCELERATION.json`.
+
+## Forge product register and Control overview - 2026-08-16
+
+Status: implemented and live verified in an isolated runtime.
+
+- OperatorCore project persistence now stores one authoritative record per built or maintained product with root, start/verification commands, origin and goal.
+- Startup idempotently seeds Forge Core, Assumption Engine at the discovered `Forge/assumption-engine` workspace and the Forge CAD Engine final-assignment product. On this machine the external products resolve under `D:\Forge` without a hardcoded drive letter.
+- Successful missions carrying Forge's product-registration contract create or update the product record automatically; no manual registration HTTP route exists.
+- Forge Control derives running state, latest Git/filesystem change, latest verification evidence and active mission work, and exposes bounded start/stop controls for Forge-owned child processes. Forge Core lifecycle remains launcher-owned.
+- Live isolated API and browser proof showed exactly three seeds, correct origins and paths, Forge Core running with passed verification, Assumption Engine startable and the not-yet-created CAD workspace not startable. Desktop 1440x900 and mobile 390x844 had no horizontal overflow.
+- Futur remains separate: no imports, endpoints or shared state were added.
+- Evidence: `reconstruction/PRODUCT_REGISTER_VERIFICATION.json`.

@@ -70,6 +70,16 @@ function validateState(
     requiredString(project.id, "project.id");
     requiredString(project.name, "project.name");
     requiredString(project.rootPath, "project.rootPath");
+    if (project.startCommand !== undefined && (!Array.isArray(project.startCommand) || !project.startCommand.every((part) => typeof part === "string" && part.length > 0))) {
+      throw new Error("project.startCommand is invalid");
+    }
+    if (project.verificationCommand !== undefined && (!Array.isArray(project.verificationCommand) || !project.verificationCommand.every((part) => typeof part === "string" && part.length > 0))) {
+      throw new Error("project.verificationCommand is invalid");
+    }
+    if (project.origin !== undefined && project.origin !== "forge-built" && project.origin !== "introduced") {
+      throw new Error("project.origin is invalid");
+    }
+    if (project.goal !== undefined) requiredString(project.goal, "project.goal");
   }
 
   for (const memory of value.memories) {

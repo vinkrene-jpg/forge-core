@@ -1,8 +1,8 @@
 # Forge Next Mission
 
-## Resume point after verification-loop acceleration
+## Resume point after product-register delivery
 
-Status: Turborepo scheduling, all thirteen config-driven validation commands, bounded parallel tests, affected-package verification and Docker install-layer caching are implemented and measured. Autonomy shutdown drains active work before storage cleanup. Do not rebuild a parallel scheduler.
+Status: Forge has one persisted product register in OperatorCore and Forge Control exposes its live derived status and bounded lifecycle controls. Do not add a second product store or connect it to Futur.
 
 ## Verified baseline
 
@@ -38,10 +38,12 @@ Status: Turborepo scheduling, all thirteen config-driven validation commands, bo
 30. Live goal-run `4e7cd7ed-147b-4667-94b4-8a62b05cea71` repaired `tool.live-proof.render`, promoted it only after accepted evidence and resumed the original goal without another approval.
 31. Repair commit `772b9ec4be8ede0f4474b6e0cf53b6f5242867d2` and original commit `28b48e629b17a21e3db7339f31379402e1957079` were created locally with `push=false` during the governed run.
 32. Every configured command validation enters the Turbo graph; a forced uncached runtime graph passes 112/112 and exits 0 after active autonomy ticks and persistence writes are drained during shutdown.
+33. OperatorCore seeds Forge Core, Assumption Engine and Forge CAD Engine as products, automatically registers successful Forge-created products, and derives live status without persisting a second truth.
+34. Forge Control shows product runtime, change, verification and active-work state with bounded start/stop controls; desktop and mobile browser checks have no horizontal overflow.
 
 ## Next action
 
-Resume the package acquisition and independent capability-promotion mission. Preserve Turborepo as the only workspace task scheduler, use its dependency graph for affected checks, and retain the unfiltered pre-push gate.
+Resume the package acquisition and independent capability-promotion mission. New product-creation missions must populate the validated product-registration contract and rely on automatic registration after success. Preserve Turborepo as scheduler and keep Futur fully separate.
 
 ## Failure rules
 
@@ -69,3 +71,6 @@ Resume the package acquisition and independent capability-promotion mission. Pre
 - Capability repair may recurse at most two levels and may not exceed the run's explicit repair count or the existing combined twenty-mission limit.
 - A capability may become operational only after every repair workspace child has accepted evaluation evidence; planning, file writes or failed verification are insufficient.
 - Repair failure must leave the registry unchanged, fail the waiting original and identify the capability, repair mission, failed child and reason.
+- Product metadata must remain in OperatorCore; running, change, verification and current-work status remain derived projections.
+- Product start/stop may control only a registered child process owned by the current runtime. Forge Core remains launcher-owned.
+- Product creation may register only after mission success; no manual registration endpoint or Futur data link may be introduced.

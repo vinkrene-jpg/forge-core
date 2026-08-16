@@ -11,6 +11,7 @@ import type {
   OperatorCoreSummary,
   ProjectMemoryEntry,
   ProjectMemoryKind,
+  ProductOverview,
   ProjectRecord,
   PromptComposition,
   WorkspaceFileContent,
@@ -30,6 +31,7 @@ export type {
   OperatorCoreSummary,
   ProjectMemoryEntry,
   ProjectMemoryKind,
+  ProductOverview,
   ProjectRecord,
   PromptComposition,
   WorkspaceFileContent,
@@ -122,6 +124,18 @@ export const operatorApi = {
     readonly projects: readonly ProjectRecord[];
   }> {
     return requestJson("/api/operator/projects");
+  },
+
+  products(): Promise<{ readonly products: readonly ProductOverview[] }> {
+    return requestJson("/api/operator/products");
+  },
+
+  startProduct(projectId: string): Promise<{ readonly started: true }> {
+    return requestJson(`/api/operator/products/${projectId}/start`, { method: "POST" });
+  },
+
+  stopProduct(projectId: string): Promise<{ readonly stopped: true }> {
+    return requestJson(`/api/operator/products/${projectId}/stop`, { method: "POST" });
   },
 
   memories(

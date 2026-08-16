@@ -81,12 +81,18 @@ import type {
   OperatorCoreSummary,
   ProjectMemoryEntry,
   ProjectMemoryKind,
+  ProductOverview,
   ProjectRecord,
+  RegisterProjectRequest,
   PromptComposeRequest,
   PromptComposition,
   WorkspaceFileContent,
   WorkspaceFileSummary,
 } from "./operator";
+import {
+  NodeProductProcessManager,
+  type ProductProcessController,
+} from "./product-process-manager";
 import {
   FileOperatorStateStore,
   type OperatorStateStore,
@@ -338,6 +344,7 @@ export interface ForgeRuntimeOptions {
   readonly missionLoopPollIntervalMs?: number;
   readonly autonomyPollIntervalMs?: number;
   readonly memoryBridgeRootPath?: string;
+  readonly productProcessController?: ProductProcessController;
   readonly goalRunPlanner?: (
     candidate: CapabilityGapCandidate,
     mandate: GoalRunMandateRequest,
@@ -350,6 +357,46 @@ function errorMessage(error: unknown): string {
   return error instanceof Error
     ? error.message
     : String(error ?? "Unknown error");
+}
+
+function record(value: unknown): Readonly<Record<string, unknown>> | null {
+  return typeof value === "object" && value !== null && !Array.isArray(value)
+    ? value as Readonly<Record<string, unknown>>
+    : null;
+}
+
+function stringArray(value: unknown): readonly string[] | null {
+  return Array.isArray(value) && value.every((item) => typeof item === "string" && item.trim().length > 0)
+    ? Object.freeze(value.map((item) => item.trim()))
+    : null;
+}
+
+function productRegistration(mission: MissionRecord): RegisterProjectRequest | null {
+  const candidate = record(mission.input.productRegistration);
+  if (!candidate) return null;
+  const startCommand = stringArray(candidate.startCommand);
+  const verificationCommand = stringArray(candidate.verificationCommand);
+  if (
+    typeof candidate.id !== "string" ||
+    typeof candidate.name !== "string" ||
+    typeof candidate.rootPath !== "string" ||
+    typeof candidate.goal !== "string" ||
+    startCommand === null ||
+    verificationCommand === null
+  ) {
+    return null;
+  }
+  return Object.freeze({
+    id: candidate.id,
+    name: candidate.name,
+    rootPath: candidate.rootPath,
+    startCommand,
+    verificationCommand,
+    origin: "forge-built",
+    goal: candidate.goal,
+    description: typeof candidate.description === "string" ? candidate.description : undefined,
+    sourceMissionId: mission.id,
+  });
 }
 
 function missionSpendMandate(mission: MissionRecord) {
@@ -482,10 +529,12 @@ export class ForgeRuntime {
   readonly #workspaceExecutor: WorkspaceChangeExecutor;
   readonly #workspaceVerificationRunner: WorkspaceVerificationRunner;
   readonly #workspaceRecoveryTimeoutMs: number;
+  readonly #productProcesses: ProductProcessController;
   readonly #goalRunPlanner: NonNullable<ForgeRuntimeOptions["goalRunPlanner"]>;
   readonly #autonomousEvaluator = new AutonomousOutputEvaluator();
   readonly #missionLoop: MissionLoop;
   #persistence = createInitialRuntimeState();
+  readonly #productRegistrationTasks = new Set<Promise<unknown>>();
 
   constructor(options: ForgeRuntimeOptions = {}) {
     this.#goalRunPlanner = options.goalRunPlanner ?? ((candidate, mandate, runMissionId, signal) =>
@@ -572,6 +621,7 @@ export class ForgeRuntime {
 
     this.#operatorCore =
       new OperatorCore(operatorOptions);
+    this.#productProcesses = options.productProcessController ?? new NodeProductProcessManager(this.#events);
 
     const bridgeDirectory = process.env.FORGE_WORKSPACE_BRIDGE_DIR?.trim();
     const bridgeToken = process.env.FORGE_WORKSPACE_BRIDGE_TOKEN?.trim();
@@ -3615,6 +3665,23 @@ export class ForgeRuntime {
         void this.#memoryBridge.captureMissionKnowledge(mission);
         void this.#enforceCapabilityGoalRunStop(mission);
         void this.#advanceCapabilityRepairChain(mission);
+        if (event.type === "mission.succeeded") {
+          const registration = productRegistration(mission);
+          if (registration) {
+            const task = this.#operatorCore.registerProject(registration);
+            this.#productRegistrationTasks.add(task);
+            void task.then(
+              () => this.#productRegistrationTasks.delete(task),
+              (error) => {
+                this.#productRegistrationTasks.delete(task);
+                this.#events.publish("operator.product.registration.failed", {
+                  missionId: mission.id,
+                  error: errorMessage(error),
+                });
+              },
+            );
+          }
+        }
       });
 
       this.#missionLoop.start();
@@ -3637,6 +3704,10 @@ export class ForgeRuntime {
   async stop(): Promise<KernelStateSnapshot> {
     await this.#autonomyEngine.stop();
     await this.#missionLoop.stop();
+    if (this.#productRegistrationTasks.size > 0) {
+      await Promise.all([...this.#productRegistrationTasks]);
+    }
+    await this.#productProcesses.stopAll();
     await this.#memoryBridge.flush();
 
     const stopped = await this.#kernel.stop();
@@ -4364,6 +4435,100 @@ export class ForgeRuntime {
     projectId: string,
   ): ProjectRecord | null {
     return this.#operatorCore.getProject(projectId);
+  }
+
+  async listProductOverview(): Promise<readonly ProductOverview[]> {
+    const missions = this.#missionEngine.list();
+    const activeStatuses = new Set(["queued", "running", "awaiting_approval"]);
+    return Promise.all(this.#operatorCore.listProjects().map(async (product) => {
+      let workspaceExists = false;
+      let lastChangedAt: string | null = null;
+      try {
+        const workspace = await stat(product.rootPath);
+        workspaceExists = workspace.isDirectory();
+        lastChangedAt = workspace.mtime.toISOString();
+        const git = await runCommand(
+          "git",
+          ["-C", product.rootPath, "log", "-1", "--format=%cI"],
+          product.rootPath,
+          new AbortController().signal,
+        );
+        if (git.exitCode === 0 && git.stdout.trim().length > 0) {
+          lastChangedAt = git.stdout.trim();
+        }
+      } catch {
+        workspaceExists = false;
+      }
+      const related = missions.filter((mission) => {
+        const projectId = mission.input.projectId ?? mission.input.repositoryId;
+        const registration = productRegistration(mission);
+        return projectId === product.id || registration?.id === product.id || (product.id === "forge-core" && projectId === undefined && registration === null);
+      });
+      const currentMission = [...related]
+        .filter((mission) => activeStatuses.has(mission.status))
+        .sort((left, right) => right.updatedAt.localeCompare(left.updatedAt))[0] ?? null;
+      const verifiedMission = [...related]
+        .filter((mission) => record(mission.output?.executionEvidence) !== null)
+        .sort((left, right) => right.updatedAt.localeCompare(left.updatedAt))[0] ?? null;
+      let lastVerification: ProductOverview["lastVerification"] = null;
+      if (verifiedMission) {
+        const evidence = record(verifiedMission.output?.executionEvidence);
+        const runs = Array.isArray(evidence?.verificationRuns) ? evidence.verificationRuns : [];
+        lastVerification = Object.freeze({
+          status: runs.length > 0 && runs.every((run) => record(run)?.exitCode === 0) ? "passed" : "failed",
+          verifiedAt: verifiedMission.completedAt ?? verifiedMission.updatedAt,
+          source: "mission",
+          missionId: verifiedMission.id,
+        });
+      } else if (product.id === "forge-core") {
+        try {
+          const report = record(JSON.parse(await readFile(path.join(product.rootPath, "reports", "validation-report.json"), "utf8")));
+          if (report && typeof report.completedAt === "string" && typeof report.exitCode === "number") {
+            lastVerification = Object.freeze({
+              status: report.exitCode === 0 ? "passed" : "failed",
+              verifiedAt: report.completedAt,
+              source: "forge-validation",
+              missionId: null,
+            });
+          }
+        } catch {
+          lastVerification = null;
+        }
+      }
+      const managedProcess = this.#productProcesses.isRunning(product.id);
+      const running = product.id === "forge-core"
+        ? this.#kernel.stateSnapshot().status === "running"
+        : managedProcess;
+      return Object.freeze({
+        product,
+        workspaceExists,
+        running,
+        managedProcess,
+        canStart: product.id !== "forge-core" && workspaceExists && product.startCommand.length > 0 && !running,
+        canStop: product.id !== "forge-core" && managedProcess,
+        lastChangedAt,
+        lastVerification,
+        currentWork: currentMission ? Object.freeze({
+          missionId: currentMission.id,
+          title: currentMission.title,
+          status: currentMission.status as "queued" | "running" | "awaiting_approval",
+        }) : null,
+      });
+    }));
+  }
+
+  async startProduct(projectId: string): Promise<void> {
+    const product = this.#operatorCore.getProject(projectId);
+    if (!product) throw new Error("Product not found");
+    if (product.id === "forge-core") throw new Error("Forge Core lifecycle is owned by the Forge launcher");
+    await this.#productProcesses.start(product);
+  }
+
+  async stopProduct(projectId: string): Promise<void> {
+    const product = this.#operatorCore.getProject(projectId);
+    if (!product) throw new Error("Product not found");
+    if (product.id === "forge-core") throw new Error("Forge Core lifecycle is owned by the Forge launcher");
+    await this.#productProcesses.stop(projectId);
   }
 
   listProjectMemories(

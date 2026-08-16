@@ -1,0 +1,82 @@
+{
+  "schemaVersion": 1,
+  "verifiedAt": "2026-08-16T17:27:38.522+02:00",
+  "branch": "forge-sync-primary",
+  "baseCommit": "30c0cc57f249ac3f0cd8912639731cfc1f11e254",
+  "authority": {
+    "store": "OperatorCore projects",
+    "parallelProductStore": false,
+    "manualRegistrationEndpoint": false,
+    "futurIntegration": false
+  },
+  "seeds": [
+    {
+      "id": "forge-core",
+      "origin": "forge-built",
+      "rootPath": "C:\\Forge\\forge-core",
+      "startCommand": ["pnpm.cmd", "forge:start"],
+      "verificationCommand": ["pnpm.cmd", "validate"]
+    },
+    {
+      "id": "assumption-engine",
+      "origin": "introduced",
+      "rootPath": "D:\\Forge\\assumption-engine",
+      "startCommand": ["pnpm.cmd", "--filter", "@workspace/assumption-engine", "dev"],
+      "verificationCommand": ["pnpm.cmd", "build"]
+    },
+    {
+      "id": "forge-cad-engine",
+      "origin": "forge-built",
+      "rootPath": "D:\\Forge\\forge-cad-engine",
+      "startCommand": [],
+      "verificationCommand": [],
+      "workspaceExists": false
+    }
+  ],
+  "automaticRegistration": {
+    "trigger": "mission.succeeded with valid productRegistration contract",
+    "forcedOrigin": "forge-built",
+    "idempotentBy": ["product id", "resolved root path"],
+    "focusedTestPassed": true
+  },
+  "processControl": {
+    "registeredArgumentsOnly": true,
+    "shell": false,
+    "forgeCoreLauncherOwned": true,
+    "runtimeShutdownDrainsChildren": true,
+    "windowsTreeTermination": true,
+    "focusedTestPassed": true
+  },
+  "tests": {
+    "focusedRuntime": { "passed": 3, "total": 3, "exitCode": 0, "durationMs": 780 },
+    "focusedFrontend": { "passed": 1, "total": 1, "exitCode": 0, "durationMs": 2187 },
+    "affectedTurboGraph": { "tasksPassed": 15, "tasksTotal": 15, "cached": 0, "exitCode": 0, "durationMs": 32555 }
+  },
+  "liveProof": {
+    "apiPort": 5011,
+    "frontendPort": 5174,
+    "temporaryStorage": true,
+    "authoritativePort5000Untouched": true,
+    "productsReturned": 3,
+    "desktop": { "width": 1440, "height": 900, "horizontalOverflow": false },
+    "mobile": { "width": 390, "height": 844, "horizontalOverflow": false },
+    "assumptionEngineActuallyStarted": false,
+    "proofServersStopped": true
+  },
+  "finalValidation": {
+    "command": "pnpm validate",
+    "exitCode": 0,
+    "durationMs": 81331,
+    "typecheck": "passed",
+    "build": "passed",
+    "testPackages": {
+      "forge-runtime": { "passed": 115, "total": 115 },
+      "api-server": { "passed": 53, "total": 53 },
+      "forge-core": { "passed": 26, "total": 26, "processes": 6 }
+    },
+    "coreTestsPassed": 194,
+    "coreTestsTotal": 194,
+    "runtimeAndHttpProof": "passed",
+    "validationReport": "reports/validation-report.json"
+  }
+}

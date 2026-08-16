@@ -124,12 +124,22 @@ export {
   type OperatorCoreSummary,
   type ProjectMemoryEntry,
   type ProjectMemoryKind,
+  type ProductActivitySummary,
+  type ProductOverview,
   type ProjectRecord,
+  type ProductVerificationSummary,
+  type ProductOrigin,
+  type RegisterProjectRequest,
   type PromptComposeRequest,
   type PromptComposition,
   type WorkspaceFileContent,
   type WorkspaceFileSummary,
 } from "./operator";
+
+export {
+  NodeProductProcessManager,
+  type ProductProcessController,
+} from "./product-process-manager";
 
 export {
   WorkspaceConnector,

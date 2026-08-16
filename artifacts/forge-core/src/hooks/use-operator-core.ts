@@ -18,6 +18,7 @@ import {
 const keys = {
   summary: ["operator", "summary"] as const,
   projects: ["operator", "projects"] as const,
+  products: ["operator", "products"] as const,
   memories: (projectId: string) =>
     ["operator", "memories", projectId] as const,
   files: (
@@ -220,6 +221,30 @@ export function useRecordMissionResult() {
           queryKey: ["operator", "memories"],
         }),
       ]);
+    },
+  });
+}
+
+export function useProducts() {
+  return useQuery({
+    queryKey: keys.products,
+    queryFn: operatorApi.products,
+    refetchInterval: 3_000,
+  });
+}
+
+export function useProductAction() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (request: { readonly projectId: string; readonly action: "start" | "stop" }) => {
+      if (request.action === "start") {
+        await operatorApi.startProduct(request.projectId);
+      } else {
+        await operatorApi.stopProduct(request.projectId);
+      }
+    },
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({ queryKey: keys.products });
     },
   });
 }

@@ -407,6 +407,37 @@ router.get(
 );
 
 router.get(
+  "/operator/products",
+  async (_req, res): Promise<void> => {
+    res.json({ products: await forgeRuntime.listProductOverview() });
+  },
+);
+
+router.post(
+  "/operator/products/:projectId/start",
+  async (req, res): Promise<void> => {
+    try {
+      await forgeRuntime.startProduct(req.params.projectId);
+      res.status(202).json({ started: true });
+    } catch (error) {
+      res.status(400).json({ error: message(error) });
+    }
+  },
+);
+
+router.post(
+  "/operator/products/:projectId/stop",
+  async (req, res): Promise<void> => {
+    try {
+      await forgeRuntime.stopProduct(req.params.projectId);
+      res.json({ stopped: true });
+    } catch (error) {
+      res.status(400).json({ error: message(error) });
+    }
+  },
+);
+
+router.get(
   "/operator/projects/:projectId",
   (req, res): void => {
     const project =

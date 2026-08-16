@@ -35,10 +35,10 @@ const LIVE_NAV_ITEMS = [
   { href: "/learning", label: "Learning", icon: BrainCircuit },
   { href: "/events", label: "Live Events", icon: Radio },
   { href: "/operator", label: "Operator Core", icon: BookOpenCheck },
+  { href: "/projects", label: "Products", icon: FolderKanban },
 ];
 
 const LEGACY_NAV_ITEMS = [
-  { href: "/projects", label: "Projects", icon: FolderKanban },
   { href: "/tasks", label: "Tasks", icon: CheckSquare },
   { href: "/modules", label: "Modules", icon: Package },
   { href: "/sandboxes", label: "Sandboxes", icon: Container },

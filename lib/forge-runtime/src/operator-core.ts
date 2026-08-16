@@ -1,4 +1,5 @@
 import { randomUUID } from "node:crypto";
+import { existsSync } from "node:fs";
 import path from "node:path";
 import type { RuntimeEventBus } from "./event-bus";
 import { ModelRouter } from "./model-router";
@@ -17,6 +18,7 @@ import type {
   ProjectMemoryEntry,
   ProjectMemoryKind,
   ProjectRecord,
+  RegisterProjectRequest,
   PromptComposeRequest,
   PromptComposition,
   WorkspaceFileContent,
@@ -57,7 +59,86 @@ function requiredText(
 function cloneProject(
   project: ProjectRecord,
 ): ProjectRecord {
-  return Object.freeze({ ...project });
+  return Object.freeze({
+    ...project,
+    startCommand: Object.freeze([...(project.startCommand ?? [])]),
+    verificationCommand: Object.freeze([...(project.verificationCommand ?? [])]),
+    origin: project.origin ?? "introduced",
+    goal: project.goal ?? project.description,
+    sourceMissionId: project.sourceMissionId ?? null,
+  });
+}
+
+function productsRoot(workspaceRoot: string): string {
+  const configured = process.env.FORGE_PRODUCTS_ROOT?.trim();
+  if (configured) return path.resolve(configured);
+  const candidates = [path.dirname(workspaceRoot)];
+  if (process.platform === "win32") {
+    for (let code = "A".charCodeAt(0); code <= "Z".charCodeAt(0); code += 1) {
+      candidates.push(path.join(String.fromCharCode(code) + ":" + path.sep, "Forge"));
+    }
+  }
+  return candidates.find((candidate) => existsSync(path.join(candidate, "assumption-engine")))
+    ?? path.dirname(workspaceRoot);
+}
+
+function productSeeds(workspaceRoot: string): readonly RegisterProjectRequest[] {
+  const externalRoot = productsRoot(workspaceRoot);
+  return Object.freeze([
+    Object.freeze({
+      id: "forge-core",
+      name: "Forge Core",
+      rootPath: workspaceRoot,
+      startCommand: Object.freeze(["pnpm.cmd", "forge:start"]),
+      verificationCommand: Object.freeze(["pnpm.cmd", "validate"]),
+      origin: "forge-built" as const,
+      goal: "Operate and evolve the local-first autonomous AI Software Engineering Platform.",
+      description: "Authoritative local Forge Core repository and runtime workspace.",
+      sourceMissionId: null,
+    }),
+    Object.freeze({
+      id: "assumption-engine",
+      name: "Assumption Engine",
+      rootPath: process.env.FORGE_ASSUMPTION_ENGINE_ROOT?.trim() || path.join(externalRoot, "assumption-engine"),
+      startCommand: Object.freeze(["pnpm.cmd", "--filter", "@workspace/assumption-engine", "dev"]),
+      verificationCommand: Object.freeze(["pnpm.cmd", "build"]),
+      origin: "introduced" as const,
+      goal: "Make assumptions explicit, inspectable and testable in software design work.",
+      description: "Existing assumption-analysis product introduced into Forge maintenance.",
+      sourceMissionId: null,
+    }),
+    Object.freeze({
+      id: "forge-cad-engine",
+      name: "Forge CAD Engine",
+      rootPath: process.env.FORGE_CAD_ENGINE_ROOT?.trim() || path.join(externalRoot, "forge-cad-engine"),
+      startCommand: Object.freeze([]),
+      verificationCommand: Object.freeze([]),
+      origin: "forge-built" as const,
+      goal: "Build a 3D game engine with a full AutoCAD-class builder for desktop and web, including drawing import, precise authoring and fast rendering.",
+      description: "Long-running exercise product defined by the Forge final assignment.",
+      sourceMissionId: null,
+    }),
+  ]);
+}
+
+function normalizedProject(
+  request: RegisterProjectRequest,
+  existing?: ProjectRecord,
+): ProjectRecord {
+  const timestamp = new Date().toISOString();
+  return cloneProject({
+    id: requiredText(request.id, "id"),
+    name: requiredText(request.name, "name"),
+    rootPath: path.resolve(requiredText(request.rootPath, "rootPath")),
+    description: request.description?.trim() || request.goal.trim(),
+    startCommand: Object.freeze(request.startCommand.map((part) => requiredText(part, "startCommand"))),
+    verificationCommand: Object.freeze(request.verificationCommand.map((part) => requiredText(part, "verificationCommand"))),
+    origin: request.origin,
+    goal: requiredText(request.goal, "goal"),
+    sourceMissionId: request.sourceMissionId?.trim() || null,
+    createdAt: existing?.createdAt ?? timestamp,
+    updatedAt: timestamp,
+  });
 }
 
 function cloneMemory(
@@ -184,48 +265,21 @@ export class OperatorCore {
       }
 
       const loaded = await this.#stateStore.load();
-      const existing = loaded.projects.find(
-        (project) => project.id === "forge-core",
-      );
       const configuredRoot = path.resolve(this.#defaultWorkspaceRoot);
-
       let projects = [...loaded.projects];
 
-      if (!existing) {
-        const timestamp = new Date().toISOString();
-
-        const project: ProjectRecord = Object.freeze({
-          id: "forge-core",
-          name: "Forge Core",
-          rootPath: configuredRoot,
-          description:
-            "Authoritative local Forge Core repository and runtime workspace.",
-          createdAt: timestamp,
-          updatedAt: timestamp,
-        });
-
-        projects = [...projects, project];
-
-        this.#events.publish(
-          "operator.project.registered",
-          {
-            projectId: project.id,
-            rootPath: project.rootPath,
-          },
-        );
-      } else if (path.resolve(existing.rootPath) !== configuredRoot) {
-        const rebound = Object.freeze({
-          ...existing,
-          rootPath: configuredRoot,
-          updatedAt: new Date().toISOString(),
-        });
-        projects = projects.map((project) =>
-          project.id === existing.id ? rebound : project);
-        this.#events.publish("operator.project.root.rebound", {
-          projectId: existing.id,
-          previousRootPath: existing.rootPath,
-          rootPath: configuredRoot,
-        });
+      for (const seed of productSeeds(configuredRoot)) {
+        const existing = projects.find((project) => project.id === seed.id);
+        const seeded = normalizedProject(seed, existing);
+        projects = existing
+          ? projects.map((project) => project.id === seed.id ? seeded : project)
+          : [...projects, seeded];
+        if (!existing) {
+          this.#events.publish("operator.project.registered", {
+            projectId: seeded.id,
+            rootPath: seeded.rootPath,
+          });
+        }
       }
 
       await this.#save({
@@ -279,6 +333,29 @@ export class OperatorCore {
     );
 
     return project ? cloneProject(project) : null;
+  }
+
+  async registerProject(request: RegisterProjectRequest): Promise<ProjectRecord> {
+    this.#ensureInitialized();
+    return this.#mutate(async () => {
+      const resolvedRoot = path.resolve(requiredText(request.rootPath, "rootPath"));
+      const existing = this.#state.projects.find((project) =>
+        project.id === request.id || path.resolve(project.rootPath) === resolvedRoot,
+      );
+      const project = normalizedProject(request, existing);
+      await this.#save({
+        ...this.#state,
+        projects: existing
+          ? this.#state.projects.map((candidate) => candidate.id === existing.id ? project : candidate)
+          : [...this.#state.projects, project],
+      });
+      this.#events.publish("operator.project.registered", {
+        projectId: project.id,
+        rootPath: project.rootPath,
+        sourceMissionId: project.sourceMissionId,
+      });
+      return project;
+    });
   }
 
   listMemories(
