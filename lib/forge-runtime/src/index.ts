@@ -137,6 +137,7 @@ export {
 
 export {
   assertHostPackageExecutionDenied,
+  DockerWorkspaceVerificationRunner,
   NodeWorkspaceVerificationRunner,
   parseWorkspaceChangeRequest,
   WorkspaceExecutionError,

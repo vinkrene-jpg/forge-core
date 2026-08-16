@@ -221,3 +221,14 @@ Status: implemented with deterministic runtime, API and lifecycle verification.
 - The Forge launcher forwards only explicitly allowlisted provider credentials and removes unrelated secrets from the child environment.
 - Every execution-slice test owns and stops its runtime before environment and temporary-storage cleanup. The complete file passes 6/6 and exits in 4.573 seconds; each real proof test also passes alone.
 - Real capability-repair dogfood is blocked until the isolated execution backend exists; deterministic verification remains authoritative meanwhile.
+
+## Network-isolated workspace verification - 2026-08-16
+
+Status: implemented and live verified; capability-repair dogfood is the next clean-worktree action.
+
+- Production workspace verification runs in a no-network Docker container with read-only candidate input, disposable work trees, dropped capabilities, process and memory limits and no package installation or lifecycle scripts.
+- The configured image tag is resolved to an immutable local SHA-256 image ID before execution and that ID is persisted in bounded verification evidence.
+- Candidate TypeScript is force-checked, including the Forge Runtime package omitted by the root project-reference graph.
+- Live proof accepted a valid sandbox change, rejected a broken existing runtime source file during typecheck in 8.4 seconds, restored exact content and clean Git state, blocked outbound network access and confirmed host execution refusal.
+- Runtime tests passed 109/109; explicit runtime and root typechecks and the root build passed.
+- Evidence: `reconstruction/WORKSPACE_VERIFICATION_ISOLATION_PROOF.json`.

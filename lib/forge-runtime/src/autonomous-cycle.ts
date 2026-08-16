@@ -32,6 +32,8 @@ export interface AutonomousFileEffect {
 export interface AutonomousVerificationRun {
   readonly command: string;
   readonly exitCode: number;
+  readonly image?: string | null;
+  readonly containerId?: string | null;
   readonly stdoutSha256: string;
   readonly stderrSha256: string;
   readonly durationMs: number;

@@ -1,0 +1,31 @@
+FROM node:24-bookworm-slim
+
+ENV COREPACK_ENABLE_DOWNLOAD_PROMPT=0 \
+    COREPACK_HOME=/corepack \
+    PNPM_HOME=/pnpm \
+    PATH=/pnpm:$PATH
+
+WORKDIR /forge
+
+RUN corepack enable && mkdir /corepack && chown node:node /forge /corepack
+
+COPY --chown=node:node package.json pnpm-lock.yaml pnpm-workspace.yaml tsconfig.base.json tsconfig.json ./
+COPY --chown=node:node artifacts ./artifacts
+COPY --chown=node:node lib ./lib
+COPY --chown=node:node scripts ./scripts
+COPY --chown=node:node config ./config
+
+USER node
+
+RUN corepack prepare pnpm@11.10.0 --activate \
+    && pnpm install --frozen-lockfile
+
+USER root
+
+RUN mkdir -p /baseline/sandbox \
+    && cp -a /forge/lib /forge/artifacts /baseline/ \
+    && chown -R node:node /baseline
+
+USER node
+
+ENTRYPOINT ["node", "/forge/scripts/verification-entrypoint.mjs"]

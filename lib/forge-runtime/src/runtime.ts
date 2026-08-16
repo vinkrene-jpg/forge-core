@@ -157,6 +157,7 @@ import {
   type LearningCapabilityMatrixEntry,
 } from "./learning-matrix";
 import {
+  DockerWorkspaceVerificationRunner,
   NodeWorkspaceVerificationRunner,
   parseWorkspaceChangeRequest,
   WorkspaceExecutionError,
@@ -576,7 +577,9 @@ export class ForgeRuntime {
 
     this.#workspaceVerificationRunner =
       options.workspaceVerificationRunner ??
-      new NodeWorkspaceVerificationRunner();
+      (process.env.NODE_ENV === "test"
+        ? new NodeWorkspaceVerificationRunner()
+        : new DockerWorkspaceVerificationRunner());
     this.#workspaceRecoveryTimeoutMs =
       Number.isInteger(options.workspaceRecoveryTimeoutMs) &&
         Number(options.workspaceRecoveryTimeoutMs) >= 100
@@ -1375,6 +1378,8 @@ export class ForgeRuntime {
       Object.freeze({
         command: verification.command,
         exitCode: verification.exitCode,
+        image: verification.image ?? null,
+        containerId: verification.containerId ?? null,
         stdoutSha256: verification.stdoutSha256,
         stderrSha256: verification.stderrSha256,
         durationMs: verification.durationMs,
@@ -2411,6 +2416,8 @@ export class ForgeRuntime {
           Object.freeze({
             command: verification.command,
             exitCode: verification.exitCode,
+            image: verification.image ?? null,
+            containerId: verification.containerId ?? null,
             stdoutSha256: verification.stdoutSha256,
             stderrSha256: verification.stderrSha256,
             durationMs: verification.durationMs,
@@ -2752,6 +2759,8 @@ export class ForgeRuntime {
         verificationResults.push(Object.freeze({
           command: result.command,
           exitCode: result.exitCode,
+          image: result.image ?? null,
+          containerId: result.containerId ?? null,
           stdoutChars: result.stdout.length,
           stderrChars: result.stderr.length,
           stdoutSha256: sha256Text(result.stdout),
@@ -2783,6 +2792,8 @@ export class ForgeRuntime {
             Object.freeze({
               command: result.command,
               exitCode: result.exitCode,
+              image: result.image,
+              containerId: result.containerId,
               stdoutSha256: result.stdoutSha256,
               stderrSha256: result.stderrSha256,
               durationMs: result.durationMs,

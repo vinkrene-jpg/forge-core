@@ -1,8 +1,8 @@
 # Forge Next Mission
 
-## Resume point after spend and execution-isolation hardening
+## Resume point after network-isolated verification
 
-Status: Source and deterministic tests prove missing-capability repair, mandatory paid-provider spend authority, fail-closed host package execution and exception-safe runtime cleanup. Real WorkspaceExecutor capability-repair dogfood is intentionally blocked until a network-isolated execution backend with package installation disabled is available.
+Status: The network-isolated execution backend is implemented and live verified. Commit and push this verified backend from the clean canonical branch, then run the real WorkspaceExecutor capability-repair dogfood once.
 
 ## Verified baseline
 
@@ -32,10 +32,13 @@ Status: Source and deterministic tests prove missing-capability repair, mandator
 24. Operator autonomous intake places `$5` run and UTC-day limits in the governance-visible mission request; continuations inherit them.
 25. Host package execution and package-script verification are disabled until a network-isolated backend exists; tests use injected bounded fixture runners only.
 26. Execution-slice runtime ownership is exception-safe. The complete file passes 6/6 and exits in 4.573 seconds; both real proof tests pass independently in under two seconds.
+27. Production workspace verification resolves its configured Docker image to an immutable SHA-256 image ID, runs without network or package installation and persists bounded hash-only receipts with image/container identity.
+28. Live isolation proof accepted a valid mutation, rejected broken Forge Runtime source during typecheck, restored exact content and clean Git state, blocked outbound network access and refused host verification.
+29. Explicit runtime and root typechecks, 109/109 runtime tests and the root build pass.
 
 ## Next action
 
-Implement or configure the governed network-isolated execution backend with package installation disabled. Then run `lib/forge-runtime/src/capability-repair-live.ts` once with `PNPM_WORKSPACE_CONCURRENCY=1` and capture the missing capability, repair/original mission IDs, local commit SHAs, accepted evaluations and final result in reconstruction evidence. Never re-enable direct host package execution as a shortcut.
+Commit and push the verified network-isolated backend. From that clean worktree, run `lib/forge-runtime/src/capability-repair-live.ts` once with `PNPM_WORKSPACE_CONCURRENCY=1` and capture the missing capability, repair/original mission IDs, local commit SHAs, accepted evaluations and final result in reconstruction evidence. Never re-enable direct host package execution as a shortcut.
 
 ## Failure rules
 

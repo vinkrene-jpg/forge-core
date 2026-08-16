@@ -2,6 +2,17 @@
 
 Verified through: 2026-08-16
 
+## Network-isolated WorkspaceExecutor verification
+
+- Production ForgeRuntime now selects Docker-backed workspace verification; test runtimes remain fail-closed unless a bounded verifier is explicitly injected.
+- The backend resolves `FORGE_VERIFICATION_IMAGE` to an immutable local SHA-256 image ID, creates a no-network/read-only/capability-dropped container with memory and PID limits and always removes it after completion, failure, cancellation or timeout.
+- Only sanitized `sandbox/`, `lib/` and `artifacts/` candidate bytes enter the container. Dependencies and trusted manifests are baked into the image; pnpm runs offline with lifecycle scripts and dependency repair disabled.
+- Verification receipts retain image/container identity, bounded output lengths and SHA-256 hashes without raw output persistence.
+- The typecheck gate forces the root project graph and explicitly checks `@workspace/forge-runtime`, which is absent from the root TypeScript references.
+- Live evidence accepted a sandbox mutation and rejected a syntactically broken existing runtime source file with exit code 2 in 8.362 seconds, then proved exact rollback, clean Git state, blocked network and host-runner refusal.
+- Explicit runtime typecheck, root typecheck, 109/109 runtime tests and root build passed.
+- Evidence: `reconstruction/WORKSPACE_VERIFICATION_ISOLATION_PROOF.json`.
+
 ## Spend, sandbox and runtime lifecycle hardening
 
 - Every OpenAI provider call now requires explicit persisted run and UTC-day spend authority. The gateway serializes conservative reservation with the boundary check before connector execution and reports mandate-linked actual cost.

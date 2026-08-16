@@ -3,13 +3,16 @@ import { spawn } from "node:child_process";
 import {
   access,
   mkdir,
+  mkdtemp,
   readFile,
+  readdir,
   realpath,
   rename,
   rm,
   writeFile,
 } from "node:fs/promises";
 import path from "node:path";
+import os from "node:os";
 import type { RuntimeEventBus } from "./event-bus";
 import { HARD_PROTECTED_FORGE_FILES } from "./goal-mandate";
 
@@ -38,11 +41,15 @@ export interface WorkspaceCommandResult {
   readonly stdout: string;
   readonly stderr: string;
   readonly durationMs: number;
+  readonly image?: string;
+  readonly containerId?: string;
 }
 
 export interface WorkspaceVerificationEvidence {
   readonly command: string;
   readonly exitCode: number;
+  readonly image?: string | null;
+  readonly containerId?: string | null;
   readonly stdoutChars: number;
   readonly stderrChars: number;
   readonly stdoutSha256: string;
@@ -340,6 +347,126 @@ export class NodeWorkspaceVerificationRunner implements WorkspaceVerificationRun
   }
 }
 
+export class DockerWorkspaceVerificationRunner implements WorkspaceVerificationRunner {
+  readonly #image: string;
+  readonly #timeoutMs: number;
+  readonly #memory: string;
+  readonly #pidsLimit: number;
+
+  constructor(options: {
+    readonly image?: string;
+    readonly timeoutMs?: number;
+    readonly memory?: string;
+    readonly pidsLimit?: number;
+  } = {}) {
+    this.#image = options.image
+      ?? (process.env.FORGE_VERIFICATION_IMAGE?.trim() || "forge-verification:latest");
+    this.#timeoutMs = options.timeoutMs ?? 15 * 60_000;
+    this.#memory = options.memory ?? "2g";
+    this.#pidsLimit = options.pidsLimit ?? 256;
+  }
+
+  async run(
+    step: WorkspaceVerificationStep,
+    rootPath: string,
+    signal: AbortSignal,
+    fullRepository: boolean,
+  ): Promise<WorkspaceCommandResult> {
+    const started = Date.now();
+    const snapshotRoot = await mkdtemp(path.join(os.tmpdir(), "forge-verification-"));
+    const copySnapshot = async (relativeRoot: string): Promise<void> => {
+      const source = path.join(rootPath, relativeRoot);
+      const destination = path.join(snapshotRoot, relativeRoot);
+      await mkdir(destination, { recursive: true });
+      const entries = await readdir(source, { withFileTypes: true });
+      for (const entry of entries) {
+        if (protectedNames.has(entry.name) || protectedSegments.has(entry.name)
+          || entry.name.startsWith(".env.") || entry.name.endsWith(".key")
+          || entry.name.endsWith(".pem") || entry.name.endsWith(".tsbuildinfo")) {
+          continue;
+        }
+        const sourceEntry = path.join(source, entry.name);
+        const relativeEntry = path.join(relativeRoot, entry.name);
+        if (entry.isDirectory()) await copySnapshot(relativeEntry);
+        else if (entry.isFile()) {
+          await mkdir(path.dirname(path.join(snapshotRoot, relativeEntry)), { recursive: true });
+          await writeFile(path.join(snapshotRoot, relativeEntry), await readFile(sourceEntry));
+        }
+      }
+    };
+    await Promise.all(["sandbox", "lib", "artifacts"].map(copySnapshot));
+
+    const inspectImage = await runProcess(
+      "docker",
+      ["image", "inspect", "--format", "{{.Id}}", this.#image],
+      rootPath,
+      signal,
+      {},
+    );
+    const resolvedImage = inspectImage.stdout.trim();
+    if (inspectImage.exitCode !== 0 || !/^sha256:[a-f0-9]{64}$/.test(resolvedImage)) {
+      await rm(snapshotRoot, { recursive: true, force: true });
+      throw new Error(`Docker verification image is unavailable or invalid: ${this.#image}`);
+    }
+
+    const create = await runProcess("docker", [
+      "create",
+      "--network", "none",
+      "--read-only",
+      "--memory", this.#memory,
+      "--pids-limit", String(this.#pidsLimit),
+      "--cap-drop", "ALL",
+      "--security-opt", "no-new-privileges:true",
+      "--tmpfs", "/tmp:rw,nosuid,nodev,noexec,size=256m,uid=1000,gid=1000",
+      "--tmpfs", "/forge/sandbox:rw,nosuid,nodev,noexec,size=256m,uid=1000,gid=1000",
+      "--tmpfs", "/forge/lib:rw,nosuid,nodev,noexec,size=1g,uid=1000,gid=1000",
+      "--tmpfs", "/forge/artifacts:rw,nosuid,nodev,noexec,size=1g,uid=1000,gid=1000",
+      "--mount", `type=bind,source=${snapshotRoot},target=/candidate,readonly`,
+      resolvedImage,
+      step,
+      fullRepository ? "full" : "runtime",
+    ], rootPath, signal, {});
+
+    if (create.exitCode !== 0 || create.stdout.trim().length === 0) {
+      await rm(snapshotRoot, { recursive: true, force: true });
+      throw new Error(`Docker verification container creation failed: ${create.stderr.trim()}`);
+    }
+
+    const containerId = create.stdout.trim();
+    const timeout = AbortSignal.timeout(this.#timeoutMs);
+    const executionSignal = AbortSignal.any([signal, timeout]);
+    let output: WorkspaceCommandResult;
+    try {
+      output = await runProcess("docker", ["start", "--attach", containerId], rootPath, executionSignal, {});
+      const inspect = await runProcess(
+        "docker",
+        ["inspect", "--format", "{{.State.ExitCode}}", containerId],
+        rootPath,
+        signal,
+        {},
+      );
+      const exitCode = Number.parseInt(inspect.stdout.trim(), 10);
+      return Object.freeze({
+        command: `docker run ${resolvedImage} ${step} ${fullRepository ? "full" : "runtime"}`,
+        exitCode: Number.isInteger(exitCode) ? exitCode : output.exitCode,
+        stdout: output.stdout,
+        stderr: output.stderr,
+        durationMs: Date.now() - started,
+        image: resolvedImage,
+        containerId,
+      });
+    } catch (error) {
+      if (timeout.aborted) {
+        throw new Error(`Docker verification timed out after ${this.#timeoutMs}ms`);
+      }
+      throw error;
+    } finally {
+      await runProcess("docker", ["rm", "--force", "--volumes", containerId], rootPath, undefined, {});
+      await rm(snapshotRoot, { recursive: true, force: true });
+    }
+  }
+}
+
 export function assertHostPackageExecutionDenied(packageManifestPresent: boolean): void {
   if (packageManifestPresent) {
     throw new Error(
@@ -450,6 +577,8 @@ export class WorkspaceExecutor {
             Object.freeze({
               command: verification.command,
               exitCode: verification.exitCode,
+              image: verification.image ?? null,
+              containerId: verification.containerId ?? null,
               stdoutChars: verification.stdout.length,
               stderrChars: verification.stderr.length,
               stdoutSha256: sha256(verification.stdout),
