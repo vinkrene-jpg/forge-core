@@ -13,6 +13,14 @@ copied into that snapshot. Dependencies and trusted command manifests are
 baked into the image. Verification runs with pnpm offline, dependency repair
 disabled and lifecycle scripts disabled.
 
+The image also contains Git and the three read-only runtime context fixtures
+used by deterministic learning: `GOVERNANCE/ROADMAP.md`,
+`reconstruction/CURRENT_STATE.md` and `reconstruction/NEXT_MISSION.md`.
+Runtime state is redirected to disposable `/tmp/forge-storage`. Workspace
+tmpfs mounts permit execution because isolated verification must run candidate
+code and trusted native build tools; network, capabilities, host storage and
+package installation remain unavailable.
+
 ## Rebuild the image
 
 Rebuild after any dependency, lockfile, workspace manifest, verification

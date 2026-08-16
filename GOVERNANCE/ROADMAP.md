@@ -230,5 +230,7 @@ Status: implemented and live verified; capability-repair dogfood is the next cle
 - The configured image tag is resolved to an immutable local SHA-256 image ID before execution and that ID is persisted in bounded verification evidence.
 - Candidate TypeScript is force-checked, including the Forge Runtime package omitted by the root project-reference graph.
 - Live proof accepted a valid sandbox change, rejected a broken existing runtime source file during typecheck in 8.4 seconds, restored exact content and clean Git state, blocked outbound network access and confirmed host execution refusal.
-- Runtime tests passed 109/109; explicit runtime and root typechecks and the root build passed.
+- The image includes trusted Git plus only the three read-only governance/reconstruction context files required by deterministic runtime tests. Disposable runtime storage prevents writes to the source image.
+- Runtime shutdown now drains the existing Memory Bridge mutation queue, and autonomy state writes use collision-free temporary names; container-discovered cleanup races no longer outlive their stores.
+- Host runtime tests passed 109/109. The final no-network container street passed runtime 109/109 and API 53/53; explicit runtime and root typechecks and the root build passed.
 - Evidence: `reconstruction/WORKSPACE_VERIFICATION_ISOLATION_PROOF.json`.

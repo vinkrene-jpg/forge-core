@@ -1,8 +1,8 @@
 {
-  "generatedAt": "2026-08-16T11:15:53.540Z",
+  "generatedAt": "2026-08-16T11:58:40.422Z",
   "image": "forge-verification:latest",
   "success": {
-    "id": "1e1beea5-357e-4387-9da9-fcd7e9dc2dbd",
+    "id": "d08f584f-565b-48d2-8586-6ed5b17a8692",
     "missionId": "docker-proof-success",
     "status": "verified",
     "branch": "proof/docker-verification",
@@ -23,28 +23,28 @@
         "stderrChars": 0,
         "stdoutSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
         "stderrSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
-        "durationMs": 64
+        "durationMs": 55
       },
       {
-        "command": "docker run sha256:b218010b89795843d3a998ab70d1269f428e16bae8602022d1a265062035bd94 typecheck runtime",
+        "command": "docker run sha256:9ff55445492aaa4a510b49ae40f9ab006dfa8e5e8df1c5c89309a6fe01ad4fd5 typecheck runtime",
         "exitCode": 0,
-        "image": "sha256:b218010b89795843d3a998ab70d1269f428e16bae8602022d1a265062035bd94",
-        "containerId": "fc878a8790f264d6da4f40719b175aad26d15a42dce3b5169a5f59620f522f82",
+        "image": "sha256:9ff55445492aaa4a510b49ae40f9ab006dfa8e5e8df1c5c89309a6fe01ad4fd5",
+        "containerId": "13831c1d8d6fb67c0cfbff72ef34146d9ce2792450b357dbff648784db7b3836",
         "stdoutChars": 339,
         "stderrChars": 32,
         "stdoutSha256": "2c8e8710b389354fb18593e455e3600d197c002b42542412832ce09225cd857d",
         "stderrSha256": "38ac890c60e7f38d59ddfb410325cdfb5fca83c9411765c5481754e01c021630",
-        "durationMs": 23829
+        "durationMs": 23187
       }
     ],
     "rollbackPerformed": false,
     "commitSha": null,
     "error": null,
-    "startedAt": "2026-08-16T11:15:20.094Z",
-    "completedAt": "2026-08-16T11:15:44.264Z"
+    "startedAt": "2026-08-16T11:58:07.342Z",
+    "completedAt": "2026-08-16T11:58:30.865Z"
   },
   "failure": {
-    "id": "af5c13a3-3c87-4c4f-8b8a-b1009cab7965",
+    "id": "3c6300ea-6bda-4d40-90b3-9bdb775f3d34",
     "missionId": "docker-proof-failure",
     "status": "rolled_back",
     "branch": "proof/docker-verification",
@@ -65,25 +65,25 @@
         "stderrChars": 0,
         "stdoutSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
         "stderrSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
-        "durationMs": 57
+        "durationMs": 58
       },
       {
-        "command": "docker run sha256:b218010b89795843d3a998ab70d1269f428e16bae8602022d1a265062035bd94 typecheck full",
+        "command": "docker run sha256:9ff55445492aaa4a510b49ae40f9ab006dfa8e5e8df1c5c89309a6fe01ad4fd5 typecheck full",
         "exitCode": 2,
-        "image": "sha256:b218010b89795843d3a998ab70d1269f428e16bae8602022d1a265062035bd94",
-        "containerId": "2dfc5518ba6f9b6976a69d538ee58940b07639f414e245adf0691ab2590fb923",
+        "image": "sha256:9ff55445492aaa4a510b49ae40f9ab006dfa8e5e8df1c5c89309a6fe01ad4fd5",
+        "containerId": "a1db296a8a656e636a73354641163a55256884835863d2ad2aadadae2ef63173",
         "stdoutChars": 221,
         "stderrChars": 32,
         "stdoutSha256": "fa8f5563555184bd28a2ce2b2c3a88c0690c8f3554aba5ab77df0123f8bc0ccd",
         "stderrSha256": "38ac890c60e7f38d59ddfb410325cdfb5fca83c9411765c5481754e01c021630",
-        "durationMs": 8395
+        "durationMs": 8648
       }
     ],
     "rollbackPerformed": true,
     "commitSha": null,
     "error": "Verification failed: typecheck",
-    "startedAt": "2026-08-16T11:15:44.311Z",
-    "completedAt": "2026-08-16T11:15:53.091Z"
+    "startedAt": "2026-08-16T11:58:30.913Z",
+    "completedAt": "2026-08-16T11:58:39.962Z"
   },
   "network": {
     "blocked": true,

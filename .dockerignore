@@ -8,6 +8,9 @@
 !lib/**
 !scripts/**
 !config/**
+!GOVERNANCE/**
+!reconstruction/CURRENT_STATE.md
+!reconstruction/NEXT_MISSION.md
 
 **/.env
 **/.env.*

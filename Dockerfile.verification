@@ -7,13 +7,21 @@ ENV COREPACK_ENABLE_DOWNLOAD_PROMPT=0 \
 
 WORKDIR /forge
 
-RUN corepack enable && mkdir /corepack && chown node:node /forge /corepack
+RUN apt-get update \
+    && apt-get install --yes --no-install-recommends git \
+    && rm -rf /var/lib/apt/lists/* \
+    && corepack enable \
+    && mkdir /corepack \
+    && chown node:node /forge /corepack
 
 COPY --chown=node:node package.json pnpm-lock.yaml pnpm-workspace.yaml tsconfig.base.json tsconfig.json ./
 COPY --chown=node:node artifacts ./artifacts
 COPY --chown=node:node lib ./lib
 COPY --chown=node:node scripts ./scripts
 COPY --chown=node:node config ./config
+COPY --chown=node:node GOVERNANCE ./GOVERNANCE
+COPY --chown=node:node reconstruction/CURRENT_STATE.md ./reconstruction/CURRENT_STATE.md
+COPY --chown=node:node reconstruction/NEXT_MISSION.md ./reconstruction/NEXT_MISSION.md
 
 USER node
 

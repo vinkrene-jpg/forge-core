@@ -3636,6 +3636,7 @@ export class ForgeRuntime {
   async stop(): Promise<KernelStateSnapshot> {
     await this.#autonomyEngine.stop();
     await this.#missionLoop.stop();
+    await this.#memoryBridge.flush();
 
     const stopped = await this.#kernel.stop();
     const stoppedAt = new Date().toISOString();

@@ -110,6 +110,11 @@ function memoryRootPath(): string {
     return path.resolve(explicit);
   }
 
+  const storageRoot = process.env.STORAGE_DIR?.trim();
+  if (storageRoot) {
+    return path.resolve(storageRoot, "memory-bridge");
+  }
+
   return path.resolve("storage", "memory-bridge");
 }
 
@@ -264,6 +269,10 @@ export class FileMemoryBridge {
         kind: "note",
       });
     });
+  }
+
+  async flush(): Promise<void> {
+    await this.#mutation;
   }
 
   summary(): MemoryBridgeSummary {

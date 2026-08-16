@@ -5,6 +5,7 @@ import {
   rm,
   writeFile,
 } from "node:fs/promises";
+import { randomUUID } from "node:crypto";
 import path from "node:path";
 import {
   cloneAutonomyState,
@@ -133,6 +134,8 @@ export class FileAutonomyStateStore implements AutonomyStateStore {
       process.pid +
       "." +
       Date.now() +
+      "." +
+      randomUUID() +
       ".tmp";
 
     await writeFile(
