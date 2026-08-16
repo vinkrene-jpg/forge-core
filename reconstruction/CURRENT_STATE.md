@@ -2,6 +2,18 @@
 
 Verified through: 2026-08-16
 
+## Turborepo verification acceleration
+
+- Turborepo 2.10.10 is the scheduler and local cache for workspace `typecheck`, `build` and `test`; root scripts delegate to its dependency graph.
+- Task hashes include the frozen lockfile, workspace definition, shared TypeScript configuration and the three runtime-context files used by deterministic tests. Build identity is a build-only environment input.
+- Runtime source participates in a concrete build task, so API and Desktop consumer hashes invalidate when runtime source changes.
+- Scoped isolated verification passes the changed package to Turbo and expands the dependency graph through Turbo filters. A push request reruns every requested gate unfiltered before Git push.
+- Runtime tests run with Node file concurrency two and completed 111/111 with exit code 0. API tests completed 53/53 with concurrency two.
+- A graph-runtime test now drains all child missions and stops its runtime before deleting storage; capability and autonomy tests wait for their persisted asynchronous terminal state.
+- Legacy full verification: 54.799 seconds. Complete Turbo graph: 29.788 seconds. Source-only follow-up: 1.975 seconds with 17/18 cache hits.
+- Docker source-only rebuild: 6.445 seconds; the `pnpm install --frozen-lockfile` layer was `CACHED` in 0.0 seconds.
+- Evidence: `reconstruction/VERIFICATION_LOOP_ACCELERATION.json`.
+
 ## Capability repair and automatic resume - live verification
 
 - Approved goal-run `4e7cd7ed-147b-4667-94b4-8a62b05cea71` detected missing capability `tool.live-proof.render` and created repair mission `74ceda4c-d528-4b10-827a-4470d9b87289` before the original goal.
@@ -40,7 +52,7 @@ Verified through: 2026-08-16
 - Repair GoalSpecs and the original GoalSpec use the authoritative Mission Engine. Only the deepest repair is queued; accepted evidence activates its dependent mission without another approval.
 - Registry promotion occurs only after all repair workspace children succeeded with accepted deterministic evaluation. Failed verification leaves the capability unchanged and fails the waiting original with capability, repair mission, failed child and reason.
 - Runtime tests prove one unavailable capability is built first and the original resumes; the negative path proves no promotion or original execution after repair failure. Separate tests prove depth and repair-count boundaries before materialization.
-- The API test command now executes each bundled test file with `--test-concurrency=1`; runtime tests already use concurrency one.
+- API test bundles execute in one Node test process with `--test-concurrency=2`; runtime test files use the same bounded concurrency.
 - Real WorkspaceExecutor dogfood script: `lib/forge-runtime/src/capability-repair-live.ts`. It must run only after this implementation is committed and the worktree is clean.
 
 ## Bounded autonomous capability-goal run - runtime verification

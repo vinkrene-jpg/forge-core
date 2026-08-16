@@ -238,3 +238,14 @@ Status: implemented and live verified; capability-repair dogfood is the next cle
 - API production builds receive a validated host source SHA through the verifier env allowlist; repository metadata remains outside the container.
 - Host runtime tests passed 109/109. The final no-network container street passed runtime 109/109 and API 53/53; explicit runtime and root typechecks and the root build passed.
 - Evidence: `reconstruction/WORKSPACE_VERIFICATION_ISOLATION_PROOF.json`.
+
+## Turborepo verification acceleration - 2026-08-16
+
+Status: implemented and measured.
+
+- Turborepo 2.10.10 schedules workspace typecheck, build and test tasks through the existing pnpm dependency graph with explicit inputs and outputs.
+- A runtime change includes API and Desktop dependents through Turbo filtering; an unfiltered complete gate remains mandatory before push.
+- Runtime test files run with bounded Node concurrency two; API test bundles run in one Node test process with concurrency two. Lifecycle races now wait for terminal runtime, mission, registry and summary state before temporary storage cleanup.
+- Legacy complete verification measured 54.799 seconds. The complete Turbo graph measured 29.788 seconds; after one source-only scripts change it completed 18/18 tasks with 17 cache hits in 1.975 seconds.
+- The verification image copies manifests plus the frozen lockfile before installation and source afterward. After a source-only change, the image rebuilt in 6.445 seconds and the install step was explicitly cached in 0.0 seconds.
+- Evidence: `reconstruction/VERIFICATION_LOOP_ACCELERATION.json`.

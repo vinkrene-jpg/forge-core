@@ -17,6 +17,7 @@ import type { RuntimeEventBus } from "./event-bus";
 import { HARD_PROTECTED_FORGE_FILES } from "./goal-mandate";
 
 export type WorkspaceVerificationStep = "typecheck" | "test" | "build";
+export type WorkspaceVerificationScope = "runtime" | "api" | "frontend" | "full";
 
 export interface WorkspaceFileChange {
   readonly path: string;
@@ -62,7 +63,7 @@ export interface WorkspaceVerificationRunner {
     step: WorkspaceVerificationStep,
     rootPath: string,
     signal: AbortSignal,
-    fullRepository: boolean,
+    scope: WorkspaceVerificationScope,
   ): Promise<WorkspaceCommandResult>;
 }
 
@@ -335,12 +336,12 @@ export class NodeWorkspaceVerificationRunner implements WorkspaceVerificationRun
     step: WorkspaceVerificationStep,
     rootPath: string,
     signal: AbortSignal,
-    fullRepository: boolean,
+    scope: WorkspaceVerificationScope,
   ): Promise<WorkspaceCommandResult> {
     void step;
     void rootPath;
     void signal;
-    void fullRepository;
+    void scope;
     throw new Error(
       "Host verification is disabled: Forge-written code requires a network-isolated executor with package installation disabled. Windows host processes cannot provide this boundary without an active sandbox backend.",
     );
@@ -370,7 +371,7 @@ export class DockerWorkspaceVerificationRunner implements WorkspaceVerificationR
     step: WorkspaceVerificationStep,
     rootPath: string,
     signal: AbortSignal,
-    fullRepository: boolean,
+    scope: WorkspaceVerificationScope,
   ): Promise<WorkspaceCommandResult> {
     const started = Date.now();
     const snapshotRoot = await mkdtemp(path.join(os.tmpdir(), "forge-verification-"));
@@ -432,7 +433,7 @@ export class DockerWorkspaceVerificationRunner implements WorkspaceVerificationR
       "--mount", `type=bind,source=${snapshotRoot},target=/candidate,readonly`,
       resolvedImage,
       step,
-      fullRepository ? "full" : "runtime",
+      scope,
     ], rootPath, signal, {});
 
     if (create.exitCode !== 0 || create.stdout.trim().length === 0) {
@@ -455,7 +456,7 @@ export class DockerWorkspaceVerificationRunner implements WorkspaceVerificationR
       );
       const exitCode = Number.parseInt(inspect.stdout.trim(), 10);
       return Object.freeze({
-        command: `docker run ${resolvedImage} ${step} ${fullRepository ? "full" : "runtime"}`,
+        command: `docker run ${resolvedImage} ${step} ${scope}`,
         exitCode: Number.isInteger(exitCode) ? exitCode : output.exitCode,
         stdout: output.stdout,
         stderr: output.stderr,
@@ -481,6 +482,21 @@ export function assertHostPackageExecutionDenied(packageManifestPresent: boolean
       "Host package execution is disabled: dependency installation, lifecycle scripts, and package scripts require a network-isolated sandbox backend.",
     );
   }
+}
+
+export function verificationScopeForPaths(
+  changedPaths: readonly string[],
+): WorkspaceVerificationScope {
+  if (changedPaths.every((changedPath) =>
+    changedPath.startsWith("sandbox/") || changedPath.startsWith("lib/forge-runtime/")
+  )) return "runtime";
+  if (changedPaths.every((changedPath) => changedPath.startsWith("artifacts/api-server/"))) {
+    return "api";
+  }
+  if (changedPaths.every((changedPath) => changedPath.startsWith("artifacts/forge-core/"))) {
+    return "frontend";
+  }
+  return "full";
 }
 
 interface Snapshot {
@@ -708,15 +724,15 @@ export class WorkspaceExecutor {
         throw new Error("git diff --check failed");
       }
 
-      const fullRepositoryVerification = request.changes.some(
-        (change) => !change.path.startsWith("sandbox/"),
+      const verificationScope = verificationScopeForPaths(
+        request.changes.map((change) => change.path),
       );
       for (const step of request.verification) {
         const verification = await this.#verificationRunner.run(
           step,
           root,
           signal,
-          fullRepositoryVerification,
+          verificationScope,
         );
         verifications.push(verification);
 
@@ -749,6 +765,21 @@ export class WorkspaceExecutor {
 
       if (stagedCheck.exitCode !== 0) {
         throw new Error("Staged Git diff check failed");
+      }
+
+      if (request.commit.push && verificationScope !== "full") {
+        for (const step of request.verification) {
+          const verification = await this.#verificationRunner.run(
+            step,
+            root,
+            signal,
+            "full",
+          );
+          verifications.push(verification);
+          if (verification.exitCode !== 0) {
+            throw new Error(`Full pre-push verification failed: ${step}`);
+          }
+        }
       }
 
       const commit = await git(

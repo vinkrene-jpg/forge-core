@@ -1,0 +1,45 @@
+{
+  "$schema": "https://turbo.build/schema.json",
+  "globalDependencies": [
+    "pnpm-lock.yaml",
+    "pnpm-workspace.yaml",
+    "tsconfig.base.json",
+    "GOVERNANCE/ROADMAP.md",
+    "reconstruction/CURRENT_STATE.md",
+    "reconstruction/NEXT_MISSION.md"
+  ],
+  "globalEnv": ["CI", "NODE_ENV"],
+  "tasks": {
+    "typecheck": {
+      "dependsOn": ["^build", "^typecheck"],
+      "inputs": ["$TURBO_DEFAULT$", "../../tsconfig.base.json"],
+      "outputs": []
+    },
+    "build": {
+      "dependsOn": ["^build", "typecheck"],
+      "inputs": ["$TURBO_DEFAULT$", "../../tsconfig.base.json"],
+      "outputs": ["dist/**", "build/**", ".tsbuildinfo"],
+      "env": ["FORGE_RUNTIME_BUILD_SHA"]
+    },
+    "test": {
+      "dependsOn": ["build"],
+      "inputs": ["$TURBO_DEFAULT$", "../../tsconfig.base.json"],
+      "outputs": []
+    },
+    "test:frontend": {
+      "dependsOn": ["build"],
+      "inputs": ["$TURBO_DEFAULT$", "../../tsconfig.base.json"],
+      "outputs": []
+    },
+    "@workspace/api-server#test": {
+      "dependsOn": ["build"],
+      "inputs": ["$TURBO_DEFAULT$", "../../tsconfig.base.json"],
+      "outputs": ["dist/tests/**"]
+    },
+    "@workspace/forge-runtime#build": {
+      "dependsOn": ["typecheck"],
+      "inputs": ["$TURBO_DEFAULT$", "../../tsconfig.base.json"],
+      "outputs": []
+    }
+  }
+}

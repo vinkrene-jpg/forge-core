@@ -422,7 +422,8 @@ test("autonomous provider loop", { concurrency: false }, async (t) => {
           return (
             missions.length === 2 &&
             missions[0].status === "succeeded" &&
-            missions[1].status === "awaiting_approval"
+            missions[1].status === "awaiting_approval" &&
+            runtime.autonomySummary().pendingApprovals > 0
           );
         });
 

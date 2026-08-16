@@ -1,0 +1,72 @@
+{
+  "schemaVersion": 1,
+  "verifiedAt": "2026-08-16T14:06:21.514Z",
+  "branch": "forge-sync-primary",
+  "baseCommit": "b0475a7bc31978641a67ec5a689d4b705f50d872",
+  "turbo": {
+    "version": "2.10.10",
+    "remoteCache": false,
+    "fullGraph": {
+      "tasksPassed": 18,
+      "tasksTotal": 18,
+      "cacheHits": 4,
+      "durationMs": 29788,
+      "exitCode": 0
+    },
+    "sourceOnlyFollowUp": {
+      "tasksPassed": 18,
+      "tasksTotal": 18,
+      "cacheHits": 17,
+      "durationMs": 1975,
+      "exitCode": 0
+    },
+    "legacyFullVerificationDurationMs": 54799
+  },
+  "tests": {
+    "runtime": {
+      "passed": 111,
+      "total": 111,
+      "concurrency": 2,
+      "durationMs": 18807,
+      "exitCode": 0
+    },
+    "api": {
+      "passed": 53,
+      "total": 53,
+      "concurrency": 2,
+      "exitCode": 0
+    },
+    "workspaceExecutor": {
+      "passed": 12,
+      "total": 12,
+      "exitCode": 0
+    }
+  },
+  "docker": {
+    "cacheBasisBuildDurationMs": 59132,
+    "sourceOnlyBuildDurationMs": 6445,
+    "installCommand": "pnpm install --frozen-lockfile",
+    "installLayerStatus": "CACHED",
+    "installLayerDurationMs": 0
+  },
+  "finalValidation": {
+    "command": "pnpm validate",
+    "status": "WARNING",
+    "exitCode": 0,
+    "durationMs": 62895,
+    "contentChecksPassed": 18,
+    "contentChecksTotal": 18,
+    "warnings": [
+      "git worktree was intentionally dirty before commit",
+      "validation report was generated"
+    ],
+    "report": "reports/validation-report.json"
+  },
+  "invariants": [
+    "Turborepo is the workspace scheduler for typecheck, build and test",
+    "affected verification expands through the pnpm workspace dependency graph",
+    "a requested push requires an additional unfiltered full gate",
+    "Docker dependency installation precedes source copy",
+    "remote caching is disabled"
+  ]
+}

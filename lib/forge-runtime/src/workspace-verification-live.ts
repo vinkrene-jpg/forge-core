@@ -81,7 +81,7 @@ try {
   let hostRefusal = "";
   try {
     await new NodeWorkspaceVerificationRunner().run(
-      "typecheck", root, new AbortController().signal, true,
+      "typecheck", root, new AbortController().signal, "full",
     );
   } catch (error) {
     hostRefusal = error instanceof Error ? error.message : String(error);

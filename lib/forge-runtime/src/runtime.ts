@@ -160,6 +160,7 @@ import {
   DockerWorkspaceVerificationRunner,
   NodeWorkspaceVerificationRunner,
   parseWorkspaceChangeRequest,
+  verificationScopeForPaths,
   WorkspaceExecutionError,
   WorkspaceExecutor,
   type WorkspaceVerificationRunner,
@@ -2740,8 +2741,8 @@ export class ForgeRuntime {
       }
 
       const verificationResults = [];
-      const fullRepositoryVerification = request.changes.some(
-        (change) => !change.path.startsWith("sandbox/"),
+      const verificationScope = verificationScopeForPaths(
+        request.changes.map((change) => change.path),
       );
       for (const step of request.verification) {
         this.#throwIfWorkspaceRecoveryTimedOut(signal, mission);
@@ -2749,7 +2750,7 @@ export class ForgeRuntime {
           step,
           project.rootPath,
           signal,
-          fullRepositoryVerification,
+          verificationScope,
         );
         if (result.exitCode !== 0) {
           throw new Error(

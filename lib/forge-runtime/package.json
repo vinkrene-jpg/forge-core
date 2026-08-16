@@ -8,8 +8,9 @@
   },
   "types": "./src/index.ts",
   "scripts": {
+    "build": "tsc -p tsconfig.json --noEmit",
     "typecheck": "tsc -p tsconfig.json --noEmit",
-    "test": "node --import ./src/test-environment.ts --import tsx --test --test-concurrency=1 src/*.test.ts",
+    "test": "node --import ./src/test-environment.ts --import tsx --test --test-concurrency=2 src/*.test.ts",
     "verify:workspace-executor": "node --import tsx src/workspace-executor-live.ts",
     "bridge:host": "node --import tsx src/workspace-bridge-host.ts"
   },

@@ -28,9 +28,10 @@ test("one goal approval materializes governed children without child approvals",
   const storage = await mkdtemp(path.join(os.tmpdir(), "forge-build-graph-state-"));
   const previousStorage = process.env.STORAGE_DIR;
   process.env.STORAGE_DIR = storage;
+  let runtime: ForgeRuntime | null = null;
 
   try {
-    const runtime = new ForgeRuntime({ missionLoopPollIntervalMs: 100 });
+    runtime = new ForgeRuntime({ missionLoopPollIntervalMs: 100 });
     await runtime.start();
 
     const created = await runtime.createGoalBuildGraph({
@@ -95,7 +96,7 @@ test("one goal approval materializes governed children without child approvals",
     );
 
     await runtime.approveApproval(created.approval.id, "build-graph-test");
-    await waitFor(() => runtime.getMission(created.mission.id)?.status === "succeeded");
+    await waitFor(() => runtime?.getMission(created.mission.id)?.status === "succeeded");
 
     const goalMission = runtime.getMission(created.mission.id);
     assert.ok(goalMission);
@@ -104,6 +105,10 @@ test("one goal approval materializes governed children without child approvals",
     assert.ok(graph !== null && !Array.isArray(graph));
     const nodes = (graph as { readonly nodes: readonly { readonly id: string; readonly missionId: string }[] }).nodes;
     assert.equal(nodes.length, 2);
+    await waitFor(() => nodes.every((node) => {
+      const status = runtime?.getMission(node.missionId)?.status;
+      return status === "succeeded" || status === "failed" || status === "cancelled";
+    }));
     assert.equal(
       runtime.listApprovals().filter((approval) =>
         nodes.some((node) => node.missionId === approval.missionId)
@@ -122,18 +127,18 @@ test("one goal approval materializes governed children without child approvals",
     assert.notEqual(consumerMission.status, "awaiting_approval");
 
     const integration = await runtime.evaluateGoalBuildGraph(graph as Parameters<typeof runtime.evaluateGoalBuildGraph>[0]);
-    assert.equal(integration.decision, "blocked");
+    assert.equal(integration.decision, "rejected");
     assert.equal(integration.learningEligible, false);
     assert.equal(integration.evidenceMemoryId, null);
     assert.equal(integration.report.graphId, (graph as { readonly id: string }).id);
-    assert.equal(integration.report.decision, "blocked");
+    assert.equal(integration.report.decision, "rejected");
     assert.equal(integration.report.actualEstimatedCostUsd, 0);
     assert.deepEqual(integration.report.builtComponents, []);
-    assert.deepEqual(integration.report.rejectedComponents, []);
+    assert.equal(integration.report.rejectedComponents.length, 2);
     assert.deepEqual(integration.report.boundaryFailures, []);
 
-    await runtime.stop();
   } finally {
+    await runtime?.stop().catch(() => undefined);
     if (previousStorage === undefined) {
       delete process.env.STORAGE_DIR;
     } else {

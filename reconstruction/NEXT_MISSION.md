@@ -1,8 +1,8 @@
 # Forge Next Mission
 
-## Resume point after live capability repair
+## Resume point after verification-loop acceleration
 
-Status: The network-isolated backend and real capability-repair/automatic-resume chain are live verified. Do not repeat this proof.
+Status: Turborepo scheduling, bounded parallel tests, affected-package verification and Docker install-layer caching are implemented and measured. Do not rebuild a parallel scheduler.
 
 ## Verified baseline
 
@@ -40,7 +40,7 @@ Status: The network-isolated backend and real capability-repair/automatic-resume
 
 ## Next action
 
-Publish the completed evidence chain, then measure the current authoritative capability-gap ranking and select the next bounded gap. Require fresh live evidence for that layer and do not rerun `capability-repair-live.ts` unless a new regression invalidates this proof.
+Resume the package acquisition and independent capability-promotion mission. Preserve Turborepo as the only workspace task scheduler, use its dependency graph for affected checks, and retain the unfiltered pre-push gate.
 
 ## Failure rules
 

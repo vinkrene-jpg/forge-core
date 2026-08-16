@@ -158,11 +158,12 @@ test("builds a missing capability and resumes the original goal under one run ma
         const goalMissionId = (report[0] as { goalMissionId?: string } | undefined)?.goalMissionId;
         const goalMission = goalMissionId ? runtime.getMission(goalMissionId) : null;
         const graph = goalMission?.output?.graph as { nodes?: { missionId: string }[] } | undefined;
-        return graph?.nodes?.every((node) => {
+        const accepted = graph?.nodes?.every((node) => {
           const child = runtime.getMission(node.missionId);
           return child?.status === "succeeded" &&
             (child.output?.evaluation as { decision?: string } | undefined)?.decision === "accepted";
         }) === true;
+        return accepted && runtime.getCapability("tool.proof.render")?.status === "operational";
       });
     } catch (error) {
       assert.fail(`${String(error)}\n${JSON.stringify(runtime.listMissions().map((mission) => ({

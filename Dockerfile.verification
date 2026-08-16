@@ -15,13 +15,19 @@ RUN apt-get update \
     && chown node:node /forge /corepack
 
 COPY --chown=node:node package.json pnpm-lock.yaml pnpm-workspace.yaml tsconfig.base.json tsconfig.json ./
-COPY --chown=node:node artifacts ./artifacts
-COPY --chown=node:node lib ./lib
-COPY --chown=node:node scripts ./scripts
-COPY --chown=node:node config ./config
-COPY --chown=node:node GOVERNANCE ./GOVERNANCE
-COPY --chown=node:node reconstruction/CURRENT_STATE.md ./reconstruction/CURRENT_STATE.md
-COPY --chown=node:node reconstruction/NEXT_MISSION.md ./reconstruction/NEXT_MISSION.md
+RUN mkdir -p artifacts/api-server artifacts/forge-core artifacts/mockup-sandbox \
+    lib/api-client-react lib/api-spec lib/api-zod lib/db lib/forge-runtime scripts \
+    && chown -R node:node artifacts lib scripts
+COPY --chown=node:node artifacts/api-server/package.json ./artifacts/api-server/package.json
+COPY --chown=node:node artifacts/forge-core/package.json ./artifacts/forge-core/package.json
+COPY --chown=node:node artifacts/mockup-sandbox/package.json ./artifacts/mockup-sandbox/package.json
+COPY --chown=node:node lib/api-client-react/package.json ./lib/api-client-react/package.json
+COPY --chown=node:node lib/api-spec/package.json ./lib/api-spec/package.json
+COPY --chown=node:node lib/api-zod/package.json ./lib/api-zod/package.json
+COPY --chown=node:node lib/db/package.json ./lib/db/package.json
+COPY --chown=node:node lib/forge-runtime/package.json ./lib/forge-runtime/package.json
+COPY --chown=node:node scripts/package.json ./scripts/package.json
+COPY --chown=node:node scripts/enforce-pnpm.mjs ./scripts/enforce-pnpm.mjs
 
 USER node
 
@@ -29,6 +35,15 @@ RUN corepack prepare pnpm@11.10.0 --activate \
     && pnpm install --frozen-lockfile
 
 USER root
+
+COPY --chown=node:node artifacts ./artifacts
+COPY --chown=node:node lib ./lib
+COPY --chown=node:node scripts ./scripts
+COPY --chown=node:node config ./config
+COPY --chown=node:node turbo.json ./turbo.json
+COPY --chown=node:node GOVERNANCE ./GOVERNANCE
+COPY --chown=node:node reconstruction/CURRENT_STATE.md ./reconstruction/CURRENT_STATE.md
+COPY --chown=node:node reconstruction/NEXT_MISSION.md ./reconstruction/NEXT_MISSION.md
 
 RUN mkdir -p /baseline/sandbox \
     && cp -a /forge/lib /forge/artifacts /baseline/ \

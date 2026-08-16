@@ -11,6 +11,7 @@ import {
   WorkspaceExecutor,
   type WorkspaceCommandResult,
   type WorkspaceVerificationRunner,
+  type WorkspaceVerificationScope,
   type WorkspaceVerificationStep,
 } from "./workspace-executor.js";
 
@@ -35,10 +36,10 @@ class BrokenSuiteVerificationRunner implements WorkspaceVerificationRunner {
     step: WorkspaceVerificationStep,
     rootPath: string,
     signal: AbortSignal,
-    fullRepository: boolean,
+    scope: WorkspaceVerificationScope,
   ): Promise<WorkspaceCommandResult> {
     if (step !== "test") {
-      return this.#delegate.run(step, rootPath, signal, fullRepository);
+      return this.#delegate.run(step, rootPath, signal, scope);
     }
     return Object.freeze({
       command: "pnpm -r --if-present test",

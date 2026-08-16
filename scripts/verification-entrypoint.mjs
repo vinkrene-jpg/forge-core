@@ -3,7 +3,11 @@ import { spawn } from "node:child_process";
 import path from "node:path";
 
 const step = process.argv[2];
-const fullRepository = process.argv[3] === "full";
+const scope = process.argv[3];
+// The host identifies the changed package; Turbo expands its dependency graph.
+if (!["runtime", "api", "frontend", "full"].includes(scope)) {
+  throw new Error(`Unsupported verification scope: ${scope}`);
+}
 const allowedRoots = ["sandbox", "lib", "artifacts"];
 const protectedNames = new Set([
   ".env", ".npmrc", ".pnpmfile.cjs", "package.json", "package-lock.json",
@@ -42,19 +46,19 @@ for (const root of allowedRoots) {
   await overlay(`/candidate/${root}`, `/forge/${root}`, true);
 }
 
-const typecheckCommands = [
-  ["exec", "tsc", "--build", "--force"],
-  ["--filter", "@workspace/forge-runtime", "run", "typecheck"],
-  ["-r", "--filter", "./artifacts/**", "--if-present", "run", "typecheck"],
-  ["exec", "tsc", "-p", "scripts/tsconfig.json", "--noEmit", "--incremental", "false"],
-];
-const commands = step === "typecheck"
-  ? typecheckCommands
-  : step === "build"
-    ? [...typecheckCommands, ["-r", "--if-present", "run", "build"]]
-    : [fullRepository
-      ? ["-r", "--if-present", "test"]
-      : ["--filter", "@workspace/forge-runtime", "test"]];
+const packageByScope = {
+  runtime: "@workspace/forge-runtime",
+  api: "@workspace/api-server",
+  frontend: "@workspace/forge-core",
+};
+const packageName = packageByScope[scope];
+const commands = [[
+  "exec",
+  "turbo",
+  "run",
+  step,
+  ...(scope === "full" ? [] : [`--filter=...${packageName}`]),
+]];
 const environment = {
   PATH: process.env.PATH,
   HOME: "/tmp/forge-home",

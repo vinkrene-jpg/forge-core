@@ -14,6 +14,8 @@ import {
   WorkspaceExecutor,
   NodeWorkspaceVerificationRunner,
   parseWorkspaceChangeRequest,
+  verificationScopeForPaths,
+  type WorkspaceVerificationScope,
   type WorkspaceVerificationRunner,
 } from "./index.js";
 
@@ -44,11 +46,11 @@ async function createRepository(): Promise<string> {
 
 function runner(
   exitCode: number,
-  calls: { step: string; fullRepository: boolean }[] = [],
+  calls: { step: string; scope: WorkspaceVerificationScope }[] = [],
 ): WorkspaceVerificationRunner {
   return {
-    async run(step, _rootPath, _signal, fullRepository) {
-      calls.push({ step, fullRepository });
+    async run(step, _rootPath, _signal, scope) {
+      calls.push({ step, scope });
       return Object.freeze({
         command: `fake ${step}`,
         exitCode,
@@ -320,7 +322,7 @@ test("workspace executor", { concurrency: false }, async (t) => {
   await t.test("refuses host verification without a network-isolated backend", async () => {
     const runner = new NodeWorkspaceVerificationRunner();
     await assert.rejects(
-      runner.run("test", process.cwd(), new AbortController().signal, true),
+      runner.run("test", process.cwd(), new AbortController().signal, "full"),
       /network-isolated executor with package installation disabled/,
     );
   });
@@ -350,9 +352,20 @@ test("workspace executor", { concurrency: false }, async (t) => {
     }));
   });
 
+  await t.test("limits verification to the affected package", () => {
+    assert.equal(verificationScopeForPaths(["lib/forge-runtime/src/runtime.ts"]), "runtime");
+    assert.equal(verificationScopeForPaths(["artifacts/api-server/src/index.ts"]), "api");
+    assert.equal(verificationScopeForPaths(["artifacts/forge-core/src/main.tsx"]), "frontend");
+    assert.equal(verificationScopeForPaths(["lib/api-spec/src/index.ts"]), "full");
+    assert.equal(verificationScopeForPaths([
+      "lib/forge-runtime/src/runtime.ts",
+      "artifacts/api-server/src/index.ts",
+    ]), "full");
+  });
+
   await t.test("commits lib changes only after repository-wide verification", async () => {
     const root = await createRepository();
-    const calls: { step: string; fullRepository: boolean }[] = [];
+    const calls: { step: string; scope: WorkspaceVerificationScope }[] = [];
     try {
       const executor = new WorkspaceExecutor({
         events: new RuntimeEventBus(),
@@ -377,9 +390,9 @@ test("workspace executor", { concurrency: false }, async (t) => {
 
       assert.equal(result.status, "committed");
       assert.deepEqual(calls, [
-        { step: "typecheck", fullRepository: true },
-        { step: "test", fullRepository: true },
-        { step: "build", fullRepository: true },
+        { step: "typecheck", scope: "full" },
+        { step: "test", scope: "full" },
+        { step: "build", scope: "full" },
       ]);
       assert.equal(await git(root, "status", "--porcelain"), "");
     } finally {
@@ -387,9 +400,54 @@ test("workspace executor", { concurrency: false }, async (t) => {
     }
   });
 
+  await t.test("runs a full final gate before pushing a scoped change", async () => {
+    const root = await createRepository();
+    const remote = await mkdtemp(path.join(os.tmpdir(), "forge-workspace-remote-"));
+    const calls: { step: string; scope: WorkspaceVerificationScope }[] = [];
+    try {
+      await git(remote, "init", "--bare");
+      await git(root, "remote", "add", "origin", remote);
+      await git(root, "push", "--set-upstream", "origin", "test/workspace-executor");
+      const executor = new WorkspaceExecutor({
+        events: new RuntimeEventBus(),
+        verificationRunner: runner(0, calls),
+      });
+      const request = parseWorkspaceChangeRequest({
+        changes: [{
+          path: "lib/forge-runtime/src/scoped-proof.ts",
+          expectedSha256: null,
+          content: "export const scopedProof = true;\n",
+        }],
+        verification: ["typecheck", "test", "build"],
+        commit: { message: "test: scoped verification with full push gate", push: true },
+      });
+
+      const result = await executor.execute(
+        root,
+        "mission-scoped-push",
+        request,
+        new AbortController().signal,
+      );
+
+      assert.equal(result.status, "pushed");
+      assert.deepEqual(calls, [
+        { step: "typecheck", scope: "runtime" },
+        { step: "test", scope: "runtime" },
+        { step: "build", scope: "runtime" },
+        { step: "typecheck", scope: "full" },
+        { step: "test", scope: "full" },
+        { step: "build", scope: "full" },
+      ]);
+      assert.equal(await git(root, "status", "--porcelain"), "");
+    } finally {
+      await rm(root, { recursive: true, force: true });
+      await rm(remote, { recursive: true, force: true });
+    }
+  });
+
   await t.test("rolls back a failed lib verification to a clean worktree", async () => {
     const root = await createRepository();
-    const calls: { step: string; fullRepository: boolean }[] = [];
+    const calls: { step: string; scope: WorkspaceVerificationScope }[] = [];
     try {
       const executor = new WorkspaceExecutor({
         events: new RuntimeEventBus(),
@@ -414,7 +472,7 @@ test("workspace executor", { concurrency: false }, async (t) => {
           return true;
         },
       );
-      assert.deepEqual(calls, [{ step: "typecheck", fullRepository: true }]);
+      assert.deepEqual(calls, [{ step: "typecheck", scope: "full" }]);
       await assert.rejects(readFile(path.join(root, "lib", "broken.ts")));
       assert.equal(await git(root, "status", "--porcelain"), "");
     } finally {

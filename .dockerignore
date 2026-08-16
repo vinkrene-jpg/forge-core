@@ -4,6 +4,7 @@
 !pnpm-workspace.yaml
 !tsconfig.base.json
 !tsconfig.json
+!turbo.json
 !artifacts/**
 !lib/**
 !scripts/**
