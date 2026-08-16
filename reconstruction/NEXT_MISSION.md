@@ -1,8 +1,8 @@
 # Forge Next Mission
 
-## Resume point after network-isolated verification
+## Resume point after live capability repair
 
-Status: The network-isolated execution backend is implemented, live verified and ready for the real WorkspaceExecutor capability-repair dogfood after the current hardening commit is pushed.
+Status: The network-isolated backend and real capability-repair/automatic-resume chain are live verified. Do not repeat this proof.
 
 ## Verified baseline
 
@@ -35,10 +35,12 @@ Status: The network-isolated execution backend is implemented, live verified and
 27. Production workspace verification resolves its configured Docker image to an immutable SHA-256 image ID, runs without network or package installation and persists bounded hash-only receipts with image/container identity.
 28. Live isolation proof accepted a valid mutation, rejected broken Forge Runtime source during typecheck, restored exact content and clean Git state, blocked outbound network access and refused host verification.
 29. Explicit runtime and root typechecks, 109/109 runtime tests and the root build pass.
+30. Live goal-run `4e7cd7ed-147b-4667-94b4-8a62b05cea71` repaired `tool.live-proof.render`, promoted it only after accepted evidence and resumed the original goal without another approval.
+31. Repair commit `772b9ec4be8ede0f4474b6e0cf53b6f5242867d2` and original commit `28b48e629b17a21e3db7339f31379402e1957079` were created locally with `push=false` during the governed run.
 
 ## Next action
 
-From the clean pushed worktree, run `lib/forge-runtime/src/capability-repair-live.ts` once with `PNPM_WORKSPACE_CONCURRENCY=1` and capture the missing capability, repair/original mission IDs, local commit SHAs, accepted evaluations and final result in reconstruction evidence. Never re-enable direct host package execution as a shortcut.
+Publish the completed evidence chain, then measure the current authoritative capability-gap ranking and select the next bounded gap. Require fresh live evidence for that layer and do not rerun `capability-repair-live.ts` unless a new regression invalidates this proof.
 
 ## Failure rules
 

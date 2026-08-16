@@ -202,7 +202,7 @@ Status: implemented and runtime verified.
 
 ## Recursive capability repair and automatic resume - 2026-08-15
 
-Status: implemented with deterministic runtime verification; real WorkspaceExecutor dogfood is the next clean-worktree step.
+Status: implemented, deterministically verified and live dogfooded through the isolated WorkspaceExecutor.
 
 - Goal-run planning detects unavailable or non-operational BuildGraph capabilities before graph authority is created.
 - Forge materializes deepest repair first and keeps dependent repair/original GoalSpecs inert until accepted workspace evidence activates them.
@@ -210,6 +210,9 @@ Status: implemented with deterministic runtime verification; real WorkspaceExecu
 - The run mandate now bounds repair count and depth; depth is at most two and original goals plus repairs remain capped at twenty.
 - Existing mutation roots, immutable paths, governance gates, rollback and no-push policy are unchanged. Standalone BuildGraph parsing still rejects unavailable capabilities.
 - Deterministic coverage proves repair then resume, failed repair reporting, depth blocking and repair-count blocking.
+- Live run `4e7cd7ed-147b-4667-94b4-8a62b05cea71` repaired `tool.live-proof.render` first, promoted it from `unavailable` to `operational` only after accepted isolated verification, then resumed and accepted the original goal.
+- Repair mission `74ceda4c-d528-4b10-827a-4470d9b87289` committed `772b9ec4be8ede0f4474b6e0cf53b6f5242867d2`; original mission `83406b7a-961a-4b71-a06a-3a969d248910` committed `28b48e629b17a21e3db7339f31379402e1957079`. The governed run requested no push.
+- Evidence: `reconstruction/CAPABILITY_REPAIR_LIVE_VERIFICATION.json`.
 
 ## Spend and execution isolation hardening - 2026-08-16
 

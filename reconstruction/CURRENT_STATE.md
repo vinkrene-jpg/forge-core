@@ -2,6 +2,13 @@
 
 Verified through: 2026-08-16
 
+## Capability repair and automatic resume - live verification
+
+- Approved goal-run `4e7cd7ed-147b-4667-94b4-8a62b05cea71` detected missing capability `tool.live-proof.render` and created repair mission `74ceda4c-d528-4b10-827a-4470d9b87289` before the original goal.
+- The repair traversed isolated typecheck, complete tests and build, received accepted evaluation, committed `772b9ec4be8ede0f4474b6e0cf53b6f5242867d2` and promoted the capability from `unavailable` to `operational` with confidence 1.
+- Original goal `83406b7a-961a-4b71-a06a-3a969d248910` resumed automatically, received accepted evaluation and committed `28b48e629b17a21e3db7339f31379402e1957079`.
+- Both targets exist, the worktree was clean after the run and the governed execution requested no push. Evidence: `reconstruction/CAPABILITY_REPAIR_LIVE_VERIFICATION.json`.
+
 ## Network-isolated WorkspaceExecutor verification
 
 - Production ForgeRuntime now selects Docker-backed workspace verification; test runtimes remain fail-closed unless a bounded verifier is explicitly injected.

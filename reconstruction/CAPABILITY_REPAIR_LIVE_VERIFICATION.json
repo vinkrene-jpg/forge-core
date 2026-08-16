@@ -1,0 +1,47 @@
+{
+  "verifiedAt": "2026-08-16T12:13:04.4044446Z",
+  "sourceCommit": "4b44ad0ab07ba04562d94ef9bb466fc006b9f066",
+  "verificationImage": "sha256:0269f04b6bfb88e7c7f5ca71cf0ecde29aaa1a1411b14422525f9dab22a8b95c",
+  "runMissionId": "4e7cd7ed-147b-4667-94b4-8a62b05cea71",
+  "approvalId": "0d5fd31c-c7d8-4877-8f9e-bcb913bb71b9",
+  "missingCapability": {
+    "id": "tool.live-proof.render",
+    "initialStatus": "unavailable",
+    "finalStatus": "operational",
+    "finalConfidence": 1,
+    "promotionSource": "goal-run-repair:74ceda4c-d528-4b10-827a-4470d9b87289"
+  },
+  "repair": {
+    "goalMissionId": "74ceda4c-d528-4b10-827a-4470d9b87289",
+    "depth": 1,
+    "status": "accepted",
+    "evaluationDecision": "accepted",
+    "commitSha": "772b9ec4be8ede0f4474b6e0cf53b6f5242867d2",
+    "target": "artifacts/capability-repair-live-tool.txt"
+  },
+  "original": {
+    "goalMissionId": "83406b7a-961a-4b71-a06a-3a969d248910",
+    "status": "accepted",
+    "evaluationDecision": "accepted",
+    "commitSha": "28b48e629b17a21e3db7339f31379402e1957079",
+    "target": "artifacts/capability-repair-live-result.json"
+  },
+  "verification": {
+    "required": [
+      "typecheck",
+      "test",
+      "build"
+    ],
+    "isolated": true,
+    "network": "none",
+    "packageInstallation": false,
+    "hostExecution": false
+  },
+  "result": {
+    "capabilityBuiltFirst": true,
+    "originalTaskCompleted": true,
+    "worktreeCleanAfterRun": true,
+    "localCommitsAheadOfOrigin": 2,
+    "pushed": false
+  }
+}
