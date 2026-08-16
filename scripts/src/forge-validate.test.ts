@@ -25,6 +25,19 @@ test("configuration is extensible through generic command steps", () => {
   })), ValidationConfigError);
 });
 
+test("repository command steps use the Turbo task graph", () => {
+  const config = parseValidationConfig(
+    fs.readFileSync(path.join(repoRoot, "config", "forge-validation.json"), "utf8"),
+  );
+  const commandSteps = config.steps.filter((step) => step.type === "command");
+
+  assert.equal(commandSteps.length, 13);
+  for (const step of commandSteps) {
+    assert.deepEqual(step.command.slice(0, 4), ["pnpm.cmd", "exec", "turbo", "run"]);
+    assert.ok(step.command.some((argument) => argument.startsWith("--filter=@workspace/")));
+  }
+});
+
 test("successful and failing commands produce reports and deterministic exit codes", async () => {
   const root = fs.mkdtempSync(path.join(os.tmpdir(), "forge-validate-"));
   fs.mkdirSync(path.join(root, "reports"));

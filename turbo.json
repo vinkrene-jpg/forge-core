@@ -31,6 +31,30 @@
       "inputs": ["$TURBO_DEFAULT$", "../../tsconfig.base.json"],
       "outputs": []
     },
+    "test:mirror": {
+      "dependsOn": ["build"],
+      "inputs": ["$TURBO_DEFAULT$", "../../tsconfig.base.json"],
+      "outputs": []
+    },
+    "test:mirror-session": {
+      "dependsOn": ["build"],
+      "inputs": ["$TURBO_DEFAULT$", "../../tsconfig.base.json"],
+      "outputs": []
+    },
+    "test:mirror-resume": {
+      "dependsOn": ["build"],
+      "inputs": ["$TURBO_DEFAULT$", "../../tsconfig.base.json"],
+      "outputs": []
+    },
+    "test:mirror-intake": {
+      "dependsOn": ["build"],
+      "inputs": ["$TURBO_DEFAULT$", "../../tsconfig.base.json"],
+      "outputs": []
+    },
+    "forge:validate:test": {
+      "inputs": ["$TURBO_DEFAULT$", "../../config/forge-validation.json"],
+      "outputs": []
+    },
     "@workspace/api-server#test": {
       "dependsOn": ["build"],
       "inputs": ["$TURBO_DEFAULT$", "../../tsconfig.base.json"],

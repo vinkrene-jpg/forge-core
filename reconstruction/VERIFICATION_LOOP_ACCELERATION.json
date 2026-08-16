@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "verifiedAt": "2026-08-16T14:06:21.514Z",
+  "verifiedAt": "2026-08-16T14:26:43.207Z",
   "branch": "forge-sync-primary",
   "baseCommit": "b0475a7bc31978641a67ec5a689d4b705f50d872",
   "turbo": {
@@ -24,10 +24,10 @@
   },
   "tests": {
     "runtime": {
-      "passed": 111,
-      "total": 111,
+      "passed": 112,
+      "total": 112,
       "concurrency": 2,
-      "durationMs": 18807,
+      "forcedTurboGraphDurationMs": 23350,
       "exitCode": 0
     },
     "api": {
@@ -53,7 +53,8 @@
     "command": "pnpm validate",
     "status": "WARNING",
     "exitCode": 0,
-    "durationMs": 62895,
+    "durationMs": 13982,
+    "hostDurationMs": 14844,
     "contentChecksPassed": 18,
     "contentChecksTotal": 18,
     "warnings": [
@@ -61,6 +62,21 @@
       "validation report was generated"
     ],
     "report": "reports/validation-report.json"
+  },
+  "validationRouteCorrection": {
+    "commandSteps": 13,
+    "allUseTurbo": true,
+    "regressionCommit": "05b9e638113520a283a9d7a9613fa2d70d89bb04",
+    "rootCause": "Autonomy shutdown could return while an active tick or fire-and-forget persistence write still owned runtime storage.",
+    "fix": "AutonomyEngine.stop awaits the active tick and drains all started persistence writes before persisting stopped state.",
+    "focusedShutdownTestsPassed": 1,
+    "configRouteTestsPassed": 1,
+    "runtimeCacheProof": {
+      "tasksCached": 3,
+      "tasksTotal": 3,
+      "durationMs": 67,
+      "exitCode": 0
+    }
   },
   "invariants": [
     "Turborepo is the workspace scheduler for typecheck, build and test",

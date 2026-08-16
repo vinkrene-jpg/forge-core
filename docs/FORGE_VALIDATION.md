@@ -37,7 +37,7 @@ Command step:
   "id": "test-new-module",
   "label": "Tests new module",
   "type": "command",
-  "command": ["pnpm.cmd", "--filter", "@workspace/new-module", "test"]
+  "command": ["pnpm.cmd", "exec", "turbo", "run", "test", "--filter=@workspace/new-module"]
 }
 ```
 

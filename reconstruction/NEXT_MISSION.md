@@ -2,7 +2,7 @@
 
 ## Resume point after verification-loop acceleration
 
-Status: Turborepo scheduling, bounded parallel tests, affected-package verification and Docker install-layer caching are implemented and measured. Do not rebuild a parallel scheduler.
+Status: Turborepo scheduling, all thirteen config-driven validation commands, bounded parallel tests, affected-package verification and Docker install-layer caching are implemented and measured. Autonomy shutdown drains active work before storage cleanup. Do not rebuild a parallel scheduler.
 
 ## Verified baseline
 
@@ -37,6 +37,7 @@ Status: Turborepo scheduling, bounded parallel tests, affected-package verificat
 29. Explicit runtime and root typechecks, 109/109 runtime tests and the root build pass.
 30. Live goal-run `4e7cd7ed-147b-4667-94b4-8a62b05cea71` repaired `tool.live-proof.render`, promoted it only after accepted evidence and resumed the original goal without another approval.
 31. Repair commit `772b9ec4be8ede0f4474b6e0cf53b6f5242867d2` and original commit `28b48e629b17a21e3db7339f31379402e1957079` were created locally with `push=false` during the governed run.
+32. Every configured command validation enters the Turbo graph; a forced uncached runtime graph passes 112/112 and exits 0 after active autonomy ticks and persistence writes are drained during shutdown.
 
 ## Next action
 

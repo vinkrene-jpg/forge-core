@@ -204,6 +204,8 @@ export class AutonomousEngine {
   #running = false;
   #timer: ReturnType<typeof setTimeout> | null = null;
   #tickInFlight = false;
+  #activeTick: Promise<void> | null = null;
+  readonly #pendingPersists = new Set<Promise<void>>();
 
   constructor(options: AutonomousEngineOptions) {
     this.#events = options.events;
@@ -322,11 +324,12 @@ export class AutonomousEngine {
       this.#timer = null;
     }
 
-    // Ensure no in-flight tick can keep mutating stores after stop() resolves.
-    let spin = 0;
-    while (this.#tickInFlight && spin < 200) {
-      spin += 1;
-      await new Promise((resolve) => setTimeout(resolve, 10));
+    if (this.#activeTick !== null) {
+      await this.#activeTick;
+    }
+
+    if (this.#pendingPersists.size > 0) {
+      await Promise.all([...this.#pendingPersists]);
     }
 
     this.#state = cloneAutonomyState({
@@ -349,7 +352,20 @@ export class AutonomousEngine {
 
     this.#timer = setTimeout(() => {
       this.#timer = null;
-      void this.#tick();
+      const activeTick = this.#tick();
+      this.#activeTick = activeTick;
+      void activeTick.then(
+        () => {
+          if (this.#activeTick === activeTick) {
+            this.#activeTick = null;
+          }
+        },
+        () => {
+          if (this.#activeTick === activeTick) {
+            this.#activeTick = null;
+          }
+        },
+      );
     }, delayMs);
   }
 
@@ -846,11 +862,17 @@ export class AutonomousEngine {
   }
 
   async #persist(): Promise<void> {
-    await this.#stateStore.save(
+    const persistence = this.#stateStore.save(
       Object.freeze({
         version: AUTONOMY_STORE_VERSION,
         state: this.#state,
       }),
     );
+    this.#pendingPersists.add(persistence);
+    void persistence.then(
+      () => this.#pendingPersists.delete(persistence),
+      () => this.#pendingPersists.delete(persistence),
+    );
+    await persistence;
   }
 }

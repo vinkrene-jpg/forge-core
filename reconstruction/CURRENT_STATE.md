@@ -12,6 +12,9 @@ Verified through: 2026-08-16
 - A graph-runtime test now drains all child missions and stops its runtime before deleting storage; capability and autonomy tests wait for their persisted asynchronous terminal state.
 - Legacy full verification: 54.799 seconds. Complete Turbo graph: 29.788 seconds. Source-only follow-up: 1.975 seconds with 17/18 cache hits.
 - Docker source-only rebuild: 6.445 seconds; the `pnpm install --frozen-lockfile` layer was `CACHED` in 0.0 seconds.
+- All thirteen `config/forge-validation.json` command steps invoke `pnpm exec turbo run` with an exact workspace filter. Specialized Mirror, Session, Resume, Intake and validation-framework tasks are declared in `turbo.json` and participate in local caching.
+- `AutonomousEngine.stop()` now awaits the active autonomy tick and all already-started persistence writes before its final stopped-state persist. This restores the lifecycle guarantee from `05b9e63` under bounded parallel runtime tests and prevents a late write from producing exit code 1 after passing TAP assertions.
+- A deterministic shutdown regression test and the forced uncached runtime graph pass; runtime coverage is now 112/112.
 - Evidence: `reconstruction/VERIFICATION_LOOP_ACCELERATION.json`.
 
 ## Capability repair and automatic resume - live verification
