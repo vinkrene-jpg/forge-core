@@ -1,0 +1,6 @@
+{
+  "originalTask": "Render and persist the final live proof",
+  "missingCapabilityId": "tool.live-proof.render",
+  "capabilityBuiltFirst": true,
+  "originalTaskCompleted": true
+}
