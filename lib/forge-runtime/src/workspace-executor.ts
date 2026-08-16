@@ -409,6 +409,13 @@ export class DockerWorkspaceVerificationRunner implements WorkspaceVerificationR
       throw new Error(`Docker verification image is unavailable or invalid: ${this.#image}`);
     }
 
+    const head = await runProcess("git", ["rev-parse", "HEAD"], rootPath, signal, {});
+    const sourceSha = head.stdout.trim().toLowerCase();
+    if (head.exitCode !== 0 || !/^[a-f0-9]{40}$/.test(sourceSha)) {
+      await rm(snapshotRoot, { recursive: true, force: true });
+      throw new Error("Docker verification requires a valid source Git SHA");
+    }
+
     const create = await runProcess("docker", [
       "create",
       "--network", "none",
@@ -417,6 +424,7 @@ export class DockerWorkspaceVerificationRunner implements WorkspaceVerificationR
       "--pids-limit", String(this.#pidsLimit),
       "--cap-drop", "ALL",
       "--security-opt", "no-new-privileges:true",
+      "--env", `FORGE_RUNTIME_BUILD_SHA=${sourceSha}`,
       "--tmpfs", "/tmp:rw,nosuid,nodev,noexec,size=1g,uid=1000,gid=1000",
       "--tmpfs", "/forge/sandbox:rw,nosuid,nodev,exec,size=256m,uid=1000,gid=1000",
       "--tmpfs", "/forge/lib:rw,nosuid,nodev,exec,size=1g,uid=1000,gid=1000",

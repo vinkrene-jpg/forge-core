@@ -2,7 +2,7 @@
 
 ## Resume point after network-isolated verification
 
-Status: The network-isolated execution backend is implemented and live verified. Commit and push this verified backend from the clean canonical branch, then run the real WorkspaceExecutor capability-repair dogfood once.
+Status: The network-isolated execution backend is implemented, live verified and ready for the real WorkspaceExecutor capability-repair dogfood after the current hardening commit is pushed.
 
 ## Verified baseline
 
@@ -38,7 +38,7 @@ Status: The network-isolated execution backend is implemented and live verified.
 
 ## Next action
 
-Commit and push the verified network-isolated backend. From that clean worktree, run `lib/forge-runtime/src/capability-repair-live.ts` once with `PNPM_WORKSPACE_CONCURRENCY=1` and capture the missing capability, repair/original mission IDs, local commit SHAs, accepted evaluations and final result in reconstruction evidence. Never re-enable direct host package execution as a shortcut.
+From the clean pushed worktree, run `lib/forge-runtime/src/capability-repair-live.ts` once with `PNPM_WORKSPACE_CONCURRENCY=1` and capture the missing capability, repair/original mission IDs, local commit SHAs, accepted evaluations and final result in reconstruction evidence. Never re-enable direct host package execution as a shortcut.
 
 ## Failure rules
 

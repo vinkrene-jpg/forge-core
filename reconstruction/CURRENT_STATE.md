@@ -12,6 +12,7 @@ Verified through: 2026-08-16
 - Live evidence accepted a sandbox mutation and rejected a syntactically broken existing runtime source file with exit code 2 in 8.362 seconds, then proved exact rollback, clean Git state, blocked network and host-runner refusal.
 - Trusted Git and exactly three read-only runtime context fixtures are baked into the image. Runtime state uses disposable storage; candidate and trusted tool execution is confined to disposable workspace tmpfs mounts.
 - Memory Bridge now follows explicit `STORAGE_DIR`, runtime stop drains its serialized mutation queue and autonomy atomic writes use collision-free temporary names. This closes cleanup races exposed by read-only container execution.
+- The verifier resolves host HEAD before container creation and passes only the validated 40-hex `FORGE_RUNTIME_BUILD_SHA` needed by the API bundle. `.git` remains excluded.
 - Explicit runtime and root typechecks, host runtime 109/109, final no-network container runtime 109/109 plus API 53/53 and root build passed.
 - Evidence: `reconstruction/WORKSPACE_VERIFICATION_ISOLATION_PROOF.json`.
 

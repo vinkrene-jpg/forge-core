@@ -64,6 +64,7 @@ const environment = {
   CI: "1",
   NODE_ENV: "test",
   STORAGE_DIR: "/tmp/forge-storage",
+  FORGE_RUNTIME_BUILD_SHA: process.env.FORGE_RUNTIME_BUILD_SHA,
   npm_config_ignore_scripts: "true",
   npm_config_offline: "true",
   npm_config_verify_deps_before_run: "false",

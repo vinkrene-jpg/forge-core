@@ -21,6 +21,10 @@ tmpfs mounts permit execution because isolated verification must run candidate
 code and trusted native build tools; network, capabilities, host storage and
 package installation remain unavailable.
 
+The host resolves the clean repository HEAD and passes only its validated
+40-hex value as `FORGE_RUNTIME_BUILD_SHA`, allowing production bundles to embed
+source identity without mounting `.git` into the container.
+
 ## Rebuild the image
 
 Rebuild after any dependency, lockfile, workspace manifest, verification

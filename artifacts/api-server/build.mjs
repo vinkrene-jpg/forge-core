@@ -11,11 +11,14 @@ globalThis.require = createRequire(import.meta.url);
 
 const artifactDir = path.dirname(fileURLToPath(import.meta.url));
 const repositoryRoot = path.resolve(artifactDir, "..", "..");
-const runtimeBuildSha = execFileSync(
-  "git",
-  ["rev-parse", "HEAD"],
-  { cwd: repositoryRoot, encoding: "utf8" },
-).trim();
+const suppliedBuildSha = process.env.FORGE_RUNTIME_BUILD_SHA?.trim();
+const runtimeBuildSha = suppliedBuildSha && /^[a-f0-9]{40}$/i.test(suppliedBuildSha)
+  ? suppliedBuildSha.toLowerCase()
+  : execFileSync(
+      "git",
+      ["rev-parse", "HEAD"],
+      { cwd: repositoryRoot, encoding: "utf8" },
+    ).trim();
 
 async function buildAll() {
   const distDir = path.resolve(artifactDir, "dist");
