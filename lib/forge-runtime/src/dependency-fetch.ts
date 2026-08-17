@@ -14,7 +14,7 @@ export interface FetchedDependency {
 
 export interface DependencyFetchRequest {
   readonly repositoryRoot: string;
-  readonly workspace: string;
+  readonly workspace?: string;
   readonly name: string;
   readonly requestedBy: string;
 }
@@ -99,7 +99,9 @@ export async function fetchDependency(
 
   const install = await runCommand(
     "pnpm",
-    ["--filter", workspace, "add", "--ignore-scripts", name + "@" + version],
+    workspace
+      ? ["--filter", workspace, "add", "--ignore-scripts", name + "@" + version]
+      : ["add", "-w", "--ignore-scripts", name + "@" + version],
     repositoryRoot,
   );
   if (install.code !== 0) {
