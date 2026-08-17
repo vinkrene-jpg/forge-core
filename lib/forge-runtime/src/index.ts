@@ -439,3 +439,5 @@ export {
   type ObserveAutonomousLearningRequest,
   type RecordFailedLearningExerciseRequest,
 } from "./learning";
+
+export * from "./dependency-fetch";
