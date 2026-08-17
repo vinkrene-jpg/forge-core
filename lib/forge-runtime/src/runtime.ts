@@ -3862,6 +3862,7 @@ export class ForgeRuntime {
         void this.#enforceCapabilityGoalRunStop(mission);
         void this.#advanceCapabilityRepairChain(mission);
         if (event.type === "mission.succeeded") {
+          void this.#promoteCapabilitiesProvenByUse(mission);
           const registration = productRegistration(mission);
           if (registration) {
             const task = this.#operatorCore.registerProject(registration);
@@ -3922,6 +3923,32 @@ export class ForgeRuntime {
     return stopped;
   }
 
+  async #promoteCapabilitiesProvenByUse(mission: MissionRecord): Promise<void> {
+    const graph = mission.output?.graph as BuildGraph | undefined;
+    if (!graph || !Array.isArray(graph.nodes)) return;
+
+    const repaired = typeof mission.input.repairsCapabilityId === "string"
+      ? mission.input.repairsCapabilityId
+      : null;
+
+    const required = new Set<string>();
+    for (const node of graph.nodes) {
+      for (const capabilityId of node.requiredCapabilities ?? []) {
+        if (capabilityId !== repaired) required.add(capabilityId);
+      }
+    }
+
+    for (const capabilityId of required) {
+      const current = this.#capabilityRegistry.getCapability(capabilityId);
+      if (!current || current.status !== "validated") continue;
+      await this.#capabilityRegistry.promoteCapability(
+        capabilityId,
+        "operational",
+        `proven-by-use:${mission.id}`,
+      );
+    }
+  }
+
   async #advanceCapabilityRepairChain(mission: MissionRecord): Promise<void> {
     const graphMetadata = mission.input.goalBuildGraph;
     const graphGoalMissionId = typeof graphMetadata === "object" && graphMetadata !== null && !Array.isArray(graphMetadata)
@@ -3964,15 +3991,15 @@ export class ForgeRuntime {
       if (current) {
         await this.#capabilityRegistry.promoteCapability(
           repairsCapabilityId,
-          "operational",
+          "validated",
           source,
         );
       } else {
         await this.#capabilityRegistry.upsert({
           id: repairsCapabilityId,
           name: repairsCapabilityId,
-          description: `Capability proven by accepted repair mission ${goalMission.id}.`,
-          status: "operational",
+          description: `Capability built by repair mission ${goalMission.id}; awaits proof by use.`,
+          status: "validated",
           version: "1.0.0",
           confidence: 1,
           source,

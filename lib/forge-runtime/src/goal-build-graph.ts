@@ -198,7 +198,7 @@ export function analyzeBuildGraphProposalCapabilities(
     }
     for (const capabilityId of requiredCapabilities) {
       const capability = capabilityById.get(capabilityId);
-      if (capability?.status !== "operational") {
+      if (capability?.status !== "operational" && capability?.status !== "validated") {
         gaps.push(Object.freeze({
           componentId: id,
           capabilityId,

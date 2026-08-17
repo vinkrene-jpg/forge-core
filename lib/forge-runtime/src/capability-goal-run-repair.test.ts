@@ -181,7 +181,7 @@ test("builds a missing capability and resumes the original goal under one run ma
       "artifacts/capability-repair-original.json",
     ]);
     assert.equal(runtime.getCapability("tool.proof.render")?.status, "operational");
-    assert.match(runtime.getCapability("tool.proof.render")?.source ?? "", /^goal-run-repair:/);
+    assert.match(runtime.getCapability("tool.proof.render")?.source ?? "", /^proven-by-use:/);
     const report = runtime.getCapabilityGoalRunReport(created.mission.id) as {
       goals: readonly {
         status: string;
