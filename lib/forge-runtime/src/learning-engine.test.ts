@@ -344,9 +344,24 @@ test(
         "learning-failure-test",
       );
       await waitFor(
-        () =>
-          reconciled.getMission(failedScheduled.mission.mission.id)?.status ===
-          "failed",
+        () => {
+          const status = reconciled.getMission(
+            failedScheduled.mission.mission.id,
+          )?.status;
+          return status === "failed" || status === "succeeded";
+        },
+      );
+
+      const failedMission = reconciled.getMission(
+        failedScheduled.mission.mission.id,
+      );
+      assert.equal(
+        failedMission?.status,
+        "failed",
+        JSON.stringify({
+          lastError: failedMission?.lastError,
+          missionResult: failedMission?.output?.missionResult,
+        }),
       );
 
       assert.equal(providerCalls, 3);

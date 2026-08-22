@@ -1,6 +1,8 @@
-import { Bot, Play, ShieldAlert } from "lucide-react";
+import { useState } from "react";
+import { Bot, Eye, Play, ShieldAlert } from "lucide-react";
 import {
   useCreateMission,
+  useApprovalsQuery,
   useMissionsQuery,
   useScheduleWorkspacePlan,
 } from "@/hooks/use-forge-live";
@@ -12,6 +14,14 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import { MissionDetails } from "@/components/mission-details";
 
 function variant(
   status: string,
@@ -28,7 +38,9 @@ function variant(
 }
 
 export default function Missions() {
+  const [selectedMissionId, setSelectedMissionId] = useState<string | null>(null);
   const missions = useMissionsQuery();
+  const approvals = useApprovalsQuery();
   const createMission = useCreateMission();
   const scheduleWorkspacePlan = useScheduleWorkspacePlan();
 
@@ -36,6 +48,28 @@ export default function Missions() {
     (left, right) =>
       right.updatedAt.localeCompare(left.updatedAt),
   );
+  const selectedMission =
+    records.find((mission) => mission.id === selectedMissionId) ?? null;
+  const selectedWorkspaceExecutionMissionId =
+    typeof selectedMission?.output?.workspaceExecutionMissionId === "string"
+      ? selectedMission.output.workspaceExecutionMissionId
+      : null;
+  const selectedExecutionMission =
+    records.find(
+      (mission) => mission.id === selectedWorkspaceExecutionMissionId,
+    ) ?? null;
+  const selectedWorkspaceExecutionApprovalId =
+    typeof selectedMission?.output?.workspaceExecutionApprovalId === "string"
+      ? selectedMission.output.workspaceExecutionApprovalId
+      : approvals.data?.approvals.find(
+          (approval) =>
+            approval.missionId === (
+              selectedExecutionMission?.id ??
+              (selectedMission?.kind === "operator.workspace-change"
+                ? selectedMission.id
+                : null)
+            ),
+        )?.id ?? null;
 
   const error =
     (createMission.error ?? scheduleWorkspacePlan.error) instanceof Error
@@ -137,6 +171,7 @@ export default function Missions() {
                   <th className="px-3 py-3">Attempts</th>
                   <th className="px-3 py-3">Interrupted</th>
                   <th className="px-3 py-3">Updated</th>
+                  <th className="px-3 py-3">Details</th>
                 </tr>
               </thead>
               <tbody>
@@ -246,6 +281,16 @@ export default function Missions() {
                     <td className="px-3 py-4 text-muted-foreground">
                       {new Date(mission.updatedAt).toLocaleString()}
                     </td>
+                    <td className="px-3 py-4">
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={() => setSelectedMissionId(mission.id)}
+                      >
+                        <Eye className="mr-2 h-4 w-4" />
+                        Inspect
+                      </Button>
+                    </td>
                   </tr>
                   );
                 })}
@@ -260,6 +305,31 @@ export default function Missions() {
           ) : null}
         </CardContent>
       </Card>
+
+      <Dialog
+        open={selectedMission !== null}
+        onOpenChange={(open) => {
+          if (!open) {
+            setSelectedMissionId(null);
+          }
+        }}
+      >
+        <DialogContent className="max-h-[90vh] max-w-4xl overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>Missiedetails</DialogTitle>
+            <DialogDescription>
+              Persisted runtime state, koppelingen en echte uitvoeringsevidence.
+            </DialogDescription>
+          </DialogHeader>
+          {selectedMission ? (
+            <MissionDetails
+              mission={selectedMission}
+              linkedExecutionMission={selectedExecutionMission}
+              workspaceExecutionApprovalId={selectedWorkspaceExecutionApprovalId}
+            />
+          ) : null}
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

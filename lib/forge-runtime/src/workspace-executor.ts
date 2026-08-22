@@ -333,6 +333,38 @@ async function exists(target: string): Promise<boolean> {
   }
 }
 
+function assertContainedPath(root: string, candidate: string, requestedPath: string): void {
+  const relative = path.relative(root, candidate);
+
+  if (
+    relative === ".." ||
+    relative.startsWith(`..${path.sep}`) ||
+    path.isAbsolute(relative)
+  ) {
+    throw new Error(`Workspace path escapes repository: ${requestedPath}`);
+  }
+}
+
+async function assertNoExternalLinkTraversal(
+  root: string,
+  absolutePath: string,
+  requestedPath: string,
+): Promise<void> {
+  let existingAncestor = absolutePath;
+
+  while (!(await exists(existingAncestor))) {
+    const parent = path.dirname(existingAncestor);
+
+    if (parent === existingAncestor) {
+      throw new Error(`Workspace path has no repository ancestor: ${requestedPath}`);
+    }
+
+    existingAncestor = parent;
+  }
+
+  assertContainedPath(root, await realpath(existingAncestor), requestedPath);
+}
+
 export class WorkspaceExecutor {
   readonly #events: RuntimeEventBus;
   readonly #verificationRunner: WorkspaceVerificationRunner;
@@ -459,6 +491,7 @@ export class WorkspaceExecutor {
           throw new Error(`Workspace path escapes repository: ${change.path}`);
         }
 
+        await assertNoExternalLinkTraversal(root, absolutePath, change.path);
         const existed = await exists(absolutePath);
         const content = existed ? await readFile(absolutePath) : null;
         const beforeSha256 = content === null ? null : sha256(content);

@@ -41,6 +41,7 @@ const queryClient = new QueryClient({
     },
   },
 });
+const routerBase = import.meta.env?.BASE_URL?.replace(/\/$/, "") ?? "";
 
 function Router() {
   return (
@@ -79,7 +80,7 @@ export default function App() {
     <QueryClientProvider client={queryClient}>
       <TooltipProvider>
         <WouterRouter
-          base={import.meta.env.BASE_URL.replace(/\/$/, "")}
+          base={routerBase}
         >
           <Router />
         </WouterRouter>

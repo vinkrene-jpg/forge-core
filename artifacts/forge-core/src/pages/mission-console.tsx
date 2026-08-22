@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
+import { flushSync } from "react-dom";
 import {
   Play,
   ShieldAlert,
@@ -25,6 +26,14 @@ import {
 } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
 import { Textarea } from "@/components/ui/textarea";
+import { MissionDetails } from "@/components/mission-details";
+import {
+  handleMissionConsoleSubmit,
+  type MissionConsoleRequestDiagnostic,
+} from "@/pages/mission-console-submit";
+
+export const MISSION_CONSOLE_BUILD_MARKER =
+  "mission-console-mounted-submit-2026-07-30.2";
 
 function progressForStatus(status: string): number {
   if (status === "awaiting_approval") {
@@ -48,6 +57,8 @@ export default function MissionConsolePage() {
   );
   const [missionId, setMissionId] = useState<string | null>(null);
   const [recordedMissionIds, setRecordedMissionIds] = useState<string[]>([]);
+  const [requestDiagnostic, setRequestDiagnostic] =
+    useState<MissionConsoleRequestDiagnostic | null>(null);
 
   const preview = useMissionIntakePreview(command);
   const startMission = useStartMissionFromIntake();
@@ -57,6 +68,17 @@ export default function MissionConsolePage() {
 
   const activeMission = mission.data;
   const activeApprovalId = startMission.data?.approval?.id ?? null;
+  const workspaceExecutionMissionId =
+    typeof activeMission?.output?.workspaceExecutionMissionId === "string"
+      ? activeMission.output.workspaceExecutionMissionId
+      : null;
+  const workspaceExecutionApprovalId =
+    typeof activeMission?.output?.workspaceExecutionApprovalId === "string"
+      ? activeMission.output.workspaceExecutionApprovalId
+      : null;
+  const workspaceExecutionMission = useMissionStatus(
+    workspaceExecutionMissionId,
+  );
   const activeProgress = activeMission
     ? progressForStatus(activeMission.status)
     : startMission.data?.progress ?? 0;
@@ -152,7 +174,12 @@ export default function MissionConsolePage() {
             Geef nieuwe opdrachten direct in Forge Desktop. Geen VS Code nodig voor standaard missie-invoer.
           </p>
         </div>
-        <Badge variant="outline">Desktop primary interface</Badge>
+        <div className="flex flex-col items-end gap-2">
+          <Badge variant="outline">Desktop primary interface</Badge>
+          <Badge variant="secondary" data-testid="mission-console-build-marker">
+            Build {MISSION_CONSOLE_BUILD_MARKER}
+          </Badge>
+        </div>
       </div>
 
       {error ? (
@@ -238,8 +265,19 @@ export default function MissionConsolePage() {
                   return;
                 }
 
-                void startMission
-                  .mutateAsync({ command, preview: preview.data })
+                void handleMissionConsoleSubmit(
+                  command,
+                  (currentRawObjective, onRequest) =>
+                    startMission.mutateAsync({
+                      rawObjective: currentRawObjective,
+                      onRequest,
+                    }),
+                  (diagnostic) => {
+                    flushSync(() => {
+                      setRequestDiagnostic(diagnostic);
+                    });
+                  },
+                )
                   .then((result) => {
                     setMissionId(result.mission.id);
                   });
@@ -265,6 +303,20 @@ export default function MissionConsolePage() {
                 Goedkeuren en starten
               </Button>
             ) : null}
+          </div>
+
+          <div
+            className="rounded-md border border-border/50 p-3"
+            data-testid="mission-console-request-diagnostics"
+          >
+            <div className="text-xs uppercase tracking-wide text-muted-foreground">
+              Client request diagnostics
+            </div>
+            <pre className="mt-2 max-h-64 overflow-auto whitespace-pre-wrap rounded-md bg-background p-3 text-xs text-muted-foreground">
+              {requestDiagnostic
+                ? JSON.stringify(requestDiagnostic, null, 2)
+                : "Nog geen submitrequest verzonden."}
+            </pre>
           </div>
         </CardContent>
       </Card>
@@ -318,6 +370,21 @@ export default function MissionConsolePage() {
           </div>
         </CardContent>
       </Card>
+
+      {activeMission && workspaceExecutionMissionId ? (
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-lg">Gekoppelde workspace-uitvoering</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <MissionDetails
+              mission={activeMission}
+              linkedExecutionMission={workspaceExecutionMission.data ?? null}
+              workspaceExecutionApprovalId={workspaceExecutionApprovalId}
+            />
+          </CardContent>
+        </Card>
+      ) : null}
     </div>
   );
 }

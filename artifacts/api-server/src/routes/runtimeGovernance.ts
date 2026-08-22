@@ -1,10 +1,9 @@
 import { Router, type IRouter } from "express";
 import {
+  type ForgeRuntime,
   forgeRuntime,
   type ApprovalStatus,
 } from "@workspace/forge-runtime";
-
-const router: IRouter = Router();
 
 function message(error: unknown): string {
   return error instanceof Error
@@ -26,8 +25,22 @@ function approvalStatus(
   return undefined;
 }
 
+type GovernanceRuntime = Pick<
+  ForgeRuntime,
+  | "governanceSummary"
+  | "listApprovals"
+  | "getApproval"
+  | "approveApproval"
+  | "rejectApproval"
+>;
+
+export function createRuntimeGovernanceRouter(
+  runtime: GovernanceRuntime = forgeRuntime,
+): IRouter {
+const router: IRouter = Router();
+
 router.get("/governance", (_req, res): void => {
-  res.json(forgeRuntime.governanceSummary());
+  res.json(runtime.governanceSummary());
 });
 
 router.get(
@@ -36,8 +49,8 @@ router.get(
     const status = approvalStatus(req.query.status);
 
     res.json({
-      summary: forgeRuntime.governanceSummary(),
-      approvals: forgeRuntime.listApprovals(status),
+      summary: runtime.governanceSummary(),
+      approvals: runtime.listApprovals(status),
     });
   },
 );
@@ -45,7 +58,7 @@ router.get(
 router.get(
   "/governance/approvals/:approvalId",
   (req, res): void => {
-    const approval = forgeRuntime.getApproval(
+    const approval = runtime.getApproval(
       req.params.approvalId,
     );
 
@@ -64,7 +77,7 @@ router.post(
   "/governance/approvals/:approvalId/approve",
   async (req, res): Promise<void> => {
     try {
-      const result = await forgeRuntime.approveApproval(
+      const result = await runtime.approveApproval(
         req.params.approvalId,
         String(req.body?.actor ?? ""),
         typeof req.body?.note === "string"
@@ -85,7 +98,7 @@ router.post(
   "/governance/approvals/:approvalId/reject",
   async (req, res): Promise<void> => {
     try {
-      const result = await forgeRuntime.rejectApproval(
+      const result = await runtime.rejectApproval(
         req.params.approvalId,
         String(req.body?.actor ?? ""),
         typeof req.body?.note === "string"
@@ -102,4 +115,7 @@ router.post(
   },
 );
 
-export default router;
+return router;
+}
+
+export default createRuntimeGovernanceRouter();

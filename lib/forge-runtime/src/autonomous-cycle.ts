@@ -66,6 +66,78 @@ export interface AutonomousCycleInput {
   readonly files: readonly string[];
 }
 
+export function extractAutonomousWorkspaceTargets(
+  objective: string,
+  includeInlineMutationTarget = true,
+): readonly { readonly path: string; readonly allowCreate: true }[] {
+  const candidates = new Map<string, string>();
+  const mutationVerbs =
+    /\b(?:maak|creëer|creeer|bouw|wijzig|verander|bewerk|schrijf|implementeer|create|build|modify|edit|write|implement)\b/gi;
+  const relativePath =
+    String.raw`(?:(?:[a-z0-9._-]+[\\/])+)[a-z0-9][a-z0-9._-]*\.[a-z0-9]+`;
+  const inlineTargetPath =
+    String.raw`(?:(?:[a-z0-9._-]+[\\/])+)?[a-z0-9][a-z0-9._-]*\.[a-z0-9]+`;
+  const pathPattern = new RegExp(
+    String.raw`(?:^|[\s"'])(` +
+      inlineTargetPath +
+      String.raw`)(?=$|[\s,.;:!?'"'])`,
+    "gi",
+  );
+  const labeledPathPattern = new RegExp(
+    String.raw`^pad:\s*(` + relativePath + String.raw`)\s*$`,
+    "i",
+  );
+  const standalonePathPattern = new RegExp(
+    String.raw`^(` + relativePath + String.raw`)\s*$`,
+    "i",
+  );
+
+  const addCandidate = (rawPath: string): void => {
+    const targetPath = rawPath.replace(/\\/g, "/");
+    const segments = targetPath.split("/");
+
+    if (segments.some((segment) => segment === "." || segment === "..")) {
+      throw new Error("Workspace target path may not contain traversal segments");
+    }
+
+    candidates.set(targetPath.toLowerCase(), targetPath);
+  };
+
+  for (const line of objective.split(/\r?\n/)) {
+    const labeled = line.match(labeledPathPattern);
+    const standalone = line.match(standalonePathPattern);
+
+    if (labeled) {
+      addCandidate(labeled[1]);
+    } else if (standalone) {
+      addCandidate(standalone[1]);
+    }
+  }
+
+  if (includeInlineMutationTarget) {
+    for (const verb of objective.matchAll(mutationVerbs)) {
+      const start = (verb.index ?? 0) + verb[0].length;
+      const mutationSpan = objective.slice(start, start + 160);
+
+      for (const pathMatch of mutationSpan.matchAll(pathPattern)) {
+        addCandidate(pathMatch[1]);
+      }
+    }
+  }
+
+  if (candidates.size > 1) {
+    throw new Error(
+      "Mission intake requires exactly one unambiguous workspace target path",
+    );
+  }
+
+  const [targetPath] = candidates.values();
+
+  return targetPath
+    ? Object.freeze([Object.freeze({ path: targetPath, allowCreate: true as const })])
+    : Object.freeze([]);
+}
+
 export interface AutonomousEvaluationCheck {
   readonly id: string;
   readonly passed: boolean;
@@ -162,6 +234,8 @@ export function classifyAutonomousObjective(
   const normalizedForIntent = ` ${normalized.replace(/\s+/g, " ").trim()} `;
   const explicitReadOnly = [
     /\bwijzig\s+geen\b/,
+    /\bniet\s+(?:wijzigen|aanpassen|schrijven|veranderen|maken|verwijderen)\b/,
+    /\b(?:wijzig|verander|pas|schrijf|maak|verwijder)\b[^.!?\n]{0,80}\bniet\b/,
     /\bgeen\s+bestanden?\s+(?:wijzigen|aanpassen|schrijven|veranderen)\b/,
     /\bverander\s+geen\b/,
     /\bpas\s+geen\b/,
@@ -236,7 +310,60 @@ export function parseAutonomousCycleInput(
     .slice(0, 8);
 
   const objective = textInput(input, "objective");
-  const classified = classifyAutonomousObjective(objective);
+  const requestedMode = input.objectiveExecutionMode;
+  const requestedProfile = input.objectiveProfile;
+  const hasCanonicalIntent =
+    requestedMode !== undefined || requestedProfile !== undefined;
+
+  if (
+    hasCanonicalIntent &&
+    !(
+      (requestedMode === "analysis-only" &&
+        requestedProfile === "generic-analysis") ||
+      (requestedMode === "build-or-mutate" &&
+        (requestedProfile === "generic-build" ||
+          requestedProfile === "file-create-read-hash"))
+    )
+  ) {
+    throw new Error(
+      "objectiveExecutionMode and objectiveProfile must form a valid canonical pair",
+    );
+  }
+
+  const hasExplicitCreateTarget =
+    Array.isArray(input.targets) &&
+    input.targets.some(
+      (target) =>
+        typeof target === "object" &&
+        target !== null &&
+        !Array.isArray(target) &&
+        (target as Readonly<Record<string, unknown>>).allowCreate === true &&
+        typeof (target as Readonly<Record<string, unknown>>).path === "string" &&
+        String((target as Readonly<Record<string, unknown>>).path).trim().length > 0,
+    );
+
+  if (hasExplicitCreateTarget && requestedMode === "analysis-only") {
+    throw new Error(
+      "Explicit create targets may not hydrate as an analysis-only mission",
+    );
+  }
+
+  const classified =
+    (requestedMode === "analysis-only" &&
+      requestedProfile === "generic-analysis") ||
+    (requestedMode === "build-or-mutate" &&
+      (requestedProfile === "generic-build" ||
+        requestedProfile === "file-create-read-hash"))
+      ? Object.freeze({
+          mode: requestedMode,
+          profile: requestedProfile,
+        })
+      : hasExplicitCreateTarget
+    ? Object.freeze({
+        mode: "build-or-mutate" as const,
+        profile: "generic-build" as const,
+      })
+    : classifyAutonomousObjective(objective);
 
   return Object.freeze({
     projectId: textInput(input, "projectId", "forge-core"),
@@ -369,6 +496,23 @@ export class AutonomousOutputEvaluator {
     }
 
     if (options.requiredEvidenceId) {
+      if (executionMode === "analysis-only") {
+        checks.push(
+          {
+            id: "assumptions-explicit",
+            passed: /assumptions?|aannames?/i.test(output),
+            detail:
+              "Evidence-bound analysis must state assumptions explicitly.",
+          },
+          {
+            id: "verification-explicit",
+            passed: /verif|tests?|controle|bewijs/i.test(output),
+            detail:
+              "Evidence-bound analysis must contain verification guidance.",
+          },
+        );
+      }
+
       checks.push(
         {
           id: "tool-evidence-cited",

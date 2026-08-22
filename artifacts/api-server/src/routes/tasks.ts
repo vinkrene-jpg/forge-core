@@ -1,7 +1,15 @@
 import { Router, type IRouter } from "express";
 import { jsonSafe } from "../lib/jsonSafe";
 import { eq, desc, and } from "drizzle-orm";
-import { db, tasksTable, decisionsTable, risksTable } from "@workspace/db";
+import {
+  db,
+  tasksTable,
+  decisionsTable,
+  risksTable,
+  type DecisionRow,
+  type RiskRow,
+  type TaskRow,
+} from "@workspace/db";
 import {
   ListTasksQueryParams,
   ListTasksResponse,
@@ -50,7 +58,9 @@ router.post("/tasks", async (req, res): Promise<void> => {
     res.status(400).json({ error: body.error.message });
     return;
   }
-  const [row] = await db.insert(tasksTable).values(body.data).returning();
+  const insertedRows = await db.insert(tasksTable).values(body.data).returning();
+  const row = (insertedRows as unknown as TaskRow[])[0];
+  if (!row) throw new Error("Task insert returned no row");
   await audit({ actor: "task-manager", action: "task_created", targetType: "task", targetId: row.id, details: row.title });
   res.status(201).json(CreateTaskResponse.parse(jsonSafe(row)));
 });
@@ -111,7 +121,8 @@ router.delete("/tasks/:id", async (req, res): Promise<void> => {
     res.status(400).json({ error: params.error.message });
     return;
   }
-  const [row] = await db.delete(tasksTable).where(eq(tasksTable.id, params.data.id)).returning();
+  const deletedRows = await db.delete(tasksTable).where(eq(tasksTable.id, params.data.id)).returning();
+  const row = (deletedRows as unknown as TaskRow[])[0];
   if (!row) {
     res.status(404).json({ error: "Task not found" });
     return;
@@ -137,7 +148,9 @@ router.post("/decisions", async (req, res): Promise<void> => {
     res.status(400).json({ error: body.error.message });
     return;
   }
-  const [row] = await db.insert(decisionsTable).values(body.data).returning();
+  const insertedRows = await db.insert(decisionsTable).values(body.data).returning();
+  const row = (insertedRows as unknown as DecisionRow[])[0];
+  if (!row) throw new Error("Decision insert returned no row");
   await audit({ actor: row.madeBy, action: "decision_recorded", targetType: "decision", targetId: row.id, details: row.title });
   res.status(201).json(CreateDecisionResponse.parse(jsonSafe(row)));
 });
@@ -160,7 +173,9 @@ router.post("/risks", async (req, res): Promise<void> => {
     res.status(400).json({ error: body.error.message });
     return;
   }
-  const [row] = await db.insert(risksTable).values(body.data).returning();
+  const insertedRows = await db.insert(risksTable).values(body.data).returning();
+  const row = (insertedRows as unknown as RiskRow[])[0];
+  if (!row) throw new Error("Risk insert returned no row");
   res.status(201).json(CreateRiskResponse.parse(jsonSafe(row)));
 });
 

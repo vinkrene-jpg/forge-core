@@ -6,6 +6,7 @@ import {
 import {
   useApprovalsQuery,
   useApproveApproval,
+  useMissionsQuery,
   useRejectApproval,
 } from "@/hooks/use-forge-live";
 import { Badge } from "@/components/ui/badge";
@@ -19,6 +20,7 @@ import {
 
 export default function Approvals() {
   const approvals = useApprovalsQuery();
+  const missions = useMissionsQuery();
   const approve = useApproveApproval();
   const reject = useRejectApproval();
 
@@ -74,60 +76,82 @@ export default function Approvals() {
             </div>
           ) : (
             <div className="space-y-4">
-              {pending.map((approval) => (
-                <div
-                  key={approval.id}
-                  className="rounded-lg border border-amber-500/30 bg-amber-500/5 p-4"
-                >
-                  <div className="flex flex-wrap items-start justify-between gap-4">
-                    <div>
-                      <div className="font-medium">
-                        {approval.assessment.missionKind}
+              {pending.map((approval) => {
+                const mission = missions.data?.missions.find(
+                  (candidate) => candidate.id === approval.missionId,
+                );
+                const sourcePlanningMissionId =
+                  typeof mission?.input.sourceAutonomousMissionId === "string"
+                    ? mission.input.sourceAutonomousMissionId
+                    : typeof mission?.input.sourcePlanningMissionId === "string"
+                      ? mission.input.sourcePlanningMissionId
+                      : null;
+
+                return (
+                  <div
+                    key={approval.id}
+                    className="rounded-lg border border-amber-500/30 bg-amber-500/5 p-4"
+                  >
+                    <div className="flex flex-wrap items-start justify-between gap-4">
+                      <div>
+                        <div className="font-medium">
+                          {approval.assessment.missionKind === "operator.workspace-change"
+                            ? "Workspace execution approval"
+                            : approval.assessment.missionKind}
+                        </div>
+                        <div className="mt-1 font-mono text-xs text-muted-foreground">
+                          Mission {approval.missionId}
+                        </div>
+                        <div className="mt-1 font-mono text-xs text-muted-foreground">
+                          Approval {approval.id}
+                        </div>
+                        {sourcePlanningMissionId ? (
+                          <div className="mt-1 font-mono text-xs text-muted-foreground">
+                            Planning mission {sourcePlanningMissionId}
+                          </div>
+                        ) : null}
                       </div>
-                      <div className="mt-1 font-mono text-xs text-muted-foreground">
-                        Mission {approval.missionId}
-                      </div>
+                      <Badge variant="secondary">
+                        {approval.assessment.riskLevel} risk
+                      </Badge>
                     </div>
-                    <Badge variant="secondary">
-                      {approval.assessment.riskLevel} risk
-                    </Badge>
-                  </div>
 
-                  <p className="mt-4 text-sm text-muted-foreground">
-                    {approval.assessment.reason}
-                  </p>
+                    <p className="mt-4 text-sm text-muted-foreground">
+                      {approval.assessment.reason}
+                    </p>
 
-                  <div className="mt-4 flex flex-wrap gap-2">
-                    <Button
-                      disabled={busy}
-                      onClick={() =>
-                        approve.mutate({
-                          approvalId: approval.id,
-                          actor: "forge-desktop-owner",
-                          note: "Approved from Forge Desktop.",
-                        })
-                      }
-                    >
-                      <Check className="mr-2 h-4 w-4" />
-                      Approve and resume
-                    </Button>
-                    <Button
-                      variant="destructive"
-                      disabled={busy}
-                      onClick={() =>
-                        reject.mutate({
-                          approvalId: approval.id,
-                          actor: "forge-desktop-owner",
-                          note: "Rejected from Forge Desktop.",
-                        })
-                      }
-                    >
-                      <X className="mr-2 h-4 w-4" />
-                      Reject
-                    </Button>
+                    <div className="mt-4 flex flex-wrap gap-2">
+                      <Button
+                        disabled={busy}
+                        onClick={() =>
+                          approve.mutate({
+                            approvalId: approval.id,
+                            actor: "forge-desktop-owner",
+                            note: "Approved from Forge Desktop.",
+                          })
+                        }
+                      >
+                        <Check className="mr-2 h-4 w-4" />
+                        Approve and resume
+                      </Button>
+                      <Button
+                        variant="destructive"
+                        disabled={busy}
+                        onClick={() =>
+                          reject.mutate({
+                            approvalId: approval.id,
+                            actor: "forge-desktop-owner",
+                            note: "Rejected from Forge Desktop.",
+                          })
+                        }
+                      >
+                        <X className="mr-2 h-4 w-4" />
+                        Reject
+                      </Button>
+                    </div>
                   </div>
-                </div>
-              ))}
+                );
+              })}
             </div>
           )}
         </CardContent>
@@ -148,10 +172,15 @@ export default function Approvals() {
               >
                 <div>
                   <div className="text-sm font-medium">
-                    {approval.assessment.missionKind}
+                    {approval.assessment.missionKind === "operator.workspace-change"
+                      ? "Workspace execution approval"
+                      : approval.assessment.missionKind}
                   </div>
                   <div className="mt-1 text-xs text-muted-foreground">
                     {approval.note ?? approval.assessment.reason}
+                  </div>
+                  <div className="mt-1 font-mono text-xs text-muted-foreground">
+                    Mission {approval.missionId} · Approval {approval.id}
                   </div>
                 </div>
                 <Badge

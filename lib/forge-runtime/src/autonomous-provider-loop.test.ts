@@ -479,35 +479,38 @@ test("autonomous provider loop", { concurrency: false }, async (t) => {
         };
         const runtime = new ForgeRuntime({
           aiProviderConnectors: [connector],
+          workspaceVerificationRunner: successfulWorkspaceRunner,
           missionLoopPollIntervalMs: 100,
         });
 
-        await runtime.start();
+        try {
+          await runtime.start();
 
-        const created = await runtime.createMission(proofRequest());
-        assert.ok(created.approval);
-        await runtime.approveApproval(created.approval.id, "integration-test");
+          const created = await runtime.createMission(proofRequest());
+          assert.ok(created.approval);
+          await runtime.approveApproval(created.approval.id, "integration-test");
 
-        await waitFor(() => {
+          await waitFor(() => {
+            const mission = runtime.getMission(created.mission.id);
+            return mission?.status === "succeeded";
+          });
+
           const mission = runtime.getMission(created.mission.id);
-          return mission?.status === "succeeded";
-        });
-
-        const mission = runtime.getMission(created.mission.id);
-        assert.equal(mission?.status, "succeeded");
-        const evidence = mission?.output
-          ?.executionEvidence as {
-          receipts?: readonly unknown[];
-          artifacts?: readonly { readonly kind?: unknown; readonly path?: unknown; readonly sha256?: unknown }[];
-        } | undefined;
-        assert.ok(evidence);
-        assert.ok((evidence?.receipts?.length ?? 0) > 0);
-        assert.ok((evidence?.artifacts?.length ?? 0) > 0);
-        assert.equal(evidence?.artifacts?.[0]?.kind, "file-hash-proof");
-        assert.match(String(evidence?.artifacts?.[0]?.path ?? ""), /forge-proof\.txt/i);
-        assert.match(String(evidence?.artifacts?.[0]?.sha256 ?? ""), /^[a-f0-9]{64}$/);
-
-        await runtime.stop();
+          assert.equal(mission?.status, "succeeded");
+          const evidence = mission?.output
+            ?.executionEvidence as {
+            receipts?: readonly unknown[];
+            artifacts?: readonly { readonly kind?: unknown; readonly path?: unknown; readonly sha256?: unknown }[];
+          } | undefined;
+          assert.ok(evidence);
+          assert.ok((evidence?.receipts?.length ?? 0) > 0);
+          assert.ok((evidence?.artifacts?.length ?? 0) > 0);
+          assert.equal(evidence?.artifacts?.[0]?.kind, "file-hash-proof");
+          assert.match(String(evidence?.artifacts?.[0]?.path ?? ""), /forge-proof\.txt/i);
+          assert.match(String(evidence?.artifacts?.[0]?.sha256 ?? ""), /^[a-f0-9]{64}$/);
+        } finally {
+          await runtime.stop();
+        }
       });
     },
   );
@@ -522,29 +525,36 @@ test("autonomous provider loop", { concurrency: false }, async (t) => {
         delete process.env.FORGE_LOCAL_MODEL_ENABLED;
 
         const runtime = new ForgeRuntime({
+          workspaceVerificationRunner: successfulWorkspaceRunner,
           missionLoopPollIntervalMs: 100,
         });
 
-        await runtime.start();
+        try {
+          await runtime.start();
 
-        const created = await runtime.createMission(proofRequest());
-        assert.ok(created.approval);
-        await runtime.approveApproval(created.approval.id, "integration-test");
+          const created = await runtime.createMission(proofRequest());
+          assert.ok(created.approval);
+          await runtime.approveApproval(created.approval.id, "integration-test");
 
-        await waitFor(() => {
+          await waitFor(() => {
+            const mission = runtime.getMission(created.mission.id);
+            return mission?.status === "failed";
+          });
+
           const mission = runtime.getMission(created.mission.id);
-          return mission?.status === "failed";
-        });
-
-        const mission = runtime.getMission(created.mission.id);
-        assert.equal(mission?.status, "failed");
-        assert.equal(
-          (mission?.output?.missionResult as { status?: unknown } | undefined)?.status,
-          "blocked",
-        );
-        assert.match(mission?.lastError ?? "", /manual-fallback/i);
-
-        await runtime.stop();
+          assert.equal(mission?.status, "failed");
+          assert.equal(
+            (mission?.output?.missionResult as { status?: unknown } | undefined)?.status,
+            "blocked",
+            JSON.stringify({
+              lastError: mission?.lastError,
+              missionResult: mission?.output?.missionResult,
+            }),
+          );
+          assert.match(mission?.lastError ?? "", /manual-fallback/i);
+        } finally {
+          await runtime.stop();
+        }
       });
     },
   );
@@ -555,6 +565,20 @@ test("autonomous provider loop", { concurrency: false }, async (t) => {
       await withEnvironment(async () => {
         const root = await createWorkspaceRepository();
         process.env.FORGE_WORKSPACE_ROOT = root;
+        const liveObjective = [
+          "Maak uitsluitend één nieuw testbestand aan:",
+          "",
+          "Pad: sandbox/mirror-generic-build-proof-10.txt",
+          "",
+          "Exacte inhoud: Forge generic-build live approval proof",
+          "Datum: 2026-07-30",
+          "Doel: tweede workspace approval en echte execution evidence aantonen",
+          "",
+          "Wijzig geen enkel ander bestand.",
+          "Gebruik dit exacte pad als expliciet target met allowCreate=true.",
+          "Voer typecheck uit als verificatie.",
+          "Niet pushen.",
+        ].join("\n");
         let providerCalls = 0;
         const connector: AiProviderConnector = {
           id: "openai-responses",
@@ -567,9 +591,9 @@ test("autonomous provider loop", { concurrency: false }, async (t) => {
                 summary:
                   "Assumptions: the approved target is a new sandbox file and no other repository content may change. Verification guidance: run the required typecheck and inspect the committed file, recorded hashes, action receipts, file effects, verification runs, and artifact evidence before accepting the result.",
                 changes: [{
-                  path: "generated.txt",
+                  path: "sandbox/mirror-generic-build-proof-10.txt",
                   expectedSha256: null,
-                  content: "generated by governed generic build\n",
+                  content: "Forge generic-build live approval proof\n",
                 }],
                 verification: ["typecheck"],
                 commit: {
@@ -598,15 +622,28 @@ test("autonomous provider loop", { concurrency: false }, async (t) => {
             title: "Governed generic sandbox build",
             input: {
               projectId: "forge-core",
-              objective:
-                "Bouw een nieuw generated.txt bestand in de sandbox met gecontroleerde workspace-mutatie.",
+              objective: liveObjective,
+              proofTargetPath: "mirror-generic-build-proof-10.txt",
               cycleIndex: 1,
               maxCycles: 1,
               files: [],
-              targets: [{ path: "generated.txt", allowCreate: true }],
             },
           });
           assert.ok(created.approval);
+          assert.equal(created.mission.input.rawObjective, liveObjective);
+          assert.deepEqual(created.mission.input.targets, [{
+            path: "sandbox/mirror-generic-build-proof-10.txt",
+            allowCreate: true,
+          }]);
+          assert.equal(
+            created.mission.input.objectiveExecutionMode,
+            "build-or-mutate",
+          );
+          assert.equal(created.mission.input.objectiveProfile, "generic-build");
+          assert.equal(
+            created.mission.input.proofTargetPath,
+            "sandbox/mirror-generic-build-proof-10.txt",
+          );
           await runtime.approveApproval(created.approval.id, "integration-test");
 
           await waitFor(
@@ -623,11 +660,27 @@ test("autonomous provider loop", { concurrency: false }, async (t) => {
           assert.equal(providerCalls, 1);
           assert.ok(executionMissionId);
           assert.ok(executionApprovalId);
+          assert.equal(planningMission?.output?.executionEvidence, null);
           assert.equal(
             runtime.getMission(executionMissionId)?.status,
             "awaiting_approval",
           );
-          await assert.rejects(readFile(path.join(root, "generated.txt"), "utf8"));
+          assert.equal(
+            runtime.getMission(executionMissionId)?.input.sourceAutonomousMissionId,
+            created.mission.id,
+          );
+          assert.equal(runtime.getMission(executionMissionId)?.output, null);
+          assert.ok(
+            runtime.listApprovals("pending").some(
+              (approval) =>
+                approval.id === executionApprovalId &&
+                approval.missionId === executionMissionId,
+            ),
+          );
+          await assert.rejects(readFile(
+            path.join(root, "sandbox", "mirror-generic-build-proof-10.txt"),
+            "utf8",
+          ));
           assertNoExecutionEvidence(
             runtime.listMissions().map((candidate) => candidate.output),
           );
@@ -669,8 +722,11 @@ test("autonomous provider loop", { concurrency: false }, async (t) => {
             | undefined;
 
           assert.equal(
-            await readFile(path.join(root, "generated.txt"), "utf8"),
-            "generated by governed generic build\n",
+            await readFile(
+              path.join(root, "sandbox", "mirror-generic-build-proof-10.txt"),
+              "utf8",
+            ),
+            "Forge generic-build live approval proof\n",
           );
           assert.equal(evaluation?.score, 100);
           assert.equal(evaluation?.decision, "accepted");
