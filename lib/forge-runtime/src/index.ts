@@ -28,6 +28,9 @@ export {
   OpenAiResponsesConnector,
 } from "./openai-responses-connector";
 export {
+  AnthropicMessagesConnector,
+} from "./anthropic-messages-connector";
+export {
   LocalModelConnector,
 } from "./local-model-connector";
 export {

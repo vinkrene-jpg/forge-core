@@ -16,7 +16,10 @@ const entrypoint = path.join(
 );
 
 const sensitiveEnvironmentName = /(TOKEN|KEY|SECRET|PASSWORD|PASSWD|CREDENTIAL|COOKIE|SESSION|DATABASE|^PG|MAIL|SMTP|PAY|STRIPE|AZURE|AWS|GITHUB|SLACK|AUTH|PRIVATE)/i;
-const allowedRuntimeSecrets = new Set(["OPENAI_API_KEY"]);
+const allowedRuntimeSecrets = new Set([
+  "OPENAI_API_KEY",
+  "ANTHROPIC_API_KEY",
+]);
 
 interface PortListener {
   readonly pid: number;

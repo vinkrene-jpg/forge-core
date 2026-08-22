@@ -109,6 +109,7 @@ test("Forge child receives only the approved provider secret", () => {
       path.join(root, ".env"),
       [
         "OPENAI_API_KEY=test-openai",
+        "ANTHROPIC_API_KEY=test-anthropic",
         "FORGE_WORKSPACE_BRIDGE_TOKEN=test-bridge",
         "DATABASE_URL=test-database",
         "SMTP_PASSWORD=test-mail",
@@ -118,6 +119,7 @@ test("Forge child receives only the approved provider secret", () => {
     );
     const environment = loadRootEnvironment(root, {});
     assert.equal(environment.OPENAI_API_KEY, "test-openai");
+    assert.equal(environment.ANTHROPIC_API_KEY, "test-anthropic");
     assert.equal(environment.FORGE_WORKSPACE_BRIDGE_TOKEN, undefined);
     assert.equal(environment.DATABASE_URL, undefined);
     assert.equal(environment.SMTP_PASSWORD, undefined);

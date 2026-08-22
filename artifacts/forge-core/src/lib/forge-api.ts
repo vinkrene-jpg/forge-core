@@ -400,14 +400,14 @@ export interface LearningStateResponse {
 }
 
 export interface AiGatewayCostSummary {
-  readonly providerId: "openai-responses" | "local-model" | "manual-fallback";
+  readonly providerId: "openai-responses" | "anthropic" | "local-model" | "manual-fallback";
   readonly executions: number;
   readonly estimatedCostUsd: number;
 }
 
 export interface AiGatewaySummaryResponse {
   readonly configured: boolean;
-  readonly providerId: "openai-responses" | "local-model" | "manual-fallback" | null;
+  readonly providerId: "openai-responses" | "anthropic" | "local-model" | "manual-fallback" | null;
   readonly model: string | null;
   readonly executions: number;
   readonly succeeded: number;

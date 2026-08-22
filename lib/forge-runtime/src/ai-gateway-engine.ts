@@ -20,6 +20,7 @@ import type {
   PromptComposition,
 } from "./operator";
 import { OpenAiResponsesConnector } from "./openai-responses-connector";
+import { AnthropicMessagesConnector } from "./anthropic-messages-connector";
 import { LocalModelConnector } from "./local-model-connector";
 import { ManualFallbackConnector } from "./manual-fallback-connector";
 
@@ -104,6 +105,20 @@ function tokenRate(
     };
   }
 
+  if (providerId === "anthropic") {
+    const inputPer1k = Number(
+      process.env.FORGE_ANTHROPIC_INPUT_USD_PER_1K?.trim() || "0.003",
+    );
+    const outputPer1k = Number(
+      process.env.FORGE_ANTHROPIC_OUTPUT_USD_PER_1K?.trim() || "0.015",
+    );
+
+    return {
+      inputPer1k: Number.isFinite(inputPer1k) ? inputPer1k : 0.003,
+      outputPer1k: Number.isFinite(outputPer1k) ? outputPer1k : 0.015,
+    };
+  }
+
   return {
     inputPer1k: 0,
     outputPer1k: 0,
@@ -136,7 +151,10 @@ function reservedExecutionCost(
   inputChars: number,
   maximumOutputTokens: number,
 ): number {
-  if (providerId !== "openai-responses") return 0;
+  if (
+    providerId !== "openai-responses" &&
+    providerId !== "anthropic"
+  ) return 0;
   const rates = tokenRate(providerId);
   const conservativeInputTokens = inputChars;
   const cost =
@@ -185,6 +203,7 @@ export class AiGatewayEngine {
     const connectors: readonly AiProviderConnector[] =
       options.connectors ?? [
         new OpenAiResponsesConnector(),
+        new AnthropicMessagesConnector(),
         new LocalModelConnector(),
         new ManualFallbackConnector(),
       ];
@@ -267,6 +286,8 @@ export class AiGatewayEngine {
     const preferredProvider = process.env.FORGE_AI_PROVIDER?.trim();
     const openAiKey = process.env.OPENAI_API_KEY?.trim();
     const openAiModel = process.env.OPENAI_MODEL?.trim();
+    const anthropicKey = process.env.ANTHROPIC_API_KEY?.trim();
+    const anthropicModel = process.env.ANTHROPIC_MODEL?.trim();
     const localModelRouteEnabled = localModelEnabled();
 
     const availableProviders: AiProviderId[] = [];
@@ -277,6 +298,14 @@ export class AiGatewayEngine {
       Boolean(openAiModel)
     ) {
       availableProviders.push("openai-responses");
+    }
+
+    if (
+      this.#connectors.has("anthropic") &&
+      Boolean(anthropicKey) &&
+      Boolean(anthropicModel)
+    ) {
+      availableProviders.push("anthropic");
     }
 
     if (
@@ -292,6 +321,7 @@ export class AiGatewayEngine {
 
     const explicitProvider: AiProviderId | null =
       preferredProvider === "openai-responses" ||
+      preferredProvider === "anthropic" ||
       preferredProvider === "local-model" ||
       preferredProvider === "manual-fallback"
         ? preferredProvider
@@ -302,6 +332,8 @@ export class AiGatewayEngine {
         ? "local-model"
         : availableProviders.includes("openai-responses")
           ? "openai-responses"
+          : availableProviders.includes("anthropic")
+            ? "anthropic"
           : "manual-fallback";
 
     const providerId: AiProviderId | null =
@@ -316,6 +348,8 @@ export class AiGatewayEngine {
     const model =
       providerId === "openai-responses"
         ? openAiModel ?? null
+        : providerId === "anthropic"
+          ? anthropicModel ?? null
         : providerId === "local-model"
           ? process.env.FORGE_LOCAL_MODEL_NAME?.trim() ||
             "qwen2.5-coder:7b"
@@ -327,6 +361,9 @@ export class AiGatewayEngine {
       providerId === "openai-responses"
         ? process.env.OPENAI_BASE_URL?.trim() ||
           "https://api.openai.com/v1"
+        : providerId === "anthropic"
+          ? process.env.ANTHROPIC_BASE_URL?.trim() ||
+            "https://api.anthropic.com/v1"
         : providerId === "local-model"
           ? process.env.FORGE_LOCAL_MODEL_BASE_URL?.trim() ||
             "http://127.0.0.1:11434/v1"
@@ -335,7 +372,10 @@ export class AiGatewayEngine {
     return Object.freeze({
       providerId,
       configured,
-      secretConfigured: Boolean(openAiKey),
+      secretConfigured:
+        providerId === "anthropic"
+          ? Boolean(anthropicKey)
+          : Boolean(openAiKey),
       model,
       apiBase,
       maxInputChars: optionalPositiveInteger(
@@ -468,6 +508,8 @@ export class AiGatewayEngine {
     const providerModel =
       providerId === "openai-responses"
         ? process.env.OPENAI_MODEL?.trim() ?? null
+        : providerId === "anthropic"
+          ? process.env.ANTHROPIC_MODEL?.trim() ?? null
         : providerId === "local-model"
           ? process.env.FORGE_LOCAL_MODEL_NAME?.trim() || "qwen2.5-coder:7b"
           : "manual-fallback";
@@ -529,7 +571,10 @@ export class AiGatewayEngine {
       });
 
     await this.#mutate(async () => {
-      if (providerId === "openai-responses") {
+      if (
+        providerId === "openai-responses" ||
+        providerId === "anthropic"
+      ) {
         if (normalizedMandate === null) {
           throw new Error("Paid provider execution requires an explicit spend mandate");
         }
@@ -538,7 +583,7 @@ export class AiGatewayEngine {
           .reduce((total, execution) => total + chargedOrReserved(execution), 0);
         const dailySpentUsd = this.#state.executions
           .filter((execution) =>
-            execution.providerId === "openai-responses" &&
+            execution.providerId === providerId &&
             utcDay(execution.createdAt) === utcDay(timestamp)
           )
           .reduce((total, execution) => total + chargedOrReserved(execution), 0);
@@ -735,8 +780,19 @@ export class AiGatewayEngine {
       this.#connectors.has("openai-responses") &&
       Boolean(process.env.OPENAI_API_KEY?.trim()) &&
       Boolean(process.env.OPENAI_MODEL?.trim());
+    const anthropicReady =
+      this.#connectors.has("anthropic") &&
+      Boolean(process.env.ANTHROPIC_API_KEY?.trim()) &&
+      Boolean(process.env.ANTHROPIC_MODEL?.trim());
+    const preferredProvider = process.env.FORGE_AI_PROVIDER?.trim();
     const manualEnabled = this.#connectors.has("manual-fallback");
     const budget = composition.route.request.budget;
+    if (
+      preferredProvider === "anthropic" &&
+      anthropicReady
+    ) {
+      return "anthropic";
+    }
     if (budget === "low") {
       if (localEnabled) {
         return "local-model";
@@ -756,6 +812,10 @@ export class AiGatewayEngine {
 
       if (openAiReady) {
         return "openai-responses";
+      }
+
+      if (anthropicReady) {
+        return "anthropic";
       }
 
       if (manualEnabled) {

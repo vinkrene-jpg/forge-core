@@ -2,6 +2,7 @@ import type { PromptComposition } from "./operator";
 
 export type AiProviderId =
   | "openai-responses"
+  | "anthropic"
   | "local-model"
   | "manual-fallback";
 
